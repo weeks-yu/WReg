@@ -2,11 +2,18 @@ cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 
 project(WReg)
 
+#Find VTK
+find_package(VTK REQUIRED)
+set(VTK_LIBRARIES vtkRendering vtkGraphics vtkHybrid QVTK)
+
+#Find PCL
 find_package(PCL 1.7 REQUIRED)
+
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
+#Find Qt Module
 find_package(Qt5Core REQUIRED)
 find_package(Qt5Gui REQUIRED)
 find_package(Qt5Widgets REQUIRED)
@@ -19,9 +26,13 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR})
 add_definitions(${Qt5Widgets_DEFINITIONS})
 
-qt5_wrap_ui(WReg_UIS mainwindow.ui)
+#Uic
+set(WReg_SOURCES main.cpp mainwindow.cpp)
+set(WReg_FORMS mainwindow.ui)
 
-add_executable(WReg main.cpp mainwindow.cpp ${WReg_UIS})
+qt5_wrap_ui(WReg_UIS ${WReg_FORMS})
 
-target_link_libraries(WReg ${PCL_LIBRARIES})
+add_executable(WReg ${WReg_SOURCES} ${WReg_UIS})
+
+target_link_libraries(WReg ${PCL_LIBRARIES} ${VTK_LIBRARIES})
 qt5_use_modules(WReg Core Gui Widgets)

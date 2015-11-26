@@ -47,3 +47,5 @@ Temporary Items
 .apdisk
 
 build
+build-qt-Release
+build-qt-Debug
