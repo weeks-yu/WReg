@@ -2,6 +2,8 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QMdiArea>
+#include <QMdiSubWindow>
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -13,7 +15,7 @@ typedef pcl::PointXYZRGBA PointT;
 typedef pcl::PointCloud<PointT> PointCloudT;
 
 namespace Ui {
-class MainWindow;
+	class MainWindow;
 }
 
 class MainWindow : public QMainWindow
@@ -24,12 +26,22 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
+private:
+	void ShowPointCloudFiles(const QString &filename);
+	void ShowBenchmarkTest(const QString &filename);
+
+private slots:
+	void onActionOpenTriggered();
+	void onActionSaveTriggered();
+	void onActionOpenReadTxtTriggered();
+
 protected:
 	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer;
 	PointCloudT::Ptr cloud;
 	
 private:
     Ui::MainWindow *ui;
+	QMdiArea *mdiArea;
 };
 
 #endif // MAINWINDOW_H
