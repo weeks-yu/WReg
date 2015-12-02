@@ -7,7 +7,10 @@ PclViewer::PclViewer(PointCloudT::Ptr cloud, QWidget *parent) :
 
  	viewer.reset(new pcl::visualization::PCLVisualizer("viewer", true));
 	this->SetRenderWindow(viewer->getRenderWindow());
+	
+	//pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(this->cloud);
 	viewer->addPointCloud(this->cloud, "cloud");
+
 	viewer->resetCamera();
 }
 

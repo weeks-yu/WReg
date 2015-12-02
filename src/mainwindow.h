@@ -11,7 +11,7 @@
 
 #include <vtkRenderWindow.h>
 
-typedef pcl::PointXYZRGBA PointT;
+typedef pcl::PointXYZRGB PointT;
 typedef pcl::PointCloud<PointT> PointCloudT;
 
 namespace Ui {

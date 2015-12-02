@@ -11,6 +11,7 @@ BenchmarkViewer::BenchmarkViewer(QWidget *parent) :
 
 	this->setOrientation(Qt::Vertical);
 	QSplitter *splitter_horizontal = new QSplitter(Qt::Horizontal, this);
+
 	this->addWidget(splitter_horizontal);
 	this->addWidget(qvtkWidget);
 }
