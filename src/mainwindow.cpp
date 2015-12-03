@@ -1,5 +1,6 @@
 #include "MainWindow.h"
-#include "ui_mainwindow.h"
+#include "ui_MainWindow.h"
+#include "ui_DockBenchmark.h"
 #include "PclViewer.h"
 #include "BenchmarkViewer.h"
 
@@ -11,6 +12,8 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+	uiDockBenchmark = nullptr;
+	dockBenchmark = nullptr;
 
 	mdiArea = new QMdiArea(this);
 	this->setCentralWidget(mdiArea);
@@ -71,7 +74,17 @@ void MainWindow::ShowBenchmarkTest(const QString &filename)
 	{
 		return;
 	}
+	// left dock
+	if (dockBenchmark == nullptr)
+	{
+		dockBenchmark = new QDockWidget(this);
+		if (uiDockBenchmark == nullptr)
+			uiDockBenchmark = new Ui::DockBenchmark;
+		uiDockBenchmark->setupUi(dockBenchmark);
+	}
+	this->addDockWidget(Qt::LeftDockWidgetArea, dockBenchmark);
 
+	// center
 	BenchmarkViewer *benchmarkViewer = new BenchmarkViewer(this);
 	QMdiSubWindow *subWindow = new QMdiSubWindow(mdiArea);
 	subWindow->setWidget(benchmarkViewer);

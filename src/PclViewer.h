@@ -18,7 +18,7 @@ namespace Ui {
 	class PclViewer;
 }
 
-class PclViewer : public QVTKWidget
+class PclViewer : public QWidget
 {
     Q_OBJECT
 
@@ -26,9 +26,9 @@ public:
 	explicit PclViewer(PointCloudT::Ptr cloud, QWidget *parent = 0);
 	~PclViewer();
 
-	virtual QSize sizeHint() const { return QSize(640, 480); }
-
 protected:
+	Ui::PclViewer *ui;
+
 	pcl::visualization::PCLVisualizer::Ptr viewer;
 	PointCloudT::Ptr cloud;
 };

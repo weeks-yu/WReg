@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QMdiArea>
 #include <QMdiSubWindow>
+#include <QDockWidget>
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -16,6 +17,7 @@ typedef pcl::PointCloud<PointT> PointCloudT;
 
 namespace Ui {
 	class MainWindow;
+	class DockBenchmark;
 }
 
 class MainWindow : public QMainWindow
@@ -41,6 +43,9 @@ protected:
 	
 private:
     Ui::MainWindow *ui;
+	Ui::DockBenchmark *uiDockBenchmark;
+
+	QDockWidget *dockBenchmark;
 	QMdiArea *mdiArea;
 };
 

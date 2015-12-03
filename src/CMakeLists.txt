@@ -32,7 +32,7 @@ set(CMAKE_CONFIGURATION_TYPES Debug Release)
 
 set(WReg_SOURCES main.cpp MainWindow.cpp PclViewer.cpp BenchmarkViewer.cpp)
 set(WReg_HEADERS MainWindow.h PclViewer.h BenchmarkViewer.h)
-set(WReg_FORMS MainWindow.ui)
+set(WReg_FORMS MainWindow.ui PclViewer.ui BenchmarkViewer.ui DockBenchmark.ui)
 
 #uic
 qt5_wrap_ui(WReg_UIS ${WReg_FORMS})

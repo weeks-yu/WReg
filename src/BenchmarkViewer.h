@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QSplitter>
+#include <QLabel>
 #include <QVTKWidget.h>
 
 #include <pcl/point_cloud.h>
@@ -18,7 +19,7 @@ namespace Ui {
 	class BenchmarkViewer;
 }
 
-class BenchmarkViewer : public QSplitter
+class BenchmarkViewer : public QWidget
 {
     Q_OBJECT
 
@@ -26,14 +27,15 @@ public:
 	explicit BenchmarkViewer(QWidget *parent = 0);
 	~BenchmarkViewer();
 
-	virtual QSize sizeHint() const { return QSize(640, 480); }
+	void ShowRGBImage(QImage *rgb);
+	void ShowDepthImage(QImage *depth);
 
 protected:
 	pcl::visualization::PCLVisualizer::Ptr viewer;
 	PointCloudT::Ptr cloud;
 
 private:
-	QVTKWidget *qvtkWidget;
+	Ui::BenchmarkViewer *ui;
 };
 
 #endif // BENCHMARKVIEWER_H
