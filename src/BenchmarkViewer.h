@@ -2,9 +2,6 @@
 #define BENCHMARKVIEWER_H
 
 #include <QWidget>
-#include <QSplitter>
-#include <QLabel>
-#include <QVTKWidget.h>
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -31,11 +28,16 @@ public:
 	void ShowDepthImage(QImage *depth);
 
 protected:
+	virtual void resizeEvent(QResizeEvent *event);
+
+protected:
 	pcl::visualization::PCLVisualizer::Ptr viewer;
 	PointCloudT::Ptr cloud;
 
 private:
 	Ui::BenchmarkViewer *ui;
+	QImage *currRGB;
+	QImage *currDepth;
 };
 
 #endif // BENCHMARKVIEWER_H

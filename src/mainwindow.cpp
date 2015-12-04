@@ -7,6 +7,10 @@
 #include <QFileDialog>
 #include <pcl/io/pcd_io.h>
 
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -74,6 +78,20 @@ void MainWindow::ShowBenchmarkTest(const QString &filename)
 	{
 		return;
 	}
+
+	cv::Mat imgDepth16u(480, 640, CV_16UC1);
+	cv::Mat imgRGB8u(480, 640, CV_8UC3);
+	imgRGB8u = cv::imread("rgb.png");
+	imgDepth16u = cv::imread("depth.png", -1);
+
+	cv::Mat rgb, depth;
+	QImage *rgbImage, *depthImage;
+	cv::cvtColor(imgRGB8u, rgb, CV_BGR2RGB);
+	rgbImage = new QImage((const unsigned char*)(rgb.data),
+		rgb.cols, rgb.rows,
+		rgb.cols*rgb.channels(),
+		QImage::Format_RGB888);
+
 	// left dock
 	if (dockBenchmark == nullptr)
 	{
@@ -91,6 +109,7 @@ void MainWindow::ShowBenchmarkTest(const QString &filename)
 	subWindow->setAttribute(Qt::WA_DeleteOnClose);
 	mdiArea->addSubWindow(subWindow);
 	subWindow->showMaximized();
+	benchmarkViewer->ShowRGBImage(rgbImage);
 }
 
 // slots
