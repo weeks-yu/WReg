@@ -30,14 +30,21 @@ public:
 protected:
 	virtual void resizeEvent(QResizeEvent *event);
 
+private:
+	QPixmap getPixmap(QImage image, QSize size, bool keepAspectRatio = true);
+
+private slots:
+	void onSplitterVerticalMoved(int pos, int index);
+	void onSplitterHorizontalMoved(int pos, int index);
+
 protected:
 	pcl::visualization::PCLVisualizer::Ptr viewer;
 	PointCloudT::Ptr cloud;
 
 private:
 	Ui::BenchmarkViewer *ui;
-	QImage *currRGB;
-	QImage *currDepth;
+	QImage currRGB;
+	QImage currDepth;
 };
 
 #endif // BENCHMARKVIEWER_H

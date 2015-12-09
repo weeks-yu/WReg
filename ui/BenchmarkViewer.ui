@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>927</width>
-    <height>591</height>
+    <height>560</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -36,7 +36,7 @@
     <number>0</number>
    </property>
    <item>
-    <widget class="QSplitter" name="splitter_2">
+    <widget class="QSplitter" name="splitterVertical">
      <property name="autoFillBackground">
       <bool>false</bool>
      </property>
@@ -46,7 +46,7 @@
      <property name="orientation">
       <enum>Qt::Vertical</enum>
      </property>
-     <widget class="QSplitter" name="splitter">
+     <widget class="QSplitter" name="splitterHorizontal">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
         <horstretch>0</horstretch>
@@ -76,10 +76,10 @@
         </size>
        </property>
        <property name="title">
-        <string>GroupBox</string>
+        <string>RGB</string>
        </property>
        <property name="flat">
-        <bool>false</bool>
+        <bool>true</bool>
        </property>
        <layout class="QGridLayout" name="gridLayout">
         <property name="leftMargin">
@@ -103,7 +103,7 @@
            </size>
           </property>
           <property name="text">
-           <string>TextLabel</string>
+           <string/>
           </property>
          </widget>
         </item>
@@ -117,10 +117,10 @@
         </size>
        </property>
        <property name="title">
-        <string>GroupBox</string>
+        <string>Depth</string>
        </property>
        <property name="flat">
-        <bool>false</bool>
+        <bool>true</bool>
        </property>
        <layout class="QGridLayout" name="gridLayout_2">
         <property name="leftMargin">
@@ -144,7 +144,7 @@
            </size>
           </property>
           <property name="text">
-           <string>TextLabel</string>
+           <string/>
           </property>
          </widget>
         </item>
@@ -177,5 +177,42 @@
   </customwidget>
  </customwidgets>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>splitterHorizontal</sender>
+   <signal>splitterMoved(int,int)</signal>
+   <receiver>BenchmarkViewer</receiver>
+   <slot>onSplitterHorizontalMoved(int,int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>463</x>
+     <y>126</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>463</x>
+     <y>295</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>splitterVertical</sender>
+   <signal>splitterMoved(int,int)</signal>
+   <receiver>BenchmarkViewer</receiver>
+   <slot>onSplitterVerticalMoved(int,int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>463</x>
+     <y>279</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>463</x>
+     <y>279</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+ <slots>
+  <slot>onSplitterVerticalMoved(int,int)</slot>
+  <slot>onSplitterHorizontalMoved(int,int)</slot>
+ </slots>
 </ui>

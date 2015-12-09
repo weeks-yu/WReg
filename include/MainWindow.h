@@ -37,6 +37,9 @@ private slots:
 	void onActionSaveTriggered();
 	void onActionOpenReadTxtTriggered();
 
+	// benchmark
+	void onBenchmarkPushButtonRunClicked(bool checked);
+
 protected:
 	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer;
 	PointCloudT::Ptr cloud;

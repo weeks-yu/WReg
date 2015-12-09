@@ -3,8 +3,11 @@
 #include "ui_DockBenchmark.h"
 #include "PclViewer.h"
 #include "BenchmarkViewer.h"
+#include "Parser.h"
 
 #include <QFileDialog>
+#include <QMessageBox>
+
 #include <pcl/io/pcd_io.h>
 
 #include <opencv2/core/core.hpp>
@@ -102,6 +105,8 @@ void MainWindow::ShowBenchmarkTest(const QString &filename)
 	}
 	this->addDockWidget(Qt::LeftDockWidgetArea, dockBenchmark);
 
+	connect(uiDockBenchmark->pushButtonRun, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonRunClicked);
+
 	// center
 	BenchmarkViewer *benchmarkViewer = new BenchmarkViewer(this);
 	QMdiSubWindow *subWindow = new QMdiSubWindow(mdiArea);
@@ -134,4 +139,20 @@ void MainWindow::onActionOpenReadTxtTriggered()
 	{
 		ShowBenchmarkTest(filename);
 	}
+}
+
+void MainWindow::onBenchmarkPushButtonRunClicked(bool checked)
+{
+	if (!Parser::isDouble(uiDockBenchmark->lineEditGICPCorrDist->text()))
+	{
+		QMessageBox::warning(this, "Parameter Error", "GICP: parameter \"Max Correspondence Dist\" should be double.");
+		return;
+	}
+	if (!Parser::isDouble(uiDockBenchmark->lineEditGICPEpsilon->text()))
+	{
+		QMessageBox::warning(this, "Parameter Error", "GICP: parameter \"Transformation Epsilon\" should be double.");
+		return;
+	}
+
+	// run benchmark test
 }

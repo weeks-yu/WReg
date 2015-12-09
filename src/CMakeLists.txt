@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 
 project(WReg)
 
+include_directories(../include)
+link_directories(${PROJECT_BINARY_DIR}/lib)
+
 #Find VTK
 find_package(VTK 6.2 REQUIRED)
 
@@ -30,14 +33,14 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_CONFIGURATION_TYPES Debug Release)
 
-set(WReg_SOURCES main.cpp MainWindow.cpp PclViewer.cpp BenchmarkViewer.cpp)
-set(WReg_HEADERS MainWindow.h PclViewer.h BenchmarkViewer.h)
-set(WReg_FORMS MainWindow.ui PclViewer.ui BenchmarkViewer.ui DockBenchmark.ui)
+set(WReg_HEADERS ../include/MainWindow.h ../include/PclViewer.h ../include/BenchmarkViewer.h ../include/Parser.h)
+set(WReg_SOURCES main.cpp MainWindow.cpp PclViewer.cpp BenchmarkViewer.cpp Parser.cpp)
+set(WReg_FORMS ../ui/MainWindow.ui ../ui/PclViewer.ui ../ui/BenchmarkViewer.ui ../ui/DockBenchmark.ui)
 
 #uic
 qt5_wrap_ui(WReg_UIS ${WReg_FORMS})
 #rcc
-qt5_add_resources(WReg_RCCS main.qrc)
+qt5_add_resources(WReg_RCCS ../ui/main.qrc)
 
 add_executable(WReg ${WReg_HEADERS} ${WReg_SOURCES} ${WReg_UIS} ${WReg_RCCS})
 
