@@ -9,8 +9,12 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/visualization/pcl_visualizer.h>
+#include <opencv2/core/core.hpp>
 
 #include <vtkRenderWindow.h>
+
+#include "BenchmarkViewer.h"
+#include "SlamEngine.h"
 
 typedef pcl::PointXYZRGB PointT;
 typedef pcl::PointCloud<PointT> PointCloudT;
@@ -23,14 +27,13 @@ namespace Ui {
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
-
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
 private:
 	void ShowPointCloudFiles(const QString &filename);
-	void ShowBenchmarkTest(const QString &filename);
+	void ShowBenchmarkTest(const QString &directory);
 
 private slots:
 	void onActionOpenTriggered();
@@ -39,6 +42,8 @@ private slots:
 
 	// benchmark
 	void onBenchmarkPushButtonRunClicked(bool checked);
+	void onBenchmarkPushButtonDirectoryClicked(bool checked);
+	void onBenchmarkOneIterationDone(const cv::Mat &rgb, const cv::Mat &depth);
 
 protected:
 	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer;
@@ -50,6 +55,9 @@ private:
 
 	QDockWidget *dockBenchmark;
 	QMdiArea *mdiArea;
+	BenchmarkViewer *benchmarkViewer;
+
+	SlamEngine *engine;
 };
 
 #endif // MAINWINDOW_H

@@ -23,7 +23,7 @@ void Feature::SIFTExtrator(vector<cv::KeyPoint> &feature_pts, vector_eigen_vecto
 	for (int i = 0; i < fpts.size(); i++)
 	{
 		Eigen::Vector3f pt;
-		pt  = convertPointTo3D(cvRound(fpts[i].pt.x), cvRound(fpts[i].pt.y), imgDepth);
+		pt  = ConvertPointTo3D(cvRound(fpts[i].pt.x), cvRound(fpts[i].pt.y), imgDepth);
 		if (pt.isZero())
 		{
 			continue;
@@ -57,7 +57,7 @@ void Feature::SURFExtrator(vector<cv::KeyPoint> &feature_pts, vector_eigen_vecto
 	for (int i = 0; i < fpts.size(); i++)
 	{
 		Eigen::Vector3f pt;
-		pt  = convertPointTo3D(cvRound(fpts[i].pt.x), cvRound(fpts[i].pt.y), imgDepth);
+		pt  = ConvertPointTo3D(cvRound(fpts[i].pt.x), cvRound(fpts[i].pt.y), imgDepth);
 		if (pt.isZero())
 		{
 			continue;

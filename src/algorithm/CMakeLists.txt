@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 
 include_directories(../../include/algorithm)
+include_directories(../../aislib)
 link_directories(${PROJECT_BINARY_DIR}/lib)
 
 find_package(PCL 1.7 REQUIRED)
@@ -20,12 +21,16 @@ set(ALGORITHM_HEADER
 	../../include/algorithm/GraphManager.h
 	../../include/algorithm/PointCloud.h
 	../../include/algorithm/QuadTree.h
-	../../include/algorithm/Transformation.h)
+	../../include/algorithm/Transformation.h
+	../../include/algorithm/SlamEngine.h)
 	
 set(ALGORITHM_SRC
+	Config.cpp
 	Feature.cpp
 	GraphManager.cpp
-	Transformation.cpp)
+	PointCloud.cpp
+	Transformation.cpp
+	SlamEngine.cpp)
 	
 add_library(algorithm STATIC ${ALGORITHM_HEADER} ${ALGORITHM_SRC})
-target_link_libraries(algorithm ${OpenCV_LIBS} ${PCL_LIBRARIES})
+target_link_libraries(algorithm ${OpenCV_LIBS} ${PCL_LIBRARIES} aislib)

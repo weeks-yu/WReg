@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 
+include_directories(../../include/algorithm)
 include_directories(../../include/viewer)
+include_directories(../../aislib)
 link_directories(${PROJECT_BINARY_DIR}/lib)
 
 #Find VTK
@@ -35,14 +37,16 @@ set(VIEWER_HEADERS
 	../../include/viewer/MainWindow.h
 	../../include/viewer/PclViewer.h
 	../../include/viewer/BenchmarkViewer.h
-	../../include/viewer/Parser.h)
+	../../include/viewer/Parser.h
+	../../include/viewer/SlamThread.h)
 	
 set(VIEWER_SOURCES
 	main.cpp
 	MainWindow.cpp
 	PclViewer.cpp
 	BenchmarkViewer.cpp
-	Parser.cpp)
+	Parser.cpp
+	SlamThread.cpp)
 	
 set(VIEWER_FORMS
 	ui/MainWindow.ui
@@ -57,5 +61,5 @@ qt5_add_resources(VIEWER_RCCS ui/main.qrc)
 
 add_executable(WReg ${VIEWER_HEADERS} ${VIEWER_SOURCES} ${VIEWER_UIS} ${VIEWER_RCCS})
 
-target_link_libraries(WReg ${OpenCV_LIBS} ${PCL_LIBRARIES} ${VTK_LIBRARIES} vtkGUISupportQt)
+target_link_libraries(WReg ${OpenCV_LIBS} ${PCL_LIBRARIES} ${VTK_LIBRARIES} vtkGUISupportQt aislib algorithm)
 qt5_use_modules(WReg Core Gui Widgets)

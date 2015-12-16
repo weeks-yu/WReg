@@ -2,8 +2,8 @@
 #include "ui_MainWindow.h"
 #include "ui_DockBenchmark.h"
 #include "PclViewer.h"
-#include "BenchmarkViewer.h"
 #include "Parser.h"
+#include "SlamThread.h"
 
 #include <QFileDialog>
 #include <QMessageBox>
@@ -24,22 +24,9 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	mdiArea = new QMdiArea(this);
 	this->setCentralWidget(mdiArea);
+	benchmarkViewer = nullptr;
 
-// 	cloud.reset(new PointCloudT);
-// 	// The number of points in the cloud
-// 	cloud->points.resize(200);
-// 
-// 	// Fill the cloud with some points
-// 	for (size_t i = 0; i < cloud->points.size(); ++i)
-// 	{
-// 		cloud->points[i].x = 1024 * rand() / (RAND_MAX + 1.0f);
-// 		cloud->points[i].y = 1024 * rand() / (RAND_MAX + 1.0f);
-// 		cloud->points[i].z = 1024 * rand() / (RAND_MAX + 1.0f);
-// 
-// 		cloud->points[i].r = 0;
-// 		cloud->points[i].g = 255;
-// 		cloud->points[i].b = 0;
-// 	}
+	engine = nullptr;
 }
 
 MainWindow::~MainWindow()
@@ -74,27 +61,8 @@ void MainWindow::ShowPointCloudFiles(const QString &filename)
 	subWindow->showMaximized();
 }
 
-void MainWindow::ShowBenchmarkTest(const QString &filename)
+void MainWindow::ShowBenchmarkTest(const QString &directory)
 {
-	QFileInfo fi(filename);
-	if (!fi.isFile() || fi.fileName() != "read.txt")
-	{
-		return;
-	}
-
-	cv::Mat imgDepth16u(480, 640, CV_16UC1);
-	cv::Mat imgRGB8u(480, 640, CV_8UC3);
-	imgRGB8u = cv::imread("rgb.png");
-	imgDepth16u = cv::imread("depth.png", -1);
-
-	cv::Mat rgb, depth;
-	QImage *rgbImage, *depthImage;
-	cv::cvtColor(imgRGB8u, rgb, CV_BGR2RGB);
-	rgbImage = new QImage((const unsigned char*)(rgb.data),
-		rgb.cols, rgb.rows,
-		rgb.cols*rgb.channels(),
-		QImage::Format_RGB888);
-
 	// left dock
 	if (dockBenchmark == nullptr)
 	{
@@ -103,18 +71,19 @@ void MainWindow::ShowBenchmarkTest(const QString &filename)
 			uiDockBenchmark = new Ui::DockBenchmark;
 		uiDockBenchmark->setupUi(dockBenchmark);
 	}
+	uiDockBenchmark->lineEditDirectory->setText(directory);
 	this->addDockWidget(Qt::LeftDockWidgetArea, dockBenchmark);
 
 	connect(uiDockBenchmark->pushButtonRun, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonRunClicked);
+	connect(uiDockBenchmark->pushButtonDirectory, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonDirectoryClicked);
 
 	// center
-	BenchmarkViewer *benchmarkViewer = new BenchmarkViewer(this);
+	benchmarkViewer = new BenchmarkViewer(this);
 	QMdiSubWindow *subWindow = new QMdiSubWindow(mdiArea);
 	subWindow->setWidget(benchmarkViewer);
 	subWindow->setAttribute(Qt::WA_DeleteOnClose);
 	mdiArea->addSubWindow(subWindow);
 	subWindow->showMaximized();
-	benchmarkViewer->ShowRGBImage(rgbImage);
 }
 
 // slots
@@ -134,15 +103,32 @@ void MainWindow::onActionSaveTriggered()
 
 void MainWindow::onActionOpenReadTxtTriggered()
 {
-	QString filename = QFileDialog::getOpenFileName(this, tr("Open read.txt"), "", tr("read.txt(read.txt)"));
-	if (!filename.isNull())
+	QString directory = QFileDialog::getExistingDirectory(this, tr("Open Benchmark Directory"), "");
+	if (!directory.isNull())
 	{
-		ShowBenchmarkTest(filename);
+		QFileInfo fi(directory);
+		if (!fi.isDir())
+		{
+			QMessageBox::warning(this, tr("Invalid directory"), tr("Please check whether the directory is valid."));
+			return;
+		}
+		QFileInfo fi2(fi.absoluteFilePath() + "/read.txt");
+		if (!fi2.isFile())
+		{
+			QMessageBox::warning(this, tr("Read.txt not found"), tr("Please check whether \"read.txt\" exists or not"));
+			return;
+		}
+		ShowBenchmarkTest(directory);
 	}
 }
 
 void MainWindow::onBenchmarkPushButtonRunClicked(bool checked)
 {
+	if (!Parser::isDouble(uiDockBenchmark->lineEditDownsampleRate->text()))
+	{
+		QMessageBox::warning(this, "Parameter Error", "Downsampling: parameter \"Downsample Rate\" should be double.");
+		return;
+	}
 	if (!Parser::isDouble(uiDockBenchmark->lineEditGICPCorrDist->text()))
 	{
 		QMessageBox::warning(this, "Parameter Error", "GICP: parameter \"Max Correspondence Dist\" should be double.");
@@ -155,4 +141,68 @@ void MainWindow::onBenchmarkPushButtonRunClicked(bool checked)
 	}
 
 	// run benchmark test
+	if (engine != nullptr)
+		delete engine;
+	engine = new SlamEngine();
+	bool usingDownSampling = uiDockBenchmark->checkBoxDownSampling->isChecked();
+	int method = uiDockBenchmark->comboBoxMethod->currentIndex();
+	bool usingGICP = method == 0;
+	bool usingGraphOptimizer = method == 0;
+	
+	engine->setUsingDownsampling(usingDownSampling);
+	if (usingDownSampling)
+	{
+		engine->setDownsampleRate(uiDockBenchmark->lineEditDownsampleRate->text().toDouble());
+	}
+	engine->setUsingGicp(usingGICP);
+	if (usingGICP)
+	{
+		engine->setGicpMaxIterations(uiDockBenchmark->spinBoxGICPIterations->text().toDouble());
+		engine->setGicpMaxCorrDist(uiDockBenchmark->lineEditGICPCorrDist->text().toDouble());
+		engine->setGicpEpsilon(uiDockBenchmark->lineEditGICPEpsilon->text().toDouble());
+	}
+	engine->setUsingGraphOptimizer(usingGraphOptimizer);
+	if (usingGraphOptimizer)
+	{
+		QString type = uiDockBenchmark->comboBoxGraphFeatureType->currentText();
+		engine->setGraphFeatureType(type == "SIFT" ? SlamEngine::SIFT : SlamEngine::SURF);
+	}
+
+	SlamThread *thread = new SlamThread(uiDockBenchmark->lineEditDirectory->text(), engine);
+	qRegisterMetaType<cv::Mat>("cv::Mat");
+	connect(thread, &SlamThread::OneIterationDone, this, &MainWindow::onBenchmarkOneIterationDone);
+	thread->start();
+}
+
+void MainWindow::onBenchmarkPushButtonDirectoryClicked(bool checked)
+{
+	QString directory = QFileDialog::getExistingDirectory(this, tr("Open Benchmark Directory"), "");
+	if (!directory.isNull())
+	{
+		QFileInfo fi(directory);
+		if (!fi.isDir())
+		{
+			QMessageBox::warning(this, tr("Invalid directory"), tr("Please check whether the directory is valid."));
+			return;
+		}
+		QFileInfo fi2(fi.absoluteFilePath() + "/read.txt");
+		if (!fi2.isFile())
+		{
+			QMessageBox::warning(this, tr("Read.txt not found"), tr("Please check whether \"read.txt\" exists or not"));
+			return;
+		}
+		uiDockBenchmark->lineEditDirectory->setText(directory);
+	}
+}
+
+void MainWindow::onBenchmarkOneIterationDone(const cv::Mat &rgb, const cv::Mat &depth)
+{
+	cv::Mat tempRgb, tempDepth;
+	QImage *rgbImage, *depthImage;
+	cv::cvtColor(rgb, tempRgb, CV_BGR2RGB);
+	rgbImage = new QImage((const unsigned char*)(tempRgb.data),
+		tempRgb.cols, tempRgb.rows,
+		tempRgb.cols * tempRgb.channels(),
+		QImage::Format_RGB888);
+	benchmarkViewer->ShowRGBImage(rgbImage);
 }
