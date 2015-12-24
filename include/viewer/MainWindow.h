@@ -43,7 +43,9 @@ private slots:
 	// benchmark
 	void onBenchmarkPushButtonRunClicked(bool checked);
 	void onBenchmarkPushButtonDirectoryClicked(bool checked);
+	void onBenchmarkPushButtonSaveClicked(bool checked);
 	void onBenchmarkOneIterationDone(const cv::Mat &rgb, const cv::Mat &depth);
+	void onBenchmarkRegistrationDone();
 
 protected:
 	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer;

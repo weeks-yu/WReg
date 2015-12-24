@@ -9,8 +9,7 @@
 
 #include <vtkRenderWindow.h>
 
-typedef pcl::PointXYZRGB PointT;
-typedef pcl::PointCloud<PointT> PointCloudT;
+#include "PointCloud.h"
 
 namespace Ui {
 	class BenchmarkViewer;
@@ -26,6 +25,7 @@ public:
 
 	void ShowRGBImage(QImage *rgb);
 	void ShowDepthImage(QImage *depth);
+	void ShowPointCloud(PointCloudPtr result);
 
 protected:
 	virtual void resizeEvent(QResizeEvent *event);
@@ -39,7 +39,7 @@ private slots:
 
 protected:
 	pcl::visualization::PCLVisualizer::Ptr viewer;
-	PointCloudT::Ptr cloud;
+	PointCloudPtr cloud;
 
 private:
 	Ui::BenchmarkViewer *ui;

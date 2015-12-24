@@ -4,6 +4,7 @@
 #include "PclViewer.h"
 #include "Parser.h"
 #include "SlamThread.h"
+#include "Transformation.h"
 
 #include <QFileDialog>
 #include <QMessageBox>
@@ -72,10 +73,12 @@ void MainWindow::ShowBenchmarkTest(const QString &directory)
 		uiDockBenchmark->setupUi(dockBenchmark);
 	}
 	uiDockBenchmark->lineEditDirectory->setText(directory);
+	uiDockBenchmark->pushButtonSave->setDisabled(true);
 	this->addDockWidget(Qt::LeftDockWidgetArea, dockBenchmark);
 
 	connect(uiDockBenchmark->pushButtonRun, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonRunClicked);
 	connect(uiDockBenchmark->pushButtonDirectory, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonDirectoryClicked);
+	connect(uiDockBenchmark->pushButtonSave, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonSaveClicked);
 
 	// center
 	benchmarkViewer = new BenchmarkViewer(this);
@@ -146,7 +149,7 @@ void MainWindow::onBenchmarkPushButtonRunClicked(bool checked)
 	engine = new SlamEngine();
 	bool usingDownSampling = uiDockBenchmark->checkBoxDownSampling->isChecked();
 	int method = uiDockBenchmark->comboBoxMethod->currentIndex();
-	bool usingGICP = method == 0;
+	bool usingGICP = method == 0 || method == 1;
 	bool usingGraphOptimizer = method == 0;
 	
 	engine->setUsingDownsampling(usingDownSampling);
@@ -168,10 +171,16 @@ void MainWindow::onBenchmarkPushButtonRunClicked(bool checked)
 		engine->setGraphFeatureType(type == "SIFT" ? SlamEngine::SIFT : SlamEngine::SURF);
 	}
 
-	SlamThread *thread = new SlamThread(uiDockBenchmark->lineEditDirectory->text(), engine);
+	SlamThread *thread = new SlamThread(uiDockBenchmark->lineEditDirectory->text(), engine,
+		uiDockBenchmark->spinBoxFrameInterval->value(),
+		uiDockBenchmark->spinBoxStartFrame->value(),
+		uiDockBenchmark->spinBoxStopFrame->value());
 	qRegisterMetaType<cv::Mat>("cv::Mat");
 	connect(thread, &SlamThread::OneIterationDone, this, &MainWindow::onBenchmarkOneIterationDone);
+	connect(thread, &SlamThread::RegistrationDone, this, &MainWindow::onBenchmarkRegistrationDone);
 	thread->start();
+	uiDockBenchmark->pushButtonRun->setDisabled(true);
+	uiDockBenchmark->pushButtonSave->setDisabled(true);
 }
 
 void MainWindow::onBenchmarkPushButtonDirectoryClicked(bool checked)
@@ -195,6 +204,26 @@ void MainWindow::onBenchmarkPushButtonDirectoryClicked(bool checked)
 	}
 }
 
+void MainWindow::onBenchmarkPushButtonSaveClicked(bool checked)
+{
+	QString filename = QFileDialog::getSaveFileName(this, tr("Save Transformations"), "", tr("txt files(*.txt)"));
+	if (!filename.isNull())
+	{
+		vector<pair<double, Eigen::Matrix4f>> trans = engine->GetTransformations();
+		ofstream outfile(filename.toStdString());
+		for (int i = 0; i < trans.size(); i++)
+		{
+			Eigen::Vector3f t = TranslationFromMatrix4f(trans[i].second);
+			Eigen::Quaternionf q = QuaternionsFromMatrix4f(trans[i].second);
+
+			outfile << fixed << setprecision(4) << trans[i].first
+				<< ' ' << t(0) << ' ' << t(1) << ' ' << t(2)
+				<< ' ' << q.x() << q.y() << q.z() << q.w() << endl;
+		}
+		outfile.close();
+	}
+}
+
 void MainWindow::onBenchmarkOneIterationDone(const cv::Mat &rgb, const cv::Mat &depth)
 {
 	cv::Mat tempRgb, tempDepth;
@@ -205,4 +234,24 @@ void MainWindow::onBenchmarkOneIterationDone(const cv::Mat &rgb, const cv::Mat &
 		tempRgb.cols * tempRgb.channels(),
 		QImage::Format_RGB888);
 	benchmarkViewer->ShowRGBImage(rgbImage);
+
+	depth *= 255.0 / 65535.0;
+	depth.convertTo(tempDepth, CV_8U);
+	cv::cvtColor(tempDepth, tempDepth, CV_GRAY2RGB);
+	depthImage = new QImage((const unsigned char*)(tempDepth.data),
+		tempDepth.cols, tempDepth.rows,
+		tempDepth.cols * tempDepth.channels(),
+		QImage::Format_RGB888);
+	benchmarkViewer->ShowDepthImage(depthImage);
+	if (engine->GetFrameID() % 30 == 0)
+	{
+		benchmarkViewer->ShowPointCloud(engine->GetScene());
+	}
+}
+
+void MainWindow::onBenchmarkRegistrationDone()
+{
+	benchmarkViewer->ShowPointCloud(engine->GetScene());
+	uiDockBenchmark->pushButtonRun->setDisabled(false);
+	uiDockBenchmark->pushButtonSave->setDisabled(false);
 }

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>384</width>
-    <height>447</height>
+    <height>476</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -27,19 +27,6 @@
        <bool>true</bool>
       </property>
      </widget>
-    </item>
-    <item row="11" column="0" colspan="2">
-     <spacer name="verticalSpacer">
-      <property name="orientation">
-       <enum>Qt::Vertical</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>20</width>
-        <height>40</height>
-       </size>
-      </property>
-     </spacer>
     </item>
     <item row="3" column="0">
      <widget class="QLabel" name="labelStartFrame">
@@ -187,10 +174,13 @@
        </size>
       </property>
       <property name="minimum">
-       <number>1</number>
+       <number>-1</number>
       </property>
       <property name="maximum">
        <number>10000</number>
+      </property>
+      <property name="value">
+       <number>-1</number>
       </property>
      </widget>
     </item>
@@ -203,10 +193,13 @@
        </size>
       </property>
       <property name="minimum">
-       <number>1</number>
+       <number>-1</number>
       </property>
       <property name="maximum">
        <number>10000</number>
+      </property>
+      <property name="value">
+       <number>-1</number>
       </property>
      </widget>
     </item>
@@ -306,6 +299,29 @@
       </layout>
      </widget>
     </item>
+    <item row="5" column="0">
+     <widget class="QLabel" name="labelDownsampling">
+      <property name="text">
+       <string>Using Downsampling</string>
+      </property>
+     </widget>
+    </item>
+    <item row="5" column="1" colspan="2">
+     <widget class="QCheckBox" name="checkBoxDownSampling">
+      <property name="minimumSize">
+       <size>
+        <width>180</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
+      <property name="checked">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </item>
     <item row="0" column="2">
      <widget class="QPushButton" name="pushButtonDirectory">
       <property name="maximumSize">
@@ -335,6 +351,11 @@
         <string>GICP with Graph Optimizer</string>
        </property>
       </item>
+      <item>
+       <property name="text">
+        <string>GICP only</string>
+       </property>
+      </item>
      </widget>
     </item>
     <item row="2" column="1" colspan="2">
@@ -359,28 +380,25 @@
       </property>
      </widget>
     </item>
-    <item row="5" column="0">
-     <widget class="QLabel" name="labelDownsampling">
+    <item row="11" column="0" colspan="3">
+     <widget class="QPushButton" name="pushButtonSave">
       <property name="text">
-       <string>Using Downsampling</string>
+       <string>Save Transformations</string>
       </property>
      </widget>
     </item>
-    <item row="5" column="1" colspan="2">
-     <widget class="QCheckBox" name="checkBoxDownSampling">
-      <property name="minimumSize">
+    <item row="12" column="0" colspan="3">
+     <spacer name="verticalSpacer">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+      <property name="sizeHint" stdset="0">
        <size>
-        <width>180</width>
-        <height>0</height>
+        <width>20</width>
+        <height>40</height>
        </size>
       </property>
-      <property name="text">
-       <string/>
-      </property>
-      <property name="checked">
-       <bool>true</bool>
-      </property>
-     </widget>
+     </spacer>
     </item>
    </layout>
   </widget>

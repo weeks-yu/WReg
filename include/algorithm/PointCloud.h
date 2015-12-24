@@ -4,7 +4,8 @@
 #include <pcl/filters/voxel_grid.h>
 #include <opencv2/core/core.hpp>
 
-typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudType;
+typedef pcl::PointXYZRGB PointT;
+typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudT;
 typedef pcl::PointCloud<pcl::PointXYZRGB>::Ptr PointCloudPtr;
 
 PointCloudPtr ConvertToPointCloud(const cv::Mat &depth, const cv::Mat &rgb, double timestamp, int frameID);

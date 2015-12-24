@@ -106,7 +106,7 @@ void GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, f
 			count = matches.size();
 			if (count < min_closure_candidate) min_closure_candidate = count;
 			if (count > max_closure_candidate) max_closure_candidate = count;
-			cout << ", Closure Candidate: " << count;
+			std::cout << ", Closure Candidate: " << count;
 			
 			bool spawnNewKeyframe = true;
 			int N = Config::instance()->get<int>("keyframe_check_N");
@@ -162,14 +162,14 @@ void GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, f
 					}
 				}
 			}
-			cout << ", Edges: " << count;
+			std::cout << ", Edges: " << count;
 
 			time = (clock() - start) / 1000.0;
 			if (time < min_closure_detect_time) min_closure_detect_time = time;
 			if (time > max_closure_detect_time) max_closure_detect_time = time;
 			total_closure_detect_time += time;
 			clousureCount++;
-			cout << ", Closure: " << time;
+			std::cout << ", Closure: " << time;
 
 			if (spawnNewKeyframe)
 			{
@@ -177,7 +177,7 @@ void GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, f
 				this->insertKeyframe(translation(0), translation(1), k);
 				last_keyframe = k;
 				keyframeCount++;
-				cout << ", Keyframe";
+				std::cout << ", Keyframe";
 			}
 		}
 
@@ -188,7 +188,7 @@ void GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, f
 		if (time < min_graph_opt_time) min_graph_opt_time = time;
 		if (time > max_graph_opt_time) max_graph_opt_time = time;
 		total_graph_opt_time += time;
-		cout << ", Graph: " << fixed << setprecision(3) << time;
+		std::cout << ", Graph: " << fixed << setprecision(3) << time;
 
 		for (int i = 0; i < this->graph.size(); i++)
 		{

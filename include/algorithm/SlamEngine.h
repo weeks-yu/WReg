@@ -40,13 +40,17 @@ public:
 
 	void RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, double timestamp);
 	PointCloudPtr GetScene();
+	int GetFrameID() { return frame_id; }
+	vector<pair<double, Eigen::Matrix4f>> GetTransformations();
 
 private:
 	int frame_id;
 
 	// results
 	Eigen::Matrix4f last_transformation;
+	vector<Eigen::Matrix4f> transformation_matrix;
 	vector<PointCloudPtr> point_clouds;
+	vector<double> timestamps;
 
 	// temporary variables
 	PointCloudPtr last_cloud;
