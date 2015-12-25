@@ -147,10 +147,11 @@ void MainWindow::onBenchmarkPushButtonRunClicked(bool checked)
 	if (engine != nullptr)
 		delete engine;
 	engine = new SlamEngine();
-	bool usingDownSampling = uiDockBenchmark->checkBoxDownSampling->isChecked();
 	int method = uiDockBenchmark->comboBoxMethod->currentIndex();
 	bool usingGICP = method == 0 || method == 1;
-	bool usingGraphOptimizer = method == 0;
+	bool usingICPCUDA = method == 2 || method == 3;
+	bool usingGraphOptimizer = method == 0 || method == 2;
+	bool usingDownSampling = usingGICP && uiDockBenchmark->checkBoxDownSampling->isChecked();
 	
 	engine->setUsingDownsampling(usingDownSampling);
 	if (usingDownSampling)
@@ -163,6 +164,11 @@ void MainWindow::onBenchmarkPushButtonRunClicked(bool checked)
 		engine->setGicpMaxIterations(uiDockBenchmark->spinBoxGICPIterations->text().toDouble());
 		engine->setGicpMaxCorrDist(uiDockBenchmark->lineEditGICPCorrDist->text().toDouble());
 		engine->setGicpEpsilon(uiDockBenchmark->lineEditGICPEpsilon->text().toDouble());
+	}
+	engine->setUsingIcpcuda(usingICPCUDA);
+	if (usingICPCUDA)
+	{
+
 	}
 	engine->setUsingGraphOptimizer(usingGraphOptimizer);
 	if (usingGraphOptimizer)
@@ -216,7 +222,7 @@ void MainWindow::onBenchmarkPushButtonSaveClicked(bool checked)
 			Eigen::Vector3f t = TranslationFromMatrix4f(trans[i].second);
 			Eigen::Quaternionf q = QuaternionsFromMatrix4f(trans[i].second);
 
-			outfile << fixed << setprecision(4) << trans[i].first
+			outfile << fixed << setprecision(6) << trans[i].first
 				<< ' ' << t(0) << ' ' << t(1) << ' ' << t(2)
 				<< ' ' << q.x() << q.y() << q.z() << q.w() << endl;
 		}

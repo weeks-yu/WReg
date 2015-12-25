@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>384</width>
+    <width>394</width>
     <height>476</height>
    </rect>
   </property>
@@ -15,6 +15,285 @@
   </property>
   <widget class="QWidget" name="dockWidgetContents">
    <layout class="QGridLayout" name="gridLayout">
+    <item row="7" column="0" colspan="3">
+     <widget class="QGroupBox" name="groupBoxGICP">
+      <property name="title">
+       <string>GICP</string>
+      </property>
+      <property name="flat">
+       <bool>false</bool>
+      </property>
+      <layout class="QGridLayout" name="gridLayout_2">
+       <item row="3" column="0">
+        <widget class="QLabel" name="labelGICPCorrDist">
+         <property name="text">
+          <string>Max Correspondence Dist</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0">
+        <widget class="QLabel" name="labelGICPEpsilon">
+         <property name="text">
+          <string>Transformation Epsilon</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QSpinBox" name="spinBoxGICPIterations">
+         <property name="minimumSize">
+          <size>
+           <width>165</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>180</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="minimum">
+          <number>1</number>
+         </property>
+         <property name="maximum">
+          <number>200</number>
+         </property>
+         <property name="value">
+          <number>50</number>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QLineEdit" name="lineEditGICPCorrDist">
+         <property name="maximumSize">
+          <size>
+           <width>180</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>0.01</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1">
+        <widget class="QLineEdit" name="lineEditGICPEpsilon">
+         <property name="maximumSize">
+          <size>
+           <width>180</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>1e-4</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="labelGICPIterations">
+         <property name="minimumSize">
+          <size>
+           <width>170</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>Maximum Iterations</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="label_3">
+         <property name="minimumSize">
+          <size>
+           <width>170</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>Downsample Rate</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QLineEdit" name="lineEditDownsampleRate">
+         <property name="minimumSize">
+          <size>
+           <width>165</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>180</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>0.02</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0">
+        <widget class="QLabel" name="labelDownsampling">
+         <property name="text">
+          <string>Using Downsampling</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QCheckBox" name="checkBoxDownSampling">
+         <property name="minimumSize">
+          <size>
+           <width>180</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item row="3" column="1" colspan="2">
+     <widget class="QSpinBox" name="spinBoxStartFrame">
+      <property name="maximumSize">
+       <size>
+        <width>180</width>
+        <height>16777215</height>
+       </size>
+      </property>
+      <property name="minimum">
+       <number>-1</number>
+      </property>
+      <property name="maximum">
+       <number>10000</number>
+      </property>
+      <property name="value">
+       <number>-1</number>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="0">
+     <widget class="QLabel" name="labelFrameInterval">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="text">
+       <string>Frame Interval</string>
+      </property>
+     </widget>
+    </item>
+    <item row="6" column="0">
+     <widget class="QLabel" name="labelMethod">
+      <property name="text">
+       <string>Registration Method</string>
+      </property>
+     </widget>
+    </item>
+    <item row="9" column="0" colspan="3">
+     <widget class="QPushButton" name="pushButtonRun">
+      <property name="text">
+       <string>Run</string>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="2">
+     <widget class="QPushButton" name="pushButtonDirectory">
+      <property name="maximumSize">
+       <size>
+        <width>25</width>
+        <height>16777215</height>
+       </size>
+      </property>
+      <property name="text">
+       <string>…</string>
+      </property>
+      <property name="flat">
+       <bool>false</bool>
+      </property>
+     </widget>
+    </item>
+    <item row="6" column="1" colspan="2">
+     <widget class="QComboBox" name="comboBoxMethod">
+      <property name="maximumSize">
+       <size>
+        <width>180</width>
+        <height>16777215</height>
+       </size>
+      </property>
+      <item>
+       <property name="text">
+        <string>GICP with Graph Optimizer</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>GICP only</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>ICPCUDA with GraphOptimizer</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>ICPCUDA only</string>
+       </property>
+      </item>
+     </widget>
+    </item>
+    <item row="2" column="1" colspan="2">
+     <widget class="QSpinBox" name="spinBoxFrameInterval">
+      <property name="minimumSize">
+       <size>
+        <width>170</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>180</width>
+        <height>16777215</height>
+       </size>
+      </property>
+      <property name="minimum">
+       <number>1</number>
+      </property>
+      <property name="maximum">
+       <number>100</number>
+      </property>
+     </widget>
+    </item>
+    <item row="10" column="0" colspan="3">
+     <widget class="QPushButton" name="pushButtonSave">
+      <property name="text">
+       <string>Save Transformations</string>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="0">
+     <widget class="QLabel" name="labelDirectory">
+      <property name="minimumSize">
+       <size>
+        <width>180</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="text">
+       <string>Benchmark Directory</string>
+      </property>
+     </widget>
+    </item>
     <item row="0" column="1">
      <widget class="QLineEdit" name="lineEditDirectory">
       <property name="maximumSize">
@@ -42,129 +321,6 @@
       </property>
      </widget>
     </item>
-    <item row="7" column="0">
-     <widget class="QLabel" name="labelMethod">
-      <property name="text">
-       <string>Registration Method</string>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="0">
-     <widget class="QLabel" name="labelDirectory">
-      <property name="minimumSize">
-       <size>
-        <width>180</width>
-        <height>0</height>
-       </size>
-      </property>
-      <property name="text">
-       <string>Benchmark Directory</string>
-      </property>
-     </widget>
-    </item>
-    <item row="2" column="0">
-     <widget class="QLabel" name="labelFrameInterval">
-      <property name="minimumSize">
-       <size>
-        <width>0</width>
-        <height>0</height>
-       </size>
-      </property>
-      <property name="text">
-       <string>Frame Interval</string>
-      </property>
-     </widget>
-    </item>
-    <item row="8" column="0" colspan="3">
-     <widget class="QGroupBox" name="groupBoxGICP">
-      <property name="title">
-       <string>GICP</string>
-      </property>
-      <property name="flat">
-       <bool>false</bool>
-      </property>
-      <layout class="QGridLayout" name="gridLayout_2">
-       <item row="1" column="1">
-        <widget class="QLineEdit" name="lineEditGICPCorrDist">
-         <property name="maximumSize">
-          <size>
-           <width>180</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <property name="text">
-          <string>0.01</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="labelGICPCorrDist">
-         <property name="text">
-          <string>Max Correspondence Dist</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QSpinBox" name="spinBoxGICPIterations">
-         <property name="minimumSize">
-          <size>
-           <width>165</width>
-           <height>0</height>
-          </size>
-         </property>
-         <property name="maximumSize">
-          <size>
-           <width>180</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <property name="minimum">
-          <number>1</number>
-         </property>
-         <property name="maximum">
-          <number>200</number>
-         </property>
-         <property name="value">
-          <number>50</number>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0">
-        <widget class="QLabel" name="labelGICPIterations">
-         <property name="minimumSize">
-          <size>
-           <width>170</width>
-           <height>0</height>
-          </size>
-         </property>
-         <property name="text">
-          <string>Maximum Iterations</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="labelGICPEpsilon">
-         <property name="text">
-          <string>Transformation Epsilon</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QLineEdit" name="lineEditGICPEpsilon">
-         <property name="maximumSize">
-          <size>
-           <width>180</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <property name="text">
-          <string>1e-4</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
-    </item>
     <item row="4" column="1" colspan="2">
      <widget class="QSpinBox" name="spinBoxStopFrame">
       <property name="maximumSize">
@@ -184,26 +340,20 @@
       </property>
      </widget>
     </item>
-    <item row="3" column="1" colspan="2">
-     <widget class="QSpinBox" name="spinBoxStartFrame">
-      <property name="maximumSize">
+    <item row="11" column="0" colspan="3">
+     <spacer name="verticalSpacer">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+      <property name="sizeHint" stdset="0">
        <size>
-        <width>180</width>
-        <height>16777215</height>
+        <width>20</width>
+        <height>40</height>
        </size>
       </property>
-      <property name="minimum">
-       <number>-1</number>
-      </property>
-      <property name="maximum">
-       <number>10000</number>
-      </property>
-      <property name="value">
-       <number>-1</number>
-      </property>
-     </widget>
+     </spacer>
     </item>
-    <item row="9" column="0" colspan="3">
+    <item row="8" column="0" colspan="3">
      <widget class="QGroupBox" name="groupBoxGraph">
       <property name="title">
        <string>Graph Optimizer</string>
@@ -250,155 +400,6 @@
        </item>
       </layout>
      </widget>
-    </item>
-    <item row="10" column="0" colspan="3">
-     <widget class="QPushButton" name="pushButtonRun">
-      <property name="text">
-       <string>Run</string>
-      </property>
-     </widget>
-    </item>
-    <item row="6" column="0" colspan="3">
-     <widget class="QGroupBox" name="groupBoxDownSampling">
-      <property name="title">
-       <string>DownSampling</string>
-      </property>
-      <layout class="QGridLayout" name="gridLayout_4">
-       <item row="0" column="0">
-        <widget class="QLabel" name="label_3">
-         <property name="minimumSize">
-          <size>
-           <width>170</width>
-           <height>0</height>
-          </size>
-         </property>
-         <property name="text">
-          <string>Downsample Rate</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QLineEdit" name="lineEditDownsampleRate">
-         <property name="minimumSize">
-          <size>
-           <width>165</width>
-           <height>0</height>
-          </size>
-         </property>
-         <property name="maximumSize">
-          <size>
-           <width>180</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <property name="text">
-          <string>0.02</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
-    </item>
-    <item row="5" column="0">
-     <widget class="QLabel" name="labelDownsampling">
-      <property name="text">
-       <string>Using Downsampling</string>
-      </property>
-     </widget>
-    </item>
-    <item row="5" column="1" colspan="2">
-     <widget class="QCheckBox" name="checkBoxDownSampling">
-      <property name="minimumSize">
-       <size>
-        <width>180</width>
-        <height>0</height>
-       </size>
-      </property>
-      <property name="text">
-       <string/>
-      </property>
-      <property name="checked">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="2">
-     <widget class="QPushButton" name="pushButtonDirectory">
-      <property name="maximumSize">
-       <size>
-        <width>25</width>
-        <height>16777215</height>
-       </size>
-      </property>
-      <property name="text">
-       <string>…</string>
-      </property>
-      <property name="flat">
-       <bool>false</bool>
-      </property>
-     </widget>
-    </item>
-    <item row="7" column="1" colspan="2">
-     <widget class="QComboBox" name="comboBoxMethod">
-      <property name="maximumSize">
-       <size>
-        <width>180</width>
-        <height>16777215</height>
-       </size>
-      </property>
-      <item>
-       <property name="text">
-        <string>GICP with Graph Optimizer</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>GICP only</string>
-       </property>
-      </item>
-     </widget>
-    </item>
-    <item row="2" column="1" colspan="2">
-     <widget class="QSpinBox" name="spinBoxFrameInterval">
-      <property name="minimumSize">
-       <size>
-        <width>170</width>
-        <height>0</height>
-       </size>
-      </property>
-      <property name="maximumSize">
-       <size>
-        <width>180</width>
-        <height>16777215</height>
-       </size>
-      </property>
-      <property name="minimum">
-       <number>1</number>
-      </property>
-      <property name="maximum">
-       <number>100</number>
-      </property>
-     </widget>
-    </item>
-    <item row="11" column="0" colspan="3">
-     <widget class="QPushButton" name="pushButtonSave">
-      <property name="text">
-       <string>Save Transformations</string>
-      </property>
-     </widget>
-    </item>
-    <item row="12" column="0" colspan="3">
-     <spacer name="verticalSpacer">
-      <property name="orientation">
-       <enum>Qt::Vertical</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>20</width>
-        <height>40</height>
-       </size>
-      </property>
-     </spacer>
     </item>
    </layout>
   </widget>

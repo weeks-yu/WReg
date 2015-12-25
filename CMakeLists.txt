@@ -7,3 +7,4 @@ set(CMAKE_CONFIGURATION_TYPES Debug Release)
 
 add_subdirectory(src)
 add_subdirectory(aislib)
+add_subdirectory(icpcuda)

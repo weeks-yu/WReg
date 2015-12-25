@@ -42,6 +42,10 @@ Config::Config() {
 	config["camera_cy"]				= static_cast<double> (255.3);
 	config["depth_factor"]			= static_cast<double> (5000.0);
 
+	// cuda parameters
+	config["icpcuda_threads"]		= static_cast<int>    (96);
+	config["icpcuda_blocks"]		= static_cast<int>    (80);
+
 // 	config["start_paused"]                 =  static_cast<bool>  (1);
 // 	config["subscriber_queue_size"]        =  static_cast<int>   (20);
 // 	config["publisher_queue_size"]         =  static_cast<int>   (1);
