@@ -121,7 +121,10 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				frame = new Frame(imgRGB, imgDepth, Eigen::Matrix4f::Identity(), "SURF");
 			}
 			graph_manager.buildQuadTree(0.0, 0.0, Config::instance()->get<float>("quadtree_size"), 4);
-			graph_manager.addNode(frame, Eigen::Matrix4f::Identity(), 1.0, true);
+			bool isKeyframe = graph_manager.addNode(frame, Eigen::Matrix4f::Identity(), 1.0, true);
+			keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
+			if (isKeyframe)
+				keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 		}
 		else
 		{
@@ -216,7 +219,12 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				step_time = (clock() - step_start) / 1000.0;
 				std::cout << endl;
 				std::cout << "Feature: " << fixed << setprecision(3) << step_time;
-				graph_manager.addNode(frame_now, relative_tran, weight, true);
+				bool isKeyframe = graph_manager.addNode(frame_now, relative_tran, weight, true);
+
+				// record all keyframe
+				keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
+				if (isKeyframe)
+					keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 			}
 			else
 			{

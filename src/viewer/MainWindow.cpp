@@ -79,6 +79,7 @@ void MainWindow::ShowBenchmarkTest(const QString &directory)
 	connect(uiDockBenchmark->pushButtonRun, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonRunClicked);
 	connect(uiDockBenchmark->pushButtonDirectory, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonDirectoryClicked);
 	connect(uiDockBenchmark->pushButtonSave, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonSaveClicked);
+	connect(uiDockBenchmark->pushButtonSaveKeyframes, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonSaveKeyframesClicked);
 
 	// center
 	benchmarkViewer = new BenchmarkViewer(this);
@@ -227,6 +228,36 @@ void MainWindow::onBenchmarkPushButtonSaveClicked(bool checked)
 				<< ' ' << q.x() << q.y() << q.z() << q.w() << endl;
 		}
 		outfile.close();
+	}
+}
+
+void MainWindow::onBenchmarkPushButtonSaveKeyframesClicked(bool checked)
+{
+	QString directory = QFileDialog::getExistingDirectory(this, tr("Select Directory"), "");
+	if (!directory.isNull())
+	{
+		QFileInfo fi(directory);
+		if (!fi.isDir())
+		{
+			QMessageBox::warning(this, tr("Invalid directory"), tr("Please check whether the directory is valid."));
+			return;
+		}
+
+		for (int i = 0; i < engine->keyframe_candidates.size(); i++)
+		{
+			QString fn = fi.absoluteFilePath() + "/keyframe_candidate_" + QString::number(i) + "_rgb.png";
+			cv::imwrite(fn.toStdString(), engine->keyframe_candidates[i].first);
+// 			fn = fi.absoluteFilePath() + "/keyframe_candidate_" + QString::number(i) + "_depth.png";
+// 			cv::imwrite(fn.toStdString(), engine->keyframe_candidates[i].second);
+		}
+
+		for (int i = 0; i < engine->keyframes.size(); i++)
+		{
+			QString fn = fi.absoluteFilePath() + "/keyframe_" + QString::number(i) + "_rgb.png";
+			cv::imwrite(fn.toStdString(), engine->keyframe_candidates[i].first);
+// 			fn = fi.absoluteFilePath() + "/keyframe_" + QString::number(i) + "_depth.png";
+// 			cv::imwrite(fn.toStdString(), engine->keyframe_candidates[i].second);
+		}
 	}
 }
 

@@ -15,7 +15,7 @@ Config::Config() {
 
 	// Keyframe
 	config["min_translation_meter"] = static_cast<double> (0.1);
-	config["min_rotation_degree"]	= static_cast<double> (5.0);
+	config["min_rotation_degree"]	= static_cast<double> (10.0);
 	config["keyframe_check_N"]		= static_cast<int>    (4);
 	config["keyframe_check_M"]		= static_cast<int>    (4);
 	config["keyframe_check_P"]		= static_cast<double> (0.8);
@@ -41,6 +41,10 @@ Config::Config() {
 	config["camera_cx"]				= static_cast<double> (318.6);
 	config["camera_cy"]				= static_cast<double> (255.3);
 	config["depth_factor"]			= static_cast<double> (5000.0);
+
+	// hogman parameters
+	config["graph_levels"]			= static_cast<int>    (3);
+	config["node_distance"]			= static_cast<int>    (2);
 
 	// cuda parameters
 	config["icpcuda_threads"]		= static_cast<int>    (96);

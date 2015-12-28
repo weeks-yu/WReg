@@ -44,6 +44,7 @@ private slots:
 	void onBenchmarkPushButtonRunClicked(bool checked);
 	void onBenchmarkPushButtonDirectoryClicked(bool checked);
 	void onBenchmarkPushButtonSaveClicked(bool checked);
+	void onBenchmarkPushButtonSaveKeyframesClicked(bool checked);
 	void onBenchmarkOneIterationDone(const cv::Mat &rgb, const cv::Mat &depth);
 	void onBenchmarkRegistrationDone();
 

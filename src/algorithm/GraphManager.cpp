@@ -3,8 +3,8 @@
 
 GraphManager::GraphManager()
 {
-	int numLevels = 3;
-	int nodeDistance = 2;
+	int numLevels = Config::instance()->get<int>("graph_levels");
+	int nodeDistance = Config::instance()->get<int>("node_distance");
 	this->optimizer = new AISNavigation::HCholOptimizer3D(numLevels, nodeDistance);
 
 	min_graph_opt_time = 1e8;
@@ -63,11 +63,12 @@ void GraphManager::moveActiveWindow(const RectangularRegion &region)
 	this->active_window.feature_pool->buildFlannIndex();
 }
 
-void GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, float weight, bool keyframe/* = false*/)
+bool GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, float weight, bool keyframe/* = false*/)
 {
 	clock_t start = 0;
 	double time = 0;
 	int count = 0;
+	bool isNewKeyframe = false;
 
 	this->graph.push_back(frame);
 	if (this->graph.size() == 1)
@@ -80,6 +81,7 @@ void GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, f
 			keyframeCount++;
 			Eigen::Vector3f translation = TranslationFromMatrix4f(frame->tran);
 			this->insertKeyframe(translation(0), translation(1), 0);
+			isNewKeyframe = true;
 		}
 	}
 	else
@@ -108,13 +110,22 @@ void GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, f
 			if (count > max_closure_candidate) max_closure_candidate = count;
 			std::cout << ", Closure Candidate: " << count;
 			
-			bool spawnNewKeyframe = true;
 			int N = Config::instance()->get<int>("keyframe_check_N");
 			int M = Config::instance()->get<int>("keyframe_check_M");
 			int width = Config::instance()->get<int>("image_width");
 			int height = Config::instance()->get<int>("image_height");
 			bool *keyframeTest = new bool[N * M];
 			count = 0;
+
+			int keyframeTestCount = 0;
+			for (int i = 0; i < M; i++)
+			{
+				for (int j = 0; j < N; j++)
+				{
+					keyframeTest[i * N + j] = false;
+				}
+			}
+
 			for (int i = 0; i < frames.size(); i++)
 			{
 				Eigen::Matrix4f tran;
@@ -132,18 +143,7 @@ void GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, f
 					this->optimizer->addEdge(other_v, now_v, eigenToHogman(tran), Matrix6::eye(w));
 					count++;
 
-					// need spawning new keyframe?
-					if (!spawnNewKeyframe)
-						continue;
-
-					for (int i = 0; i < M; i++)
-					{
-						for (int j = 0; j < N; j++)
-						{
-							keyframeTest[i * N + j] = false;
-						}
-					}
-					int keyframeTestCount = 0;
+					// need spawning new keyframe?		
 					for (int i = 0; i < inliers.size(); i++)
 					{
 						cv::KeyPoint keypoint = frame->f.feature_pts[inliers[i].queryIdx];
@@ -153,11 +153,6 @@ void GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, f
 						{
 							keyframeTestCount++;
 							keyframeTest[tM * N + tN] = true;
-						}
-						if (keyframeTestCount >= N * M * Config::instance()->get<double>("keyframe_check_P"))
-						{
-							spawnNewKeyframe = false;
-							break;
 						}
 					}
 				}
@@ -171,13 +166,14 @@ void GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, f
 			clousureCount++;
 			std::cout << ", Closure: " << time;
 
-			if (spawnNewKeyframe)
+			if (keyframeTestCount < N * M * Config::instance()->get<double>("keyframe_check_P"))
 			{
 				key_frame_indices.insert(k);
 				this->insertKeyframe(translation(0), translation(1), k);
 				last_keyframe = k;
 				keyframeCount++;
 				std::cout << ", Keyframe";
+				isNewKeyframe = true;
 			}
 		}
 
@@ -214,6 +210,7 @@ void GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, f
 			last_keyframe_tran = this->graph[k]->tran;
 		}
 	}
+	return isNewKeyframe;
 }
 
 Eigen::Matrix4f GraphManager::getTransformation(int k)

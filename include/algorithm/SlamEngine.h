@@ -47,6 +47,11 @@ public:
 	vector<pair<double, Eigen::Matrix4f>> GetTransformations();
 
 	void ShowStatistics();
+
+public:
+	vector<pair<cv::Mat, cv::Mat>> keyframe_candidates;
+	vector<pair<cv::Mat, cv::Mat>> keyframes;
+
 private:
 	int frame_id;
 
