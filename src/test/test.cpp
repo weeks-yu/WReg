@@ -1,5 +1,8 @@
 #include "test.h"
 
+#include "PointCloud.h"
+#include "pcl/io/pcd_io.h"
+
 #include <iostream>
 #include <vector>
 #include <opencv2/core/core.hpp>
@@ -75,7 +78,31 @@ void keyframe_test()
 	}
 }
 
+void something()
+{
+	PointCloudT::Ptr pc[4];
+	std::string name[4];
+	name[0] = "F:/1.pcd";
+	name[1] = "F:/2.pcd";
+	name[2] = "F:/3.pcd";
+	name[3] = "F:/4.pcd";
+
+	PointCloudT::Ptr output;
+
+	output = PointCloudT::Ptr(new PointCloudT);
+	for (int i = 0; i < 4; i++)
+	{
+		pc[i] = PointCloudT::Ptr(new PointCloudT);
+		pcl::io::loadPCDFile(name[i], *pc[i]);
+		*output += *pc[i];
+	}
+
+	pcl::io::("F:/output.pcd", *output);
+
+}
+
 int main()
 {
-	keyframe_test();
+	//keyframe_test();
+	something();
 }
