@@ -51,6 +51,8 @@ public:
 public:
 	vector<pair<cv::Mat, cv::Mat>> keyframe_candidates;
 	vector<pair<cv::Mat, cv::Mat>> keyframes;
+	vector<string> keyframes_inliers_sig;
+	vector<string> keyframes_exists_sig;
 
 private:
 	int frame_id;

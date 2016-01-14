@@ -7,7 +7,6 @@ class Frame
 public:
 
 	Feature f;
-
 	Eigen::Matrix4f tran;
 
 public:
@@ -17,9 +16,10 @@ public:
 		tran = Eigen::Matrix4f::Identity();
 	}
 
-	Frame(const cv::Mat &imgRGB, const cv::Mat &imgDepth, const Eigen::Matrix4f &tran = Eigen::Matrix4f::Identity(), string type = "SURF")
+	Frame(const cv::Mat &imgRGB, const cv::Mat &imgDepth, string type = "SURF", const Eigen::Matrix4f &tran = Eigen::Matrix4f::Identity())
 	{
-		this->f.extract(imgRGB, imgDepth, tran, type);
+		this->f.extract(imgRGB, imgDepth, type);
+		this->f.updateFeaturePoints3D(tran);
 		this->tran = tran;
 	}
 };

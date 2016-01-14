@@ -48,12 +48,13 @@ void GraphManager::moveActiveWindow(const RectangularRegion &region)
 	for (int i = 0; i < this->active_window.active_frames.size(); i++)
 	{
 		Frame *now_f = this->graph[this->active_window.active_frames[i]];
-		for (int j = 0; j < now_f->f.feature_pts_3d.size(); j++)
+		for (int j = 0; j < now_f->f.feature_pts_3d_real.size(); j++)
 		{
-			if (this->active_window.region.containsPoint(now_f->f.feature_pts_3d[j](0), now_f->f.feature_pts_3d[j](1)))
+			if (this->active_window.region.containsPoint(now_f->f.feature_pts_3d_real[j](0), now_f->f.feature_pts_3d_real[j](1)))
 			{
 				this->active_window.feature_pool->feature_pts.push_back(now_f->f.feature_pts[j]);
 				this->active_window.feature_pool->feature_pts_3d.push_back(now_f->f.feature_pts_3d[j]);
+				this->active_window.feature_pool->feature_pts_3d_real.push_back(now_f->f.feature_pts_3d_real[j]);
 				this->active_window.feature_pool->feature_descriptors.push_back(now_f->f.feature_descriptors.row(j));
 				this->active_window.feature_pool->feature_frame_index.push_back(i);
 			}
@@ -63,7 +64,7 @@ void GraphManager::moveActiveWindow(const RectangularRegion &region)
 	this->active_window.feature_pool->buildFlannIndex();
 }
 
-bool GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, float weight, bool keyframe/* = false*/)
+bool GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, float weight, bool is_keyframe_candidate/* = false*/, string *inliers_sig, string *exists_sig)
 {
 	clock_t start = 0;
 	double time = 0;
@@ -74,12 +75,12 @@ bool GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, f
 	if (this->graph.size() == 1)
 	{
 		this->optimizer->addVertex(0, Transformation3(), 1e9 * Matrix6::eye(1.0));
-		if (keyframe)
+		if (is_keyframe_candidate)
 		{
 			last_keyframe = 0;
 			last_keyframe_tran = frame->tran;
 			keyframeCount++;
-			Eigen::Vector3f translation = TranslationFromMatrix4f(frame->tran);
+			Eigen::Vector3f translation = TranslationFromMatrix4f(this->graph[0]->tran);
 			this->insertKeyframe(translation(0), translation(1), 0);
 			isNewKeyframe = true;
 		}
@@ -91,18 +92,19 @@ bool GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, f
 		AISNavigation::PoseGraph3D::Vertex *prev_v = this->optimizer->vertex(k - 1);
 		this->optimizer->addEdge(prev_v, now_v, eigenToHogman(relative_tran), Matrix6::eye(weight));
 
-		if (keyframe)
+		vector<int> frames;
+		vector<vector<cv::DMatch>> matches;
+
+		if (is_keyframe_candidate)
 		{
 			start = clock();
 			// get translation of current tran
 			// move active window
-			Eigen::Vector3f translation = TranslationFromMatrix4f(frame->tran);
+			Eigen::Vector3f translation = TranslationFromMatrix4f(this->graph[k]->tran);
 			float active_window_size = Config::instance()->get<float>("active_window_size");
 			this->moveActiveWindow(RectangularRegion(translation.x(), translation.y(), active_window_size, active_window_size));
 
-			vector<int> frames;
-			vector<vector<cv::DMatch>> matches;
-			this->active_window.feature_pool->findMatchedPairsMultiple(frames, matches, frame->f,
+			this->active_window.feature_pool->findMatchedPairsMultiple(frames, matches, this->graph[k]->f,
 				Config::instance()->get<int>("kdtree_k_mult"), Config::instance()->get<int>("kdtree_max_leaf_mult"));
 
 			count = matches.size();
@@ -115,17 +117,34 @@ bool GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, f
 			int width = Config::instance()->get<int>("image_width");
 			int height = Config::instance()->get<int>("image_height");
 			bool *keyframeTest = new bool[N * M];
-			count = 0;
-
+			bool *keyframeExists = new bool[N * M];
 			int keyframeTestCount = 0;
+			int keyframeExistsCount = 0;
+
 			for (int i = 0; i < M; i++)
 			{
 				for (int j = 0; j < N; j++)
 				{
 					keyframeTest[i * N + j] = false;
+					keyframeExists[i * N + j] = false;
 				}
 			}
 
+			for (int i = 0; i < this->graph[k]->f.feature_pts.size(); i++)
+			{
+				cv::KeyPoint keypoint = this->graph[k]->f.feature_pts[i];
+				int tN = N * keypoint.pt.x / width;
+				int tM = M * keypoint.pt.y / height;
+				tN = tN < 0 ? 0 : (tN >= N ? N - 1 : tN);
+				tM = tM < 0 ? 0 : (tM >= M ? M - 1 : tM);
+				if (!keyframeExists[tM * N + tN])
+				{
+					keyframeExistsCount++;
+					keyframeExists[tM * N + tN] = true;
+				}
+			}
+
+			count = 0;
 			for (int i = 0; i < frames.size(); i++)
 			{
 				Eigen::Matrix4f tran;
@@ -133,7 +152,7 @@ bool GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, f
 				vector<cv::DMatch> inliers;
 				// find edges
 				if (Feature::getTransformationByRANSAC(tran, rmse, &inliers, 
-					this->active_window.feature_pool, &(frame->f), matches[i]))
+					this->active_window.feature_pool, &(this->graph[k]->f), matches[i]))
 				{
 					AISNavigation::PoseGraph3D::Vertex* other_v = this->optimizer->vertex(this->active_window.active_frames[frames[i]]);
 					
@@ -143,12 +162,13 @@ bool GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, f
 					this->optimizer->addEdge(other_v, now_v, eigenToHogman(tran), Matrix6::eye(w));
 					count++;
 
-					// need spawning new keyframe?		
 					for (int i = 0; i < inliers.size(); i++)
 					{
-						cv::KeyPoint keypoint = frame->f.feature_pts[inliers[i].queryIdx];
-						int tN = keypoint.pt.x / (width / N);
-						int tM = keypoint.pt.y / (height / M);
+						cv::KeyPoint keypoint = this->graph[k]->f.feature_pts[inliers[i].queryIdx];
+						int tN = N * keypoint.pt.x / width;
+						int tM = M * keypoint.pt.y / height;
+						tN = tN < 0 ? 0 : (tN >= N ? N - 1 : tN);
+						tM = tM < 0 ? 0 : (tM >= M ? M - 1 : tM);
 						if (!keyframeTest[tM * N + tN])
 						{
 							keyframeTestCount++;
@@ -157,24 +177,51 @@ bool GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, f
 					}
 				}
 			}
-			std::cout << ", Edges: " << count;
 
-			time = (clock() - start) / 1000.0;
-			if (time < min_closure_detect_time) min_closure_detect_time = time;
-			if (time > max_closure_detect_time) max_closure_detect_time = time;
-			total_closure_detect_time += time;
-			clousureCount++;
-			std::cout << ", Closure: " << time;
+			// for test
+			if (inliers_sig != nullptr)
+			{
+				*inliers_sig = "";
+				for (int i = 0; i < M; i++)
+				{
+					for (int j = 0; j < N; j++)
+					{
+						*inliers_sig += keyframeTest[i * N + j] ? "1" : "0";
+					}
+				}
+			}
+			if (exists_sig != nullptr)
+			{
+				*exists_sig = "";
+				for (int i = 0; i < M; i++)
+				{
+					for (int j = 0; j < N; j++)
+					{
+						*exists_sig += keyframeExists[i * N + j] ? "1" : "0";
+					}
+				}
+			}
+			delete keyframeTest;
+			delete keyframeExists;
 
-			if (keyframeTestCount < N * M * Config::instance()->get<double>("keyframe_check_P"))
+			if (keyframeTestCount + N * M - keyframeExistsCount < N * M * Config::instance()->get<double>("keyframe_check_P"))
 			{
 				key_frame_indices.insert(k);
+				Eigen::Vector3f translation = TranslationFromMatrix4f(this->graph[k]->tran);
 				this->insertKeyframe(translation(0), translation(1), k);
 				last_keyframe = k;
 				keyframeCount++;
 				std::cout << ", Keyframe";
 				isNewKeyframe = true;
 			}
+
+			std::cout << ", Edges: " << count;
+			time = (clock() - start) / 1000.0;
+			if (time < min_closure_detect_time) min_closure_detect_time = time;
+			if (time > max_closure_detect_time) max_closure_detect_time = time;
+			total_closure_detect_time += time;
+			clousureCount++;
+			std::cout << ", Closure: " << time;
 		}
 
 		int iteration = Config::instance()->get<int>("hogman_iterations");
@@ -197,15 +244,22 @@ bool GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, f
 				Eigen::Vector3f new_translation = TranslationFromMatrix4f(tran);
 				this->graph[i]->tran = tran;
 
-				if (key_frame_indices.find(i) != key_frame_indices.end() &&
-					(old_translation(0) != new_translation(0) || old_translation(1) != new_translation(1)))
+				if (key_frame_indices.find(i) != key_frame_indices.end())
 				{
-					this->active_window.key_frames->update(old_translation(0), old_translation(1), i, new_translation(0), new_translation(1));
+					// keyframe pose changed
+					// update 3d feature points
+					this->graph[i]->f.updateFeaturePoints3D(tran);
+
+					// update quadtree
+					if (old_translation(0) != new_translation(0) || old_translation(1) != new_translation(1))
+					{
+						this->active_window.key_frames->update(old_translation(0), old_translation(1), i, new_translation(0), new_translation(1));
+					}
 				}
 			}
 		}
 
-		if (keyframe)
+		if (is_keyframe_candidate)
 		{
 			last_keyframe_tran = this->graph[k]->tran;
 		}

@@ -114,17 +114,23 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			Frame *frame;
 			if (feature_type == SIFT)
 			{
-				frame = new Frame(imgRGB, imgDepth, Eigen::Matrix4f::Identity(), "SIFT");
+				frame = new Frame(imgRGB, imgDepth, "SIFT", Eigen::Matrix4f::Identity());
 			}
 			else if (feature_type == SURF)
 			{
-				frame = new Frame(imgRGB, imgDepth, Eigen::Matrix4f::Identity(), "SURF");
+				frame = new Frame(imgRGB, imgDepth, "SURF", Eigen::Matrix4f::Identity());
 			}
 			graph_manager.buildQuadTree(0.0, 0.0, Config::instance()->get<float>("quadtree_size"), 4);
-			bool isKeyframe = graph_manager.addNode(frame, Eigen::Matrix4f::Identity(), 1.0, true);
+			// test
+			string inliers, exists;
+			bool isKeyframe = graph_manager.addNode(frame, Eigen::Matrix4f::Identity(), 1.0, true, &inliers, &exists);
 			keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 			if (isKeyframe)
+			{
 				keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
+				keyframes_inliers_sig.push_back(inliers);
+				keyframes_exists_sig.push_back(exists);
+			}
 		}
 		else
 		{
@@ -210,21 +216,29 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				step_start = clock();
 				if (feature_type == SIFT)
 				{
-					frame_now = new Frame(imgRGB, imgDepth, Eigen::Matrix4f::Identity(), "SIFT");
+					frame_now = new Frame(imgRGB, imgDepth, "SIFT", global_tran);
 				}
 				else if (feature_type == SURF)
 				{
-					frame_now = new Frame(imgRGB, imgDepth, Eigen::Matrix4f::Identity(), "SURF");
+					frame_now = new Frame(imgRGB, imgDepth, "SURF", global_tran);
 				}
 				step_time = (clock() - step_start) / 1000.0;
 				std::cout << endl;
 				std::cout << "Feature: " << fixed << setprecision(3) << step_time;
-				bool isKeyframe = graph_manager.addNode(frame_now, relative_tran, weight, true);
+
+				// test
+				string inliers, exists;
+				bool isKeyframe = graph_manager.addNode(frame_now, relative_tran, weight, true, &inliers, &exists);
 
 				// record all keyframe
+				
 				keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 				if (isKeyframe)
+				{
 					keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
+					keyframes_inliers_sig.push_back(inliers);
+					keyframes_exists_sig.push_back(exists);
+				}
 			}
 			else
 			{

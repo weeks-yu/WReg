@@ -12,7 +12,7 @@ bool sizeCompare(const pair<int, vector<cv::DMatch>> &a, const pair<int, vector<
 }
 
 void Feature::SIFTExtrator(vector<cv::KeyPoint> &feature_pts, vector_eigen_vector4f &feature_pts_3d, cv::Mat &feature_descriptors,
-	const cv::Mat &imgRGB, const cv::Mat &imgDepth, const Eigen::Matrix4f tran)
+	const cv::Mat &imgRGB, const cv::Mat &imgDepth)
 {
 	cv::SIFT sift_detector;
 	cv::Mat mask, descriptors;
@@ -22,14 +22,12 @@ void Feature::SIFTExtrator(vector<cv::KeyPoint> &feature_pts, vector_eigen_vecto
 
 	for (int i = 0; i < fpts.size(); i++)
 	{
-		Eigen::Vector3f pt;
-		pt  = ConvertPointTo3D(cvRound(fpts[i].pt.x), cvRound(fpts[i].pt.y), imgDepth);
-		if (pt.isZero())
-		{
+		if (imgDepth.at<ushort>(cvRound(fpts[i].pt.y), cvRound(fpts[i].pt.x)) == 0)
 			continue;
-		}
+		
 		feature_pts.push_back(fpts[i]);
-		feature_pts_3d.push_back(tran * Eigen::Vector4f(pt(0), pt(1) ,pt(2), 1.0));
+		Eigen::Vector3f pt = ConvertPointTo3D(fpts[i].pt.x, fpts[i].pt.y, imgDepth);
+		feature_pts_3d.push_back(Eigen::Vector4f(pt(0), pt(1), pt(2), 1.0));
 
 		double norm = 0.0;
 		for (int j = 0; j < descriptors.cols; j++)
@@ -46,7 +44,7 @@ void Feature::SIFTExtrator(vector<cv::KeyPoint> &feature_pts, vector_eigen_vecto
 }
 
 void Feature::SURFExtrator(vector<cv::KeyPoint> &feature_pts, vector_eigen_vector4f &feature_pts_3d, cv::Mat &feature_descriptors,
-	const cv::Mat &imgRGB, const cv::Mat &imgDepth, const Eigen::Matrix4f tran)
+	const cv::Mat &imgRGB, const cv::Mat &imgDepth)
 {
 	cv::SURF surf_detector;
 	cv::Mat mask, descriptors;
@@ -56,14 +54,11 @@ void Feature::SURFExtrator(vector<cv::KeyPoint> &feature_pts, vector_eigen_vecto
 
 	for (int i = 0; i < fpts.size(); i++)
 	{
-		Eigen::Vector3f pt;
-		pt  = ConvertPointTo3D(cvRound(fpts[i].pt.x), cvRound(fpts[i].pt.y), imgDepth);
-		if (pt.isZero())
-		{
+		if (imgDepth.at<ushort>(cvRound(fpts[i].pt.y), cvRound(fpts[i].pt.x)) == 0)
 			continue;
-		}
 		feature_pts.push_back(fpts[i]);
-		feature_pts_3d.push_back(tran * Eigen::Vector4f(pt(0), pt(1), pt(2), 1.0));
+		Eigen::Vector3f pt = ConvertPointTo3D(fpts[i].pt.x, fpts[i].pt.y, imgDepth);
+		feature_pts_3d.push_back(Eigen::Vector4f(pt(0), pt(1), pt(2), 1.0));
 		feature_descriptors.push_back(descriptors.row(i));
 	}
 }
@@ -79,16 +74,17 @@ void Feature::setMultiple(int frame_index)
 	}
 }
 
-void Feature::extract(const cv::Mat &imgRGB, const cv::Mat &imgDepth, Eigen::Matrix4f tran, string type)
+void Feature::extract(const cv::Mat &imgRGB, const cv::Mat &imgDepth, string type)
 {
 	if (type == "SIFT")
 	{
-		Feature::SIFTExtrator(feature_pts, feature_pts_3d, feature_descriptors, imgRGB, imgDepth, tran);
+		Feature::SIFTExtrator(feature_pts, feature_pts_3d, feature_descriptors, imgRGB, imgDepth);
 	}
 	else if (type == "SURF")
 	{
-		Feature::SURFExtrator(feature_pts, feature_pts_3d, feature_descriptors, imgRGB, imgDepth, tran);
+		Feature::SURFExtrator(feature_pts, feature_pts_3d, feature_descriptors, imgRGB, imgDepth);
 	}
+	depth_image = imgDepth;
 	flann_index = nullptr;
 	this->trees = Config::instance()->get<int>("kdtree_trees");
 }
@@ -212,31 +208,30 @@ bool Feature::findMatchedPairsMultiple(vector<int> &frames, vector<vector<cv::DM
 	return true;
 }
 
-void Feature::transform(const Eigen::Matrix4f tran, int frame_index)
-{
-	for (int i = 0; i < this->feature_pts_3d.size(); i++)
-	{
-		if (!this->multiple || frame_index < 0 || this->feature_frame_index[i] == frame_index)
-		{
-			this->feature_pts_3d[i] = tran * this->feature_pts_3d[i];
-		}
-	}
-}
+// void Feature::transform(const Eigen::Matrix4f tran, int frame_index)
+// {
+// 	for (int i = 0; i < this->feature_pts_3d.size(); i++)
+// 	{
+// 		if (!this->multiple || frame_index < 0 || this->feature_frame_index[i] == frame_index)
+// 		{
+// 			this->feature_pts_3d[i] = tran * this->feature_pts_3d[i];
+// 		}
+// 	}
+// }
 
-void Feature::append(const Feature &other, int frame_index)
-{
-	for (int i = 0; i < other.feature_pts.size(); i++)
-	{
-		this->feature_pts.push_back(other.feature_pts[i]);
-		this->feature_pts_3d.push_back(other.feature_pts_3d[i]);
-		this->feature_descriptors.push_back(other.feature_descriptors.row(i));
-
-		if (multiple)
-		{
-			this->feature_frame_index.push_back(frame_index);
-		}
-	}
-}
+// void Feature::append(const Feature &other, int frame_index)
+// {
+// 	for (int i = 0; i < other.feature_pts.size(); i++)
+// 	{
+// 		this->feature_pts.push_back(other.feature_pts[i]);
+// 		this->feature_descriptors.push_back(other.feature_descriptors.row(i));
+// 
+// 		if (multiple)
+// 		{
+// 			this->feature_frame_index.push_back(frame_index);
+// 		}
+// 	}
+// }
 
 int Feature::getFrameCount()
 {
@@ -247,6 +242,16 @@ int Feature::getFrameCount()
 		frame_index.insert(this->feature_frame_index[i]);
 	}
 	return frame_index.size();
+}
+
+void Feature::updateFeaturePoints3D(const Eigen::Matrix4f &tran)
+{
+	feature_pts_3d_real.clear();
+	for (int i = 0; i < feature_pts.size(); i++)
+	{
+		Eigen::Vector3f pt = ConvertPointTo3D(feature_pts[i].pt.x, feature_pts[i].pt.y, depth_image);
+		feature_pts_3d_real.push_back(tran * Eigen::Vector4f(pt(0), pt(1), pt(2), 1.0));
+	}
 }
 
 template <class InputVector>

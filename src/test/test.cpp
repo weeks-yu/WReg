@@ -97,12 +97,12 @@ void something()
 		*output += *pc[i];
 	}
 
-	pcl::io::("F:/output.pcd", *output);
+	pcl::io::savePCDFileASCII("F:/output.pcd", *output);
 
 }
 
 int main()
 {
-	//keyframe_test();
-	something();
+	keyframe_test();
+	//something();
 }

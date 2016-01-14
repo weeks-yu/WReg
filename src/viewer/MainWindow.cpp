@@ -253,7 +253,10 @@ void MainWindow::onBenchmarkPushButtonSaveKeyframesClicked(bool checked)
 
 		for (int i = 0; i < engine->keyframes.size(); i++)
 		{
-			QString fn = fi.absoluteFilePath() + "/keyframe_" + QString::number(i) + "_rgb.png";
+			QString inliers_sig = QString::fromStdString(engine->keyframes_inliers_sig[i]);
+			QString exists_sig = QString::fromStdString(engine->keyframes_exists_sig[i]);
+			QString fn = fi.absoluteFilePath() + "/keyframe_" + QString::number(i) + "_rgb_" +
+				inliers_sig + "_" + exists_sig + ".png";
 			cv::imwrite(fn.toStdString(), engine->keyframe_candidates[i].first);
 // 			fn = fi.absoluteFilePath() + "/keyframe_" + QString::number(i) + "_depth.png";
 // 			cv::imwrite(fn.toStdString(), engine->keyframe_candidates[i].second);

@@ -65,7 +65,7 @@ public:
 
 	void moveActiveWindow(const RectangularRegion &region);
 
-	bool addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, float weight, bool keyframe = false);
+	bool addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, float weight, bool keyframe = false, string *inliers = nullptr, string *exists = nullptr);
 
 	Eigen::Matrix4f getTransformation(int k);
 
