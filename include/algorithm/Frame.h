@@ -7,6 +7,7 @@ class Frame
 public:
 
 	Feature f;
+	cv::Mat depth;
 	Eigen::Matrix4f tran;
 
 public:
@@ -20,6 +21,7 @@ public:
 	{
 		this->f.extract(imgRGB, imgDepth, type);
 		this->f.updateFeaturePoints3D(tran);
+		imgDepth.copyTo(this->depth);
 		this->tran = tran;
 	}
 };

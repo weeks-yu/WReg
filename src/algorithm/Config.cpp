@@ -18,6 +18,7 @@ Config::Config() {
 	config["min_rotation_degree"]	= static_cast<double> (10.0);
 	config["keyframe_check_N"]		= static_cast<int>    (4);
 	config["keyframe_check_M"]		= static_cast<int>    (4);
+	config["keyframe_check_F"]		= static_cast<int>    (1);
 	config["keyframe_check_P"]		= static_cast<double> (0.8);
 
 	// KDTree
@@ -47,8 +48,8 @@ Config::Config() {
 	config["node_distance"]			= static_cast<int>    (2);
 
 	// cuda parameters
-	config["icpcuda_threads"]		= static_cast<int>    (96);
-	config["icpcuda_blocks"]		= static_cast<int>    (80);
+	config["icpcuda_threads"]		= static_cast<int>    (128);
+	config["icpcuda_blocks"]		= static_cast<int>    (144);
 
 // 	config["start_paused"]                 =  static_cast<bool>  (1);
 // 	config["subscriber_queue_size"]        =  static_cast<int>   (20);

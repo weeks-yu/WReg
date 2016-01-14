@@ -9,6 +9,9 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/nonfree/features2d.hpp>
 
+#include "Config.h"
+#include "ICPOdometry.h"
+
 using namespace std;
 
 void draw_feature_point(cv::Mat &img, const vector<cv::KeyPoint> &kp)
@@ -101,8 +104,37 @@ void something()
 
 }
 
+void icp_test()
+{
+	cv::Mat d1 = cv::imread("G:/d1.png", -1);
+	cv::Mat d2 = cv::imread("G:/d3.png", -1);
+
+	int width = Config::instance()->get<int>("image_width");
+	int height = Config::instance()->get<int>("image_height");
+	double cx = Config::instance()->get<double>("camera_cx");
+	double cy = Config::instance()->get<double>("camera_cy");
+	double fx = Config::instance()->get<double>("camera_fx");
+	double fy = Config::instance()->get<double>("camera_fy");
+	double depthFactor = Config::instance()->get<double>("depth_factor");
+	ICPOdometry *icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor);
+
+	icpcuda->initICPModel((unsigned short *)d1.data, 20.0f, Eigen::Matrix4f::Identity());
+	icpcuda->initICP((unsigned short *)d2.data, 20.0f);
+	Eigen::Vector3f tra = Eigen::Matrix4f::Identity().topRightCorner(3, 1);
+	Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = Eigen::Matrix4f::Identity().topLeftCorner(3, 3);
+
+	int threads = Config::instance()->get<int>("icpcuda_threads");
+	int blocks = Config::instance()->get<int>("icpcuda_blocks");
+	icpcuda->getIncrementalTransformation(tra, rot, threads, blocks);
+	Eigen::Matrix4f tran = Eigen::Matrix4f::Identity();
+	tran.topLeftCorner(3, 3) = rot;
+	tran.topRightCorner(3, 1) = tra;
+	double w = icpcuda->lastICPError > 0 ? sqrt(1.0 / icpcuda->lastICPError) : sqrt(1000000);
+}
+
 int main()
 {
-	keyframe_test();
+	//keyframe_test();
 	//something();
+	icp_test();
 }

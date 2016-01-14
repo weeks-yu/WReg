@@ -2,6 +2,8 @@
 #include "QuadTree.h"
 #include "Frame.h"
 #include "graph_optimizer_hogman/graph_optimizer3d_hchol.h"
+#undef min
+#include "ICPOdometry.h"
 
 class GraphManager
 {
@@ -53,13 +55,17 @@ private:
 
 	vector<Frame*> graph;
 
-	int last_keyframe;
+	int last_kc;
 
-	Eigen::Matrix4f last_keyframe_tran;
+	Eigen::Matrix4f last_kc_tran;
+
+	bool keyframeOnly;
+
+	ICPOdometry *icpcuda;
 
 public:
 
-	GraphManager();
+	GraphManager(bool keyframe_only = false);
 
 	void buildQuadTree(float center_x, float center_y, float size, int capacity = 1);
 

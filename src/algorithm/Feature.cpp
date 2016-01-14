@@ -91,7 +91,14 @@ void Feature::extract(const cv::Mat &imgRGB, const cv::Mat &imgDepth, string typ
 
 void Feature::buildFlannIndex()
 {
-	this->flann_index = new cv::flann::Index(feature_descriptors, cv::flann::KDTreeIndexParams(this->trees));
+	if (feature_pts.size() > 0)
+	{
+		this->flann_index = new cv::flann::Index(feature_descriptors, cv::flann::KDTreeIndexParams(this->trees));
+	}
+	else
+	{
+		this->flann_index = nullptr;
+	}
 }
 
 int Feature::findMatchedPairs(vector<cv::DMatch> &matches, const Feature &other, int max_leafs)
