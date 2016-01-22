@@ -238,6 +238,11 @@ bool GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, f
 						icpcuda->getIncrementalTransformation(tra, rot, threads, blocks);
 						tran2.topLeftCorner(3, 3) = rot;
 						tran2.topRightCorner(3, 1) = tra;
+
+						baseid.push_back(this->active_window.active_frames[frames[i]]);
+						targetid.push_back(k);
+						ransac_tran.push_back(tran);
+						icp_tran.push_back(tran2);
 						//double w = icpcuda->lastICPError > 0 ? sqrt(1.0 / icpcuda->lastICPError) : sqrt(1000000);
 						// icp end
 						AISNavigation::PoseGraph3D::Vertex* other_v = this->optimizer->vertex(this->active_window.active_frames[frames[i]]);

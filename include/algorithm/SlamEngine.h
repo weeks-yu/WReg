@@ -47,6 +47,18 @@ public:
 	vector<pair<double, Eigen::Matrix4f>> GetTransformations();
 
 	void ShowStatistics();
+	void SaveTestInfo()
+	{
+		ofstream out("test.txt");
+		for (int i = 0; i < graph_manager.baseid.size(); i++)
+		{
+			out << graph_manager.baseid[i] << endl;
+			out << graph_manager.targetid[i] << endl;
+			out << graph_manager.ransac_tran[i] << endl;
+			out << graph_manager.icp_tran[i] << endl;
+		}
+		out.close();
+	}
 
 public:
 	vector<pair<cv::Mat, cv::Mat>> keyframe_candidates;

@@ -225,7 +225,7 @@ void MainWindow::onBenchmarkPushButtonSaveClicked(bool checked)
 
 			outfile << fixed << setprecision(6) << trans[i].first
 				<< ' ' << t(0) << ' ' << t(1) << ' ' << t(2)
-				<< ' ' << q.x() << q.y() << q.z() << q.w() << endl;
+				<< ' ' << q.x() << ' ' << q.y() << ' ' << q.z() << ' ' << q.w() << endl;
 		}
 		outfile.close();
 	}

@@ -48,8 +48,8 @@ Config::Config() {
 	config["node_distance"]			= static_cast<int>    (2);
 
 	// cuda parameters
-	config["icpcuda_threads"]		= static_cast<int>    (128);
-	config["icpcuda_blocks"]		= static_cast<int>    (144);
+	config["icpcuda_threads"]		= static_cast<int>    (240);
+	config["icpcuda_blocks"]		= static_cast<int>    (80);
 
 // 	config["start_paused"]                 =  static_cast<bool>  (1);
 // 	config["subscriber_queue_size"]        =  static_cast<int>   (20);
