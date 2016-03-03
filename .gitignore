@@ -50,3 +50,4 @@ build
 build-qt-Release
 build-qt-Debug
 src/WReg.pro.user
+srba-config.cmake
