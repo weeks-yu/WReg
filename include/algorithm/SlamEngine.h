@@ -2,7 +2,7 @@
 
 #include <pcl/registration/gicp.h>
 #include <opencv2/core/core.hpp>
-#include "GraphManager.h"
+#include "HogmanManager.h"
 #include "PointCloud.h"
 #include "ICPOdometry.h"
 
@@ -88,7 +88,7 @@ private:
 	// temporary variables
 	PointCloudPtr last_cloud;
 	cv::Mat last_depth;
-	GraphManager graph_manager;
+	HogmanManager graph_manager;
 
 	// parameters - downsampling
 	

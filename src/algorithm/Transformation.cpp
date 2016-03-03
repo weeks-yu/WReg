@@ -10,14 +10,32 @@ Eigen::Matrix3f RotationFromMatrix4f(const Eigen::Matrix4f &matrix)
 	return a.rotation();
 }
 
-Eigen::Quaternionf QuaternionsFromMatrix4f(const Eigen::Matrix4f &matrix)
+Eigen::Quaternionf QuaternionFromMatrix4f(const Eigen::Matrix4f &matrix)
 {
 	Eigen::Affine3f a(matrix);
 	Eigen::Quaternionf q(a.rotation());
 	return q;
 }
 
-Eigen::Matrix3f RotationFromQuaternions(const Eigen::Quaternionf &q)
+Eigen::Quaternionf QuaternionFromEulerAngle(float yaw, float pitch, float roll)
+{
+	float fCosHRoll = cos(roll * .5f);
+	float fSinHRoll = sin(roll * .5f);
+	float fCosHPitch = cos(pitch * .5f);
+	float fSinHPitch = sin(pitch * .5f);
+	float fCosHYaw = cos(yaw * .5f);
+	float fSinHYaw = sin(yaw * .5f);
+
+	Eigen::Quaternionf q;
+	q.w() = fCosHRoll * fCosHPitch * fCosHYaw + fSinHRoll * fSinHPitch * fSinHYaw;
+	q.x() = fCosHRoll * fSinHPitch * fCosHYaw + fSinHRoll * fCosHPitch * fSinHYaw;
+	q.y() = fCosHRoll * fCosHPitch * fSinHYaw - fSinHRoll * fSinHPitch * fCosHYaw;
+	q.z() = fSinHRoll * fCosHPitch * fCosHYaw - fCosHRoll * fSinHPitch * fSinHYaw;
+
+	return q;
+}
+
+Eigen::Matrix3f RotationFromQuaternion(const Eigen::Quaternionf &q)
 {
 	return q.matrix();
 }
@@ -29,7 +47,7 @@ Eigen::Vector3f TranslationFromMatrix4f(const Eigen::Matrix4f &matrix)
 	return a.translation();
 }
 
-Eigen::Vector3f EulerAngleFromQuaternions(const Eigen::Quaternionf &q)
+Eigen::Vector3f EulerAngleFromQuaternion(const Eigen::Quaternionf &q)
 {
 	Eigen::Vector3f e;
 	e(0) = atan2(2 * (q.w() * q.z() + q.x() * q.y()) , 1 - 2 * (q.z() * q.z() + q.x() * q.x()));

@@ -136,5 +136,5 @@ int main()
 {
 	//keyframe_test();
 	//something();
-	icp_test();
+	//icp_test();
 }

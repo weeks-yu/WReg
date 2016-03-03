@@ -1,7 +1,7 @@
-#include "GraphManager.h"
+#include "HogmanManager.h"
 #include "Transformation.h"
 
-GraphManager::GraphManager(bool keyframe_only)
+HogmanManager::HogmanManager(bool keyframe_only)
 {
 	int numLevels = Config::instance()->get<int>("graph_levels");
 	int nodeDistance = Config::instance()->get<int>("node_distance");
@@ -36,46 +36,7 @@ GraphManager::GraphManager(bool keyframe_only)
 	icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor);
 }
 
-void GraphManager::buildQuadTree(float center_x, float center_y, float size, int capacity)
-{
-	if (this->active_window.key_frames != nullptr) delete this->active_window.key_frames;
-	this->active_window.key_frames = new QuadTree<int>(center_x, center_y, size, nullptr, capacity);
-}
-
-bool GraphManager::insertKeyframe(float x, float y, int frame_index)
-{
-	if (!this->active_window.key_frames->insert(x, y, frame_index)) return false;
-	return true;
-}
-
-void GraphManager::moveActiveWindow(const RectangularRegion &region)
-{
-	this->active_window.region = region;
-
-	this->active_window.active_frames = this->active_window.key_frames->queryRange(this->active_window.region);
-
-	if (this->active_window.feature_pool != nullptr) delete this->active_window.feature_pool;
-	this->active_window.feature_pool = new Feature(true);
-	for (int i = 0; i < this->active_window.active_frames.size(); i++)
-	{
-		Frame *now_f = this->graph[this->active_window.active_frames[i]];
-		for (int j = 0; j < now_f->f.feature_pts_3d_real.size(); j++)
-		{
-			if (this->active_window.region.containsPoint(now_f->f.feature_pts_3d_real[j](0), now_f->f.feature_pts_3d_real[j](1)))
-			{
-				this->active_window.feature_pool->feature_pts.push_back(now_f->f.feature_pts[j]);
-				this->active_window.feature_pool->feature_pts_3d.push_back(now_f->f.feature_pts_3d[j]);
-				this->active_window.feature_pool->feature_pts_3d_real.push_back(now_f->f.feature_pts_3d_real[j]);
-				this->active_window.feature_pool->feature_descriptors.push_back(now_f->f.feature_descriptors.row(j));
-				this->active_window.feature_pool->feature_frame_index.push_back(i);
-			}
-		}
-	}
-
-	this->active_window.feature_pool->buildFlannIndex();
-}
-
-bool GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, float weight, bool is_keyframe_candidate/* = false*/, string *inliers_sig, string *exists_sig)
+bool HogmanManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate/* = false*/, string *inliers_sig, string *exists_sig)
 {
 	clock_t start = 0;
 	double time = 0;
@@ -98,7 +59,7 @@ bool GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, f
 			last_kc_tran = frame->tran;
 			keyframeCount++;
 			Eigen::Vector3f translation = TranslationFromMatrix4f(this->graph[0]->tran);
-			this->insertKeyframe(translation(0), translation(1), 0);
+			active_window.insert(translation(0), translation(1), 0);
 			isNewKeyframe = true;
 		}
 	}
@@ -113,7 +74,7 @@ bool GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, f
 			int k = this->graph.size() - 1;
 			AISNavigation::PoseGraph3D::Vertex *now_v = this->optimizer->addVertex(k, Transformation3(), Matrix6::eye(1.0));
 			AISNavigation::PoseGraph3D::Vertex *prev_v = this->optimizer->vertex(k - 1);
-			this->optimizer->addEdge(prev_v, now_v, eigenToHogman(relative_tran), Matrix6::eye(weight));
+			this->optimizer->addEdge(prev_v, now_v, eigenToHogman(frame->relative_tran), Matrix6::eye(weight));
 
 			vector<int> frames;
 			vector<vector<cv::DMatch>> matches;
@@ -125,7 +86,7 @@ bool GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, f
 				// move active window
 				Eigen::Vector3f translation = TranslationFromMatrix4f(this->graph[k]->tran);
 				float active_window_size = Config::instance()->get<float>("active_window_size");
-				this->moveActiveWindow(RectangularRegion(translation.x(), translation.y(), active_window_size, active_window_size));
+				active_window.move(this->graph, RectangularRegion(translation.x(), translation.y(), active_window_size, active_window_size));
 
 				this->active_window.feature_pool->findMatchedPairsMultiple(frames, matches, this->graph[k]->f,
 					Config::instance()->get<int>("kdtree_k_mult"), Config::instance()->get<int>("kdtree_max_leaf_mult"));
@@ -149,7 +110,7 @@ bool GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, f
 					}
 				}
 
-				for (int i = 0; i < this->graph[k]->f.feature_pts.size(); i++)
+				for (int i = 0; i < this->graph[k]->f.size(); i++)
 				{
 					cv::KeyPoint keypoint = this->graph[k]->f.feature_pts[i];
 					int tN = N * keypoint.pt.x / width;
@@ -259,7 +220,7 @@ bool GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, f
 				{
 					key_frame_indices.insert(k);
 					Eigen::Vector3f translation = TranslationFromMatrix4f(this->graph[k]->tran);
-					this->insertKeyframe(translation(0), translation(1), k);
+					active_window.insert(translation(0), translation(1), k);
 					keyframeCount++;
 					std::cout << ", Keyframe";
 					isNewKeyframe = true;
@@ -319,7 +280,7 @@ bool GraphManager::addNode(Frame* frame, const Eigen::Matrix4f &relative_tran, f
 	return isNewKeyframe;
 }
 
-Eigen::Matrix4f GraphManager::getTransformation(int k)
+Eigen::Matrix4f HogmanManager::getTransformation(int k)
 {
 	if (k < 0 || k >= graph.size())
 	{
@@ -328,7 +289,7 @@ Eigen::Matrix4f GraphManager::getTransformation(int k)
 	return graph[k]->tran;
 }
 
-Eigen::Matrix4f GraphManager::getLastTransformation()
+Eigen::Matrix4f HogmanManager::getLastTransformation()
 {
 	if (graph.size() == 0)
 	{
@@ -337,7 +298,7 @@ Eigen::Matrix4f GraphManager::getLastTransformation()
 	return graph[graph.size() - 1]->tran;
 }
 
-Eigen::Matrix4f GraphManager::getLastKeyframeTransformation()
+Eigen::Matrix4f HogmanManager::getLastKeyframeTransformation()
 {
 	return last_kc_tran;
 // 	if (last_keyframe < 0 || last_keyframe >= graph.size())
@@ -347,7 +308,7 @@ Eigen::Matrix4f GraphManager::getLastKeyframeTransformation()
 // 	return graph[last_keyframe]->tran;
 }
 
-int GraphManager::size()
+int HogmanManager::size()
 {
 	return graph.size();
 }

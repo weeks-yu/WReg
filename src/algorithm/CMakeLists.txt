@@ -15,6 +15,12 @@ add_definitions(${PCL_DEFINITIONS})
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
+#Find SRBA
+set(SRBA_DIR ${PROJECT_SOURCE_DIR})
+find_package(SRBA REQUIRED)
+include_directories(${SRBA_INCLUDE_DIRS})
+find_package(MRPT REQUIRED ${SRBA_REQUIRED_MRPT_MODULES})
+
 #Find CUDA
 find_package(CUDA REQUIRED)
 include_directories(${CUDA_INCLUDE_DIRS})
@@ -29,7 +35,9 @@ set(ALGORITHM_HEADER
 	../../include/algorithm/Config.h
 	../../include/algorithm/Feature.h
 	../../include/algorithm/Frame.h
-	../../include/algorithm/GraphManager.h
+	../../include/algorithm/ActiveWindow.h
+	../../include/algorithm/HogmanManager.h
+	../../include/algorithm/SrbaManager.h
 	../../include/algorithm/PointCloud.h
 	../../include/algorithm/QuadTree.h
 	../../include/algorithm/Transformation.h
@@ -38,7 +46,9 @@ set(ALGORITHM_HEADER
 set(ALGORITHM_SRC
 	Config.cpp
 	Feature.cpp
-	GraphManager.cpp
+	ActiveWindow.cpp
+	HogmanManager.cpp
+	SrbaManager.cpp
 	PointCloud.cpp
 	Transformation.cpp
 	SlamEngine.cpp)
@@ -47,6 +57,8 @@ add_library(algorithm STATIC ${ALGORITHM_HEADER} ${ALGORITHM_SRC})
 target_link_libraries(algorithm
 	${OpenCV_LIBS}
 	${PCL_LIBRARIES}
+	${MRPT_LIBS}
 	${CUDA_LIBRARIES}
 	aislib
-	icpcuda)
+	icpcuda
+	)

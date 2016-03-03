@@ -12,13 +12,27 @@ using namespace std;
 class Feature
 {
 public:
-	typedef vector<Eigen::Vector4f, Eigen::aligned_allocator<Eigen::Vector4f>> vector_eigen_vector4f;
+	typedef vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f>> vector_eigen_vector3f;
 
 public:
+	static unsigned long *new_id;
+	static unsigned long NewID()
+	{
+		if (new_id == nullptr)
+		{
+			new_id = new unsigned long;
+			*new_id = 0;
+		}
+		*new_id = *new_id + 1;
+		return *new_id;
+	}
 
+public:
+	
+	vector<unsigned long> feature_ids;
 	vector<cv::KeyPoint> feature_pts;
-	vector_eigen_vector4f feature_pts_3d;
-	vector_eigen_vector4f feature_pts_3d_real;
+	vector_eigen_vector3f feature_pts_3d;
+	vector_eigen_vector3f feature_pts_3d_real;
 	cv::Mat feature_descriptors;
 	cv::Mat depth_image;
 	vector<int> feature_frame_index;
@@ -40,18 +54,11 @@ public:
 
 	Feature(const cv::Mat &imgRGB, const cv::Mat &imgDepth, string type = "SURF")
 	{
-		if (type == "SIFT")
-		{
-			Feature::SIFTExtrator(feature_pts, feature_pts_3d, feature_descriptors, imgRGB, imgDepth);
-		}
-		else if (type == "SURF")
-		{
-			Feature::SURFExtrator(feature_pts, feature_pts_3d, feature_descriptors, imgRGB, imgDepth);
-		}
-		this->flann_index = nullptr;
-		this->trees = Config::instance()->get<int>("kdtree_trees");
+		this->extract(imgRGB, imgDepth, type);
 		this->multiple = false;
 	}
+
+	int size() { return feature_pts.size(); }
 
 	void setMultiple(int frame_index = 0);
 
@@ -70,12 +77,12 @@ public:
 public:
 
 	static void SIFTExtrator(vector<cv::KeyPoint> &feature_pts,
-		vector_eigen_vector4f &feature_pts_3d,
+		vector_eigen_vector3f &feature_pts_3d,
 		cv::Mat &feature_descriptors,
 		const cv::Mat &imgRGB, const cv::Mat &imgDepth);
 
 	static void SURFExtrator(vector<cv::KeyPoint> &feature_pts,
-		vector_eigen_vector4f &feature_pts_3d,
+		vector_eigen_vector3f &feature_pts_3d,
 		cv::Mat &feature_descriptors,
 		const cv::Mat &imgRGB, const cv::Mat &imgDepth);
 
@@ -88,7 +95,7 @@ public:
 	static void computeInliersAndError(vector<cv::DMatch> &inliers, double &mean_error, vector<double> *errors,
 		const vector<cv::DMatch> &matches,
 		const Eigen::Matrix4f &transformation,
-		const vector_eigen_vector4f &earlier, const vector_eigen_vector4f &now,
+		const vector_eigen_vector3f &earlier, const vector_eigen_vector3f &now,
 		double squaredMaxInlierDistInM);
 
 	static bool getTransformationByRANSAC(Eigen::Matrix4f &result_transform, float &rmse, vector<cv::DMatch> *matches, 

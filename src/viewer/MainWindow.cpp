@@ -221,7 +221,7 @@ void MainWindow::onBenchmarkPushButtonSaveClicked(bool checked)
 		for (int i = 0; i < trans.size(); i++)
 		{
 			Eigen::Vector3f t = TranslationFromMatrix4f(trans[i].second);
-			Eigen::Quaternionf q = QuaternionsFromMatrix4f(trans[i].second);
+			Eigen::Quaternionf q = QuaternionFromMatrix4f(trans[i].second);
 
 			outfile << fixed << setprecision(6) << trans[i].first
 				<< ' ' << t(0) << ' ' << t(1) << ' ' << t(2)

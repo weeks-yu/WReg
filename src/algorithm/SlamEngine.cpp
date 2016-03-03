@@ -120,10 +120,11 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			{
 				frame = new Frame(imgRGB, imgDepth, "SURF", Eigen::Matrix4f::Identity());
 			}
-			graph_manager.buildQuadTree(0.0, 0.0, Config::instance()->get<float>("quadtree_size"), 4);
+			frame->relative_tran = Eigen::Matrix4f::Identity();
+			graph_manager.active_window.build(0.0, 0.0, Config::instance()->get<float>("quadtree_size"), 4);
 			// test
 			string inliers, exists;
-			bool isKeyframe = graph_manager.addNode(frame, Eigen::Matrix4f::Identity(), 1.0, true, &inliers, &exists);
+			bool isKeyframe = graph_manager.addNode(frame, 1.0, true, &inliers, &exists);
 			keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 			if (isKeyframe)
 			{
@@ -222,13 +223,14 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				{
 					frame_now = new Frame(imgRGB, imgDepth, "SURF", global_tran);
 				}
+				frame_now->relative_tran = relative_tran;
 				step_time = (clock() - step_start) / 1000.0;
 				std::cout << endl;
 				std::cout << "Feature: " << fixed << setprecision(3) << step_time;
 
 				// test
 				string inliers, exists;
-				bool isKeyframe = graph_manager.addNode(frame_now, relative_tran, weight, true, &inliers, &exists);
+				bool isKeyframe = graph_manager.addNode(frame_now, weight, true, &inliers, &exists);
 
 				// record all keyframe
 				
@@ -243,8 +245,9 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			else
 			{
 				frame_now = new Frame();
+				frame_now->relative_tran = relative_tran;
 				frame_now->tran = global_tran;
-				graph_manager.addNode(frame_now, relative_tran, weight, false);
+				graph_manager.addNode(frame_now, weight, false);
 			}
 		}
 		else

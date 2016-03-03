@@ -9,6 +9,7 @@ public:
 	Feature f;
 	cv::Mat depth;
 	Eigen::Matrix4f tran;
+	Eigen::Matrix4f relative_tran;
 
 public:
 

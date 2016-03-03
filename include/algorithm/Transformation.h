@@ -7,13 +7,15 @@
 
 Eigen::Matrix3f RotationFromMatrix4f(const Eigen::Matrix4f &matrix);
 
-Eigen::Quaternionf QuaternionsFromMatrix4f(const Eigen::Matrix4f &matrix);
+Eigen::Quaternionf QuaternionFromMatrix4f(const Eigen::Matrix4f &matrix);
 
-Eigen::Matrix3f RotationFromQuaternions(const Eigen::Quaternionf &q);
+Eigen::Quaternionf QuaternionFromEulerAngle(float yaw, float pitch, float roll);
+
+Eigen::Matrix3f RotationFromQuaternion(const Eigen::Quaternionf &q);
 
 Eigen::Vector3f TranslationFromMatrix4f(const Eigen::Matrix4f &matrix);
 
-Eigen::Vector3f EulerAngleFromQuaternions(const Eigen::Quaternionf &q);
+Eigen::Vector3f EulerAngleFromQuaternion(const Eigen::Quaternionf &q);
 
 Eigen::Vector3f EulerAngleFromMatrix4f(const Eigen::Matrix4f &matrix);
 

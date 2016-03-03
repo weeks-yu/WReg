@@ -6,12 +6,14 @@
 #include <pcl/common/transformation_from_correspondences.h>
 #include "PointCloud.h"
 
+unsigned long* Feature::new_id = nullptr;
+
 bool sizeCompare(const pair<int, vector<cv::DMatch>> &a, const pair<int, vector<cv::DMatch>> &b)
 {
 	return a.second.size() > b.second.size();
 }
 
-void Feature::SIFTExtrator(vector<cv::KeyPoint> &feature_pts, vector_eigen_vector4f &feature_pts_3d, cv::Mat &feature_descriptors,
+void Feature::SIFTExtrator(vector<cv::KeyPoint> &feature_pts, vector_eigen_vector3f &feature_pts_3d, cv::Mat &feature_descriptors,
 	const cv::Mat &imgRGB, const cv::Mat &imgDepth)
 {
 	cv::SIFT sift_detector;
@@ -27,7 +29,7 @@ void Feature::SIFTExtrator(vector<cv::KeyPoint> &feature_pts, vector_eigen_vecto
 		
 		feature_pts.push_back(fpts[i]);
 		Eigen::Vector3f pt = ConvertPointTo3D(fpts[i].pt.x, fpts[i].pt.y, imgDepth);
-		feature_pts_3d.push_back(Eigen::Vector4f(pt(0), pt(1), pt(2), 1.0));
+		feature_pts_3d.push_back(pt);
 
 		double norm = 0.0;
 		for (int j = 0; j < descriptors.cols; j++)
@@ -43,7 +45,7 @@ void Feature::SIFTExtrator(vector<cv::KeyPoint> &feature_pts, vector_eigen_vecto
 	}
 }
 
-void Feature::SURFExtrator(vector<cv::KeyPoint> &feature_pts, vector_eigen_vector4f &feature_pts_3d, cv::Mat &feature_descriptors,
+void Feature::SURFExtrator(vector<cv::KeyPoint> &feature_pts, vector_eigen_vector3f &feature_pts_3d, cv::Mat &feature_descriptors,
 	const cv::Mat &imgRGB, const cv::Mat &imgDepth)
 {
 	cv::SURF surf_detector;
@@ -58,7 +60,7 @@ void Feature::SURFExtrator(vector<cv::KeyPoint> &feature_pts, vector_eigen_vecto
 			continue;
 		feature_pts.push_back(fpts[i]);
 		Eigen::Vector3f pt = ConvertPointTo3D(fpts[i].pt.x, fpts[i].pt.y, imgDepth);
-		feature_pts_3d.push_back(Eigen::Vector4f(pt(0), pt(1), pt(2), 1.0));
+		feature_pts_3d.push_back(pt);
 		feature_descriptors.push_back(descriptors.row(i));
 	}
 }
@@ -83,6 +85,10 @@ void Feature::extract(const cv::Mat &imgRGB, const cv::Mat &imgDepth, string typ
 	else if (type == "SURF")
 	{
 		Feature::SURFExtrator(feature_pts, feature_pts_3d, feature_descriptors, imgRGB, imgDepth);
+	}
+	for (int i = 0; i < feature_pts.size(); i++)
+	{
+		feature_ids.push_back(0);
 	}
 	depth_image = imgDepth;
 	flann_index = nullptr;
@@ -253,11 +259,11 @@ int Feature::getFrameCount()
 
 void Feature::updateFeaturePoints3D(const Eigen::Matrix4f &tran)
 {
+	Eigen::Affine3f a(tran);
 	feature_pts_3d_real.clear();
 	for (int i = 0; i < feature_pts.size(); i++)
 	{
-		Eigen::Vector3f pt = ConvertPointTo3D(feature_pts[i].pt.x, feature_pts[i].pt.y, depth_image);
-		feature_pts_3d_real.push_back(tran * Eigen::Vector4f(pt(0), pt(1), pt(2), 1.0));
+		feature_pts_3d_real.push_back(a * feature_pts_3d[i]);
 	}
 }
 
@@ -318,9 +324,10 @@ Eigen::Matrix4f Feature::getTransformFromMatches(bool &valid,
 void Feature::computeInliersAndError(vector<cv::DMatch> &inliers, double &mean_error, vector<double> *errors, // output vars. if errors == nullptr, do not return error for each match
 	const vector<cv::DMatch> &matches,
 	const Eigen::Matrix4f &transformation,
-	const vector_eigen_vector4f &earlier, const vector_eigen_vector4f &now,
+	const vector_eigen_vector3f &earlier, const vector_eigen_vector3f &now,
 	double squaredMaxInlierDistInM)
 {
+	Eigen::Affine3f a(transformation);
 	inliers.clear();
 	if (errors != nullptr) errors->clear();
 
@@ -335,7 +342,7 @@ void Feature::computeInliersAndError(vector<cv::DMatch> &inliers, double &mean_e
 		unsigned int this_id = matches[j].queryIdx;
 		unsigned int earlier_id = matches[j].trainIdx;
 
-		Eigen::Vector4f vec = (transformation * now[this_id]) - earlier[earlier_id];
+		Eigen::Vector3f vec = (a * now[this_id]) - earlier[earlier_id];
 
 		double error = vec.dot(vec);
 
