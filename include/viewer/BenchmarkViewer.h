@@ -1,6 +1,8 @@
 #ifndef BENCHMARKVIEWER_H
 #define BENCHMARKVIEWER_H
 
+#include "SlamThread.h"
+
 #include <QWidget>
 
 #include <pcl/point_cloud.h>

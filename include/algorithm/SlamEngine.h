@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SrbaManager.h"
 #include <pcl/registration/gicp.h>
 #include <opencv2/core/core.hpp>
 #include "HogmanManager.h"
@@ -36,8 +37,12 @@ public:
 	void setUsingIcpcuda(bool use);
 	bool isUsingIcpcuda() { return using_icpcuda; }
 
-	void setUsingGraphOptimizer(bool use) { using_graph_optimizer = use; }
-	bool isUsingGraphOptimizer() { return using_graph_optimizer; }
+	void setUsingHogmanOptimizer(bool use) { using_hogman_optimizer = use; }
+	bool isUsingHogmanOptimizer() { return using_hogman_optimizer; }
+
+	void setUsingSrbaOptimzier(bool use) { using_srba_optimizer = use; }
+	bool isUsingSrbaOptimizer() { return using_srba_optimizer; }
+
 	void setGraphFeatureType(FeatureType type) { feature_type = type; }
 	FeatureType getGraphFeatureType() { return feature_type; }
 
@@ -50,12 +55,15 @@ public:
 	void SaveTestInfo()
 	{
 		ofstream out("test.txt");
-		for (int i = 0; i < graph_manager.baseid.size(); i++)
+		if (using_hogman_optimizer)
 		{
-			out << graph_manager.baseid[i] << endl;
-			out << graph_manager.targetid[i] << endl;
-			out << graph_manager.ransac_tran[i] << endl;
-			out << graph_manager.icp_tran[i] << endl;
+			for (int i = 0; i < hogman_manager.baseid.size(); i++)
+			{
+				out << hogman_manager.baseid[i] << endl;
+				out << hogman_manager.targetid[i] << endl;
+				out << hogman_manager.ransac_tran[i] << endl;
+				out << hogman_manager.icp_tran[i] << endl;
+			}
 		}
 		out.close();
 	}
@@ -88,7 +96,8 @@ private:
 	// temporary variables
 	PointCloudPtr last_cloud;
 	cv::Mat last_depth;
-	HogmanManager graph_manager;
+	HogmanManager hogman_manager;
+	SrbaManager srba_manager;
 
 	// parameters - downsampling
 	
@@ -105,7 +114,10 @@ private:
 	int threads;
 	int blocks;
 
-	// parameters - graph optimizer
-	bool using_graph_optimizer;
+	// parameters - hogman optimizer
+	bool using_hogman_optimizer;
 	FeatureType feature_type;
+
+	// parameters - srba optimizer
+	bool using_srba_optimizer;
 };

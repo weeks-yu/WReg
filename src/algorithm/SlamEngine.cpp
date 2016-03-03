@@ -9,7 +9,7 @@ SlamEngine::SlamEngine()
 	using_downsampling = true;
 	downsample_rate = 0.02;
 
-	using_graph_optimizer = true;
+	using_srba_optimizer = true;
 	feature_type = SURF;
 
 	using_gicp = true;
@@ -109,7 +109,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			imgDepth.copyTo(last_depth);
 		}
 
-		if (using_graph_optimizer)
+		if (using_hogman_optimizer)
 		{
 			Frame *frame;
 			if (feature_type == SIFT)
@@ -121,10 +121,34 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				frame = new Frame(imgRGB, imgDepth, "SURF", Eigen::Matrix4f::Identity());
 			}
 			frame->relative_tran = Eigen::Matrix4f::Identity();
-			graph_manager.active_window.build(0.0, 0.0, Config::instance()->get<float>("quadtree_size"), 4);
+			hogman_manager.active_window.build(0.0, 0.0, Config::instance()->get<float>("quadtree_size"), 4);
 			// test
 			string inliers, exists;
-			bool isKeyframe = graph_manager.addNode(frame, 1.0, true, &inliers, &exists);
+			bool isKeyframe = hogman_manager.addNode(frame, 1.0, true, &inliers, &exists);
+			keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
+			if (isKeyframe)
+			{
+				keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
+				keyframes_inliers_sig.push_back(inliers);
+				keyframes_exists_sig.push_back(exists);
+			}
+		}
+		else if (using_srba_optimizer)
+		{
+			Frame *frame;
+			if (feature_type == SIFT)
+			{
+				frame = new Frame(imgRGB, imgDepth, "SIFT", Eigen::Matrix4f::Identity());
+			}
+			else if (feature_type == SURF)
+			{
+				frame = new Frame(imgRGB, imgDepth, "SURF", Eigen::Matrix4f::Identity());
+			}
+			frame->f.buildFlannIndex();
+			frame->relative_tran = Eigen::Matrix4f::Identity();
+			srba_manager.active_window.build(0.0, 0.0, Config::instance()->get<float>("quadtree_size"), 4);
+			string inliers, exists;
+			bool isKeyframe = srba_manager.addNode(frame, 1.0, true, &inliers, &exists);
 			keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 			if (isKeyframe)
 			{
@@ -208,11 +232,11 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			relative_tran.topLeftCorner(3, 3) = rot;
 			relative_tran.topRightCorner(3, 1) = trans;
 		}
-		if (using_graph_optimizer)
+		if (using_hogman_optimizer)
 		{
-			global_tran = relative_tran * graph_manager.getLastTransformation();
+			global_tran = relative_tran * hogman_manager.getLastTransformation();
 			Frame *frame_now;
-			if (IsTransformationBigEnough(graph_manager.getLastKeyframeTransformation().inverse() * global_tran))
+			if (IsTransformationBigEnough(hogman_manager.getLastKeyframeTransformation().inverse() * global_tran))
 			{
 				step_start = clock();
 				if (feature_type == SIFT)
@@ -230,7 +254,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 
 				// test
 				string inliers, exists;
-				bool isKeyframe = graph_manager.addNode(frame_now, weight, true, &inliers, &exists);
+				bool isKeyframe = hogman_manager.addNode(frame_now, weight, true, &inliers, &exists);
 
 				// record all keyframe
 				
@@ -247,7 +271,50 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				frame_now = new Frame();
 				frame_now->relative_tran = relative_tran;
 				frame_now->tran = global_tran;
-				graph_manager.addNode(frame_now, weight, false);
+				hogman_manager.addNode(frame_now, weight, false);
+			}
+		}
+		else if (using_srba_optimizer)
+		{
+			global_tran = relative_tran * srba_manager.getLastTransformation();
+			Frame *frame_now;
+			if (IsTransformationBigEnough(srba_manager.getLastKeyframeTransformation().inverse() * global_tran))
+			{
+				step_start = clock();
+				if (feature_type == SIFT)
+				{
+					frame_now = new Frame(imgRGB, imgDepth, "SIFT", global_tran);
+				}
+				else if (feature_type == SURF)
+				{
+					frame_now = new Frame(imgRGB, imgDepth, "SURF", global_tran);
+				}
+				frame_now->f.buildFlannIndex();
+				frame_now->relative_tran = relative_tran;
+				step_time = (clock() - step_start) / 1000.0;
+				std::cout << endl;
+				std::cout << "Feature: " << fixed << setprecision(3) << step_time;
+
+				// test
+				string inliers, exists;
+				bool isKeyframe = srba_manager.addNode(frame_now, weight, true, &inliers, &exists);
+
+				// record all keyframe
+
+				keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
+				if (isKeyframe)
+				{
+					keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
+					keyframes_inliers_sig.push_back(inliers);
+					keyframes_exists_sig.push_back(exists);
+				}
+			}
+			else
+			{
+				frame_now = new Frame();
+				frame_now->relative_tran = relative_tran;
+				frame_now->tran = global_tran;
+				srba_manager.addNode(frame_now, weight, false);
 			}
 		}
 		else
@@ -269,8 +336,10 @@ PointCloudPtr SlamEngine::GetScene()
 	for (int i = 0; i < frame_id; i++)
 	{
 		PointCloudPtr tc(new PointCloudT);
-		if (using_graph_optimizer)
-			pcl::transformPointCloud(*point_clouds[i], *tc, graph_manager.getTransformation(i));
+		if (using_hogman_optimizer)
+			pcl::transformPointCloud(*point_clouds[i], *tc, hogman_manager.getTransformation(i));
+		else if (using_srba_optimizer)
+			pcl::transformPointCloud(*point_clouds[i], *tc, srba_manager.getTransformation(i));
 		else
 			pcl::transformPointCloud(*point_clouds[i], *tc, transformation_matrix[i]);
 		
@@ -289,8 +358,8 @@ vector<pair<double, Eigen::Matrix4f>> SlamEngine::GetTransformations()
 
 	for (int i = 0; i < frame_id; i++)
 	{
-		if (using_graph_optimizer)
-			ret.push_back(pair<double, Eigen::Matrix4f>(timestamps[i], graph_manager.getTransformation(i)));
+		if (using_hogman_optimizer)
+			ret.push_back(pair<double, Eigen::Matrix4f>(timestamps[i], hogman_manager.getTransformation(i)));
 		else
 			ret.push_back(pair<double, Eigen::Matrix4f>(timestamps[i], transformation_matrix[i]));
 	}
@@ -303,19 +372,35 @@ void SlamEngine::ShowStatistics()
 	cout << "-------------------------------------------------------------------------------" << endl;
 	cout << "Total runtime         : " << (clock() - total_start) / 1000.0 << endl;
 	cout << "Total frames          : " << frame_id << endl;
-	cout << "Number of keyframes   : " << graph_manager.keyframeCount << endl;
+	if (using_hogman_optimizer)
+		cout << "Number of keyframes   : " << hogman_manager.keyframeCount << endl;
+	else
+		cout << "Number of keyframes   : " << srba_manager.keyframeCount << endl;
 	cout << "Min Cloud Size : " << min_pt_count << "\t\t Max Cloud Size: " << max_pt_count << endl;
 	cout << "-------------------------------------------------------------------------------" << endl;
 	cout << "Min Icp Time          : " << min_icp_time << "\t\tMax Gicp Time: " << max_icp_time << endl;
 	cout << "Avg Icp Time          : " << total_icp_time / frame_id << endl;
 	cout << "Min Fitness Score     : " << fixed << setprecision(7) << min_fit << "\tMax Fitness Score: " << max_fit << endl;
 	cout << "-------------------------------------------------------------------------------" << endl;
-	cout << "Min Closure Time      : " << fixed << setprecision(3) << graph_manager.min_closure_detect_time << ",\t\tMax Closure Time: " << graph_manager.max_closure_detect_time << endl;
-	cout << "Avg Closure Time      : " << graph_manager.total_closure_detect_time / graph_manager.clousureCount << endl;
-	cout << "Min Closure Candidate : " << graph_manager.min_closure_candidate << "\t\tMax Closure Candidate: " << graph_manager.max_closure_candidate << endl;
-	cout << "-------------------------------------------------------------------------------" << endl;
-	cout << "Min Graph Time        : " << graph_manager.min_graph_opt_time << "\t\tMax Graph Time: " << graph_manager.max_graph_opt_time << endl;
-	cout << "Avg Graph Time        : " << graph_manager.total_graph_opt_time / frame_id << endl;
-	cout << "Min Edge Weight       : " << graph_manager.min_edge_weight << "\t\tMax Edge Weight: " << graph_manager.max_edge_weight << endl;
+	if (using_hogman_optimizer)
+	{
+		cout << "Min Closure Time      : " << fixed << setprecision(3) << srba_manager.min_closure_detect_time << ",\t\tMax Closure Time: " << srba_manager.max_closure_detect_time << endl;
+		cout << "Avg Closure Time      : " << hogman_manager.total_closure_detect_time / hogman_manager.clousureCount << endl;
+		cout << "Min Closure Candidate : " << hogman_manager.min_closure_candidate << "\t\tMax Closure Candidate: " << hogman_manager.max_closure_candidate << endl;
+		cout << "-------------------------------------------------------------------------------" << endl;
+		cout << "Min Graph Time        : " << hogman_manager.min_graph_opt_time << "\t\tMax Graph Time: " << hogman_manager.max_graph_opt_time << endl;
+		cout << "Avg Graph Time        : " << hogman_manager.total_graph_opt_time / frame_id << endl;
+		cout << "Min Edge Weight       : " << hogman_manager.min_edge_weight << "\t\tMax Edge Weight: " << hogman_manager.max_edge_weight << endl;
+	}
+	else
+	{
+		cout << "Min Closure Time      : " << fixed << setprecision(3) << srba_manager.min_closure_detect_time << ",\t\tMax Closure Time: " << srba_manager.max_closure_detect_time << endl;
+		cout << "Avg Closure Time      : " << srba_manager.total_closure_detect_time / srba_manager.clousureCount << endl;
+		cout << "Min Closure Candidate : " << srba_manager.min_closure_candidate << "\t\tMax Closure Candidate: " << srba_manager.max_closure_candidate << endl;
+		cout << "-------------------------------------------------------------------------------" << endl;
+		cout << "Min Graph Time        : " << srba_manager.min_graph_opt_time << "\t\tMax Graph Time: " << srba_manager.max_graph_opt_time << endl;
+		cout << "Avg Graph Time        : " << srba_manager.total_graph_opt_time / frame_id << endl;
+		cout << "Min Edge Weight       : " << srba_manager.min_edge_weight << "\t\tMax Edge Weight: " << srba_manager.max_edge_weight << endl;
+	}
 	cout << endl;
 }

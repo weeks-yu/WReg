@@ -107,39 +107,42 @@ void Feature::buildFlannIndex()
 	}
 }
 
-int Feature::findMatchedPairs(vector<cv::DMatch> &matches, const Feature &other, int max_leafs)
+int Feature::findMatched(vector<cv::DMatch> &matches, const cv::Mat &descriptor, int max_leafs /* = 64 */, int k /* = 2 */)
 {
-	if (this->flann_index == nullptr || this->multiple)
+	if (this->flann_index == nullptr || k != 1 && k != 2)
 	{
 		return -1;
 	}
 
-	const int k = 2;
-
-	cv::Mat indices(other.feature_descriptors.rows, k, CV_32S);
-	cv::Mat dists(other.feature_descriptors.rows, k, CV_32F);
+	cv::Mat indices(descriptor.rows, k, CV_32S);
+	cv::Mat dists(descriptor.rows, k, CV_32F);
 
 	// get the best two neighbours
-	this->flann_index->knnSearch(other.feature_descriptors, indices, dists, k, cv::flann::SearchParams(max_leafs));
+	this->flann_index->knnSearch(descriptor, indices, dists, k, cv::flann::SearchParams(max_leafs));
 
-	int* indices_ptr = indices.ptr<int> (0);
-	float* dists_ptr = dists.ptr<float> (0);
+	int* indices_ptr = indices.ptr<int>(0);
+	float* dists_ptr = dists.ptr<float>(0);
 
 	float ratio = Config::instance()->get<float>("matches_criterion");
 
 	cv::DMatch match;
 	for (int i = 0; i < indices.rows; i++)
 	{
-		if (dists_ptr[2 * i] < ratio * dists_ptr[2 * i + 1])
+		if (k == 1 || dists_ptr[k * i] < ratio * dists_ptr[k * i + 1])
 		{
 			match.queryIdx = i;
-			match.trainIdx = indices_ptr[2 * i];
-			match.distance = dists_ptr[2 * i];
+			match.trainIdx = indices_ptr[k * i];
+			match.distance = dists_ptr[k * i];
 			matches.push_back(match);
 		}
 	}
-	
+
 	return matches.size();
+}
+
+int Feature::findMatchedPairs(vector<cv::DMatch> &matches, const Feature &other, int max_leafs, int k)
+{
+	return findMatched(matches, other.feature_descriptors, max_leafs, k);
 }
 
 bool Feature::findMatchedPairsMultiple(vector<int> &frames, vector<vector<cv::DMatch>> &matches, const Feature &other, int k, int max_leafs)

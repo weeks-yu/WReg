@@ -20,6 +20,12 @@ add_definitions(${PCL_DEFINITIONS})
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
+#Find SRBA
+set(SRBA_DIR ${PROJECT_SOURCE_DIR})
+find_package(SRBA REQUIRED)
+include_directories(${SRBA_INCLUDE_DIRS})
+find_package(MRPT REQUIRED ${SRBA_REQUIRED_MRPT_MODULES})
+
 #Find CUDA
 find_package(CUDA REQUIRED)
 include_directories(${CUDA_INCLUDE_DIRS})
@@ -74,6 +80,7 @@ add_executable(WReg ${VIEWER_HEADERS} ${VIEWER_SOURCES} ${VIEWER_UIS} ${VIEWER_R
 target_link_libraries(WReg
 	${OpenCV_LIBS}
 	${PCL_LIBRARIES}
+	${MRPT_LIBS}
 	${VTK_LIBRARIES}
 	${CUDA_LIBRARIES}
 	vtkGUISupportQt

@@ -66,7 +66,9 @@ public:
 
 	void buildFlannIndex();
 
-	int findMatchedPairs(vector<cv::DMatch> &matches, const Feature &other, int max_leafs = 64);
+	int findMatched(vector<cv::DMatch> &matches, const cv::Mat &descriptor, int max_leafs = 64, int k = 2);
+
+	int findMatchedPairs(vector<cv::DMatch> &matches, const Feature &other, int max_leafs = 64, int k = 2);
 
 	bool findMatchedPairsMultiple(vector<int> &frames, vector<vector<cv::DMatch>> &matches, const Feature &other, int k = 30, int max_leafs = 128);
 

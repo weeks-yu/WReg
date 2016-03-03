@@ -85,7 +85,8 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 	{
 		int k = graph.size() - 1;
 
-		vector<cv::DMatch> matches;
+		vector<cv::DMatch> temp_matches, matches;
+		int maxleaf = Config::instance()->get<int>("kdtree_max_leaf");
 
 		start = clock();
 		// get translation of current tran
@@ -93,8 +94,23 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 		Eigen::Vector3f translation = TranslationFromMatrix4f(graph[k]->tran);
 		float active_window_size = Config::instance()->get<float>("active_window_size");
 		active_window.move(graph, RectangularRegion(translation.x(), translation.y(), active_window_size, active_window_size));
-		active_window.feature_pool->findMatchedPairs(matches, graph[k]->f,
-			Config::instance()->get<int>("kdtree_max_leaf"));
+		active_window.feature_pool->findMatchedPairs(temp_matches, graph[k]->f, maxleaf, 1);
+
+		for (int i = 0; i < temp_matches.size(); i++)
+		{
+			vector<cv::DMatch> tm;
+			int queryid = temp_matches[i].queryIdx;
+			int trainid = temp_matches[i].trainIdx;
+			int frame_index = active_window.feature_pool->feature_frame_index[trainid];
+			int c = graph[active_window.active_frames[frame_index]]->f.findMatched(tm,
+				graph[k]->f.feature_descriptors.row(queryid), maxleaf);
+
+			for (int j = 0; j < tm.size(); j++)
+			{
+				tm[j].queryIdx = queryid;
+				matches.push_back(tm[j]);
+			}
+		}
 
 		int N = Config::instance()->get<int>("keyframe_check_N");
 		int M = Config::instance()->get<int>("keyframe_check_M");

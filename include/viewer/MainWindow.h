@@ -1,6 +1,8 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "SlamEngine.h"
+
 #include <QMainWindow>
 #include <QMdiArea>
 #include <QMdiSubWindow>
@@ -14,7 +16,6 @@
 #include <vtkRenderWindow.h>
 
 #include "BenchmarkViewer.h"
-#include "SlamEngine.h"
 
 typedef pcl::PointXYZRGB PointT;
 typedef pcl::PointCloud<PointT> PointCloudT;

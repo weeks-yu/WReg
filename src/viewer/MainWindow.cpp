@@ -1,9 +1,10 @@
+#include "SlamThread.h"
+
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
 #include "ui_DockBenchmark.h"
 #include "PclViewer.h"
 #include "Parser.h"
-#include "SlamThread.h"
 #include "Transformation.h"
 
 #include <QFileDialog>
@@ -150,8 +151,9 @@ void MainWindow::onBenchmarkPushButtonRunClicked(bool checked)
 	engine = new SlamEngine();
 	int method = uiDockBenchmark->comboBoxMethod->currentIndex();
 	bool usingGICP = method == 0 || method == 1;
-	bool usingICPCUDA = method == 2 || method == 3;
-	bool usingGraphOptimizer = method == 0 || method == 2;
+	bool usingICPCUDA = method == 2 || method == 3 || method == 4;
+	bool usingHogmanOptimizer = method == 0 || method == 2;
+	bool usingSrbaOptimizer = method == 4;
 	bool usingDownSampling = usingGICP && uiDockBenchmark->checkBoxDownSampling->isChecked();
 	
 	engine->setUsingDownsampling(usingDownSampling);
@@ -171,8 +173,15 @@ void MainWindow::onBenchmarkPushButtonRunClicked(bool checked)
 	{
 
 	}
-	engine->setUsingGraphOptimizer(usingGraphOptimizer);
-	if (usingGraphOptimizer)
+	engine->setUsingHogmanOptimizer(usingHogmanOptimizer);
+	if (usingHogmanOptimizer)
+	{
+		QString type = uiDockBenchmark->comboBoxGraphFeatureType->currentText();
+		engine->setGraphFeatureType(type == "SIFT" ? SlamEngine::SIFT : SlamEngine::SURF);
+	}
+
+	engine->setUsingSrbaOptimzier(usingSrbaOptimizer);
+	if (usingSrbaOptimizer)
 	{
 		QString type = uiDockBenchmark->comboBoxGraphFeatureType->currentText();
 		engine->setGraphFeatureType(type == "SIFT" ? SlamEngine::SIFT : SlamEngine::SURF);

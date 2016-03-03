@@ -1,9 +1,9 @@
 #ifndef SLAMTHREAD_H
 #define SLAMTHREAD_H
 
+#include "SlamEngine.h"
 #include <QThread>
 #include <QTextStream>
-#include "SlamEngine.h"
 
 class SlamThread : public QThread
 {
