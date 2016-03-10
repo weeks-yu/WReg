@@ -17,6 +17,12 @@ add_definitions(${PCL_DEFINITIONS})
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
+#Find SRBA
+set(SRBA_DIR ${PROJECT_SOURCE_DIR})
+find_package(SRBA REQUIRED)
+include_directories(${SRBA_INCLUDE_DIRS})
+find_package(MRPT REQUIRED ${SRBA_REQUIRED_MRPT_MODULES})
+
 #Find CUDA
 find_package(CUDA REQUIRED)
 include_directories(${CUDA_INCLUDE_DIRS})
@@ -39,6 +45,7 @@ add_executable(Test ${TEST_HEADERS} ${TEST_SOURCES})
 
 target_link_libraries(Test
 	${OpenCV_LIBS}
+	${MRPT_LIBS}
 	${PCL_LIBRARIES}
 	${CUDA_LIBRARIES}
 	aislib

@@ -375,7 +375,7 @@ void SlamEngine::ShowStatistics()
 	if (using_hogman_optimizer)
 		cout << "Number of keyframes   : " << hogman_manager.keyframeCount << endl;
 	else
-		cout << "Number of keyframes   : " << srba_manager.keyframeCount << endl;
+		cout << "Number of keyframes   : " << srba_manager.keyframeInQuadTreeCount << endl;
 	cout << "Min Cloud Size : " << min_pt_count << "\t\t Max Cloud Size: " << max_pt_count << endl;
 	cout << "-------------------------------------------------------------------------------" << endl;
 	cout << "Min Icp Time          : " << min_icp_time << "\t\tMax Gicp Time: " << max_icp_time << endl;

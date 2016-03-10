@@ -1,7 +1,11 @@
+#include "srba.h"
 #include "test.h"
 
 #include "PointCloud.h"
 #include "pcl/io/pcd_io.h"
+#include <pcl/common/common_headers.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/common/transforms.h>
 
 #include <iostream>
 #include <vector>
@@ -12,7 +16,26 @@
 #include "Config.h"
 #include "ICPOdometry.h"
 
+#include "Frame.h"
+#include "Transformation.h"
+
 using namespace std;
+using namespace srba;
+
+struct RBA_OPTIONS_GRAPH : public RBA_OPTIONS_DEFAULT
+{
+	//	typedef ecps::local_areas_fixed_size            edge_creation_policy_t;  //!< One of the most important choices: how to construct the relative coordinates graph problem
+	//	typedef options::sensor_pose_on_robot_none      sensor_pose_on_robot_t;  //!< The sensor pose coincides with the robot pose
+	typedef options::observation_noise_constant_matrix<observations::RelativePoses_3D>   obs_noise_matrix_t;      // The sensor noise matrix is the same for all observations and equal to some given matrix
+	//	typedef options::solver_LM_schur_dense_cholesky solver_t;                //!< Solver algorithm (Default: Lev-Marq, with Schur, with dense Cholesky)
+};
+
+typedef RbaEngine <
+	kf2kf_poses::SE3,               // Parameterization  of KF-to-KF poses
+	landmarks::RelativePoses3D,     // Parameterization of landmark positions
+	observations::RelativePoses_3D, // Type of observations
+	RBA_OPTIONS_GRAPH
+> SrbaGraphT;
 
 void draw_feature_point(cv::Mat &img, const vector<cv::KeyPoint> &kp)
 {
@@ -132,9 +155,99 @@ void icp_test()
 	double w = icpcuda->lastICPError > 0 ? sqrt(1.0 / icpcuda->lastICPError) : sqrt(1000000);
 }
 
+void Ransac_Test()
+{
+	const int icount = 3;
+	std::string rname[icount], dname[icount];
+	rname[0] = "E:/lab/test/r1.png";
+	rname[1] = "E:/lab/test/r2.png";
+	rname[2] = "E:/lab/test/r3.png";
+
+	dname[0] = "E:/lab/test/d1.png";
+	dname[1] = "E:/lab/test/d2.png";
+	dname[2] = "E:/lab/test/d3.png";
+
+	cv::Mat r[icount], d[icount];
+	PointCloudPtr cloud[icount];
+
+	r[0] = cv::imread(rname[0]);
+	d[0] = cv::imread(dname[0], -1);
+	cloud[0] = ConvertToPointCloudWithoutMissingData(d[0], r[0], 0, 0);
+
+	Frame *f[icount];
+	f[0] = new Frame(r[0], d[0], "SURF", Eigen::Matrix4f::Identity());
+	f[0]->f.buildFlannIndex();
+
+	for (int i = 1; i < icount; i++)
+	{
+		r[i] = cv::imread(rname[i]);
+		d[i] = cv::imread(dname[i], -1);
+		cloud[i] = ConvertToPointCloudWithoutMissingData(d[i], r[i], i, i);
+
+		f[i] = new Frame(r[i], d[i], "SURF", Eigen::Matrix4f::Identity());
+		vector<cv::DMatch> matches;
+		f[0]->f.findMatchedPairs(matches, f[i]->f, 128, 2);
+
+		Eigen::Matrix4f tran;
+		float rmse;
+		vector<cv::DMatch> inliers;
+		Feature::getTransformationByRANSAC(tran, rmse, &inliers,
+			&f[0]->f, &f[i]->f, matches);
+
+		pcl::transformPointCloud(*cloud[i], *cloud[i], tran);
+
+		//test eularangle
+		Eigen::Vector3f translation = TranslationFromMatrix4f(tran);
+		Eigen::Vector3f eulerAngle = EulerAngleFromMatrix4f(tran);
+		
+// 		Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitX());
+// 		Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitY());
+// 		Eigen::AngleAxisd yawAngle(yaw, Eigen::Vector3d::UnitZ());
+		Eigen::Affine3f a(tran);
+		Eigen::Vector3f ea2 = a.rotation().eulerAngles(0, 1, 2);
+		SrbaGraphT::pose_t pose;
+		pose.x() = translation(0);
+		pose.y() = translation(1);
+		pose.z() = translation(2);
+		pose.setYawPitchRoll(eulerAngle(0), eulerAngle(1), eulerAngle(2));
+		mrpt::math::CQuaternionDouble q;
+		pose.getAsQuaternion(q);
+
+		//Eigen::Quaternionf quaternion = QuaternionFromEulerAngle(pose.yaw(), pose.pitch(), pose.roll());
+		Eigen::Quaternionf quaternion(q(0), q(1), q(2), q(3));
+		Eigen::Matrix4f rt = transformationFromQuaternionsAndTranslation(quaternion, translation);
+
+		if (rt != tran)
+		{
+			int a = 1;
+		}
+	}
+
+	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("test"));
+	viewer->setBackgroundColor(0, 0, 0);
+	viewer->addCoordinateSystem(1.0);
+	viewer->initCameraParameters();
+
+	for (int i = 0; i < icount; i++)
+	{
+		pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud[i]);
+		viewer->addPointCloud<pcl::PointXYZRGB>(cloud[i], rgb, rname[i]);
+		viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, rname[i]);
+	}
+	
+
+	while (!viewer->wasStopped())
+	{
+		viewer->spinOnce(100);
+		//boost::this_thread::sleep (boost::posix_time::microseconds (100000));
+	}
+	
+}
+
 int main()
 {
 	//keyframe_test();
 	//something();
 	//icp_test();
+	Ransac_Test();
 }
