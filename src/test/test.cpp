@@ -196,30 +196,20 @@ void Ransac_Test()
 
 		pcl::transformPointCloud(*cloud[i], *cloud[i], tran);
 
-		//test eularangle
 		Eigen::Vector3f translation = TranslationFromMatrix4f(tran);
-		Eigen::Vector3f eulerAngle = EulerAngleFromMatrix4f(tran);
-		
-// 		Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitX());
-// 		Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitY());
-// 		Eigen::AngleAxisd yawAngle(yaw, Eigen::Vector3d::UnitZ());
-		Eigen::Affine3f a(tran);
-		Eigen::Vector3f ea2 = a.rotation().eulerAngles(0, 1, 2);
+		Eigen::Vector3f ypr = YawPitchRollFromMatrix4f(tran);
 		SrbaGraphT::pose_t pose;
 		pose.x() = translation(0);
 		pose.y() = translation(1);
 		pose.z() = translation(2);
-		pose.setYawPitchRoll(eulerAngle(0), eulerAngle(1), eulerAngle(2));
+		pose.setYawPitchRoll(ypr(0), ypr(1), ypr(2));
 		mrpt::math::CQuaternionDouble q;
 		pose.getAsQuaternion(q);
-
-		//Eigen::Quaternionf quaternion = QuaternionFromEulerAngle(pose.yaw(), pose.pitch(), pose.roll());
-		Eigen::Quaternionf quaternion(q(0), q(1), q(2), q(3));
-		Eigen::Matrix4f rt = transformationFromQuaternionsAndTranslation(quaternion, translation);
-
-		if (rt != tran)
+		Eigen::Quaternionf quaternion(q.r(), q.x(), q.y(), q.z());
+		Eigen::Matrix4f tt = transformationFromQuaternionsAndTranslation(quaternion, translation);
+		if (tt != tran)
 		{
-			int a = 1;
+			int b = 1;
 		}
 	}
 

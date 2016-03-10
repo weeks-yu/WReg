@@ -17,23 +17,23 @@ Eigen::Quaternionf QuaternionFromMatrix4f(const Eigen::Matrix4f &matrix)
 	return q;
 }
 
-Eigen::Quaternionf QuaternionFromEulerAngle(float yaw, float pitch, float roll)
-{
-	float fCosHRoll = cos(roll * .5f);
-	float fSinHRoll = sin(roll * .5f);
-	float fCosHPitch = cos(pitch * .5f);
-	float fSinHPitch = sin(pitch * .5f);
-	float fCosHYaw = cos(yaw * .5f);
-	float fSinHYaw = sin(yaw * .5f);
-
-	Eigen::Quaternionf q;
-	q.w() = fCosHRoll * fCosHPitch * fCosHYaw + fSinHRoll * fSinHPitch * fSinHYaw;
-	q.x() = fCosHRoll * fSinHPitch * fCosHYaw + fSinHRoll * fCosHPitch * fSinHYaw;
-	q.y() = fCosHRoll * fCosHPitch * fSinHYaw - fSinHRoll * fSinHPitch * fCosHYaw;
-	q.z() = fSinHRoll * fCosHPitch * fCosHYaw - fCosHRoll * fSinHPitch * fSinHYaw;
-
-	return q;
-}
+// Eigen::Quaternionf QuaternionFromEulerAngle(float yaw, float pitch, float roll)
+// {
+// 	float fCosHRoll = cos(roll * .5f);
+// 	float fSinHRoll = sin(roll * .5f);
+// 	float fCosHPitch = cos(pitch * .5f);
+// 	float fSinHPitch = sin(pitch * .5f);
+// 	float fCosHYaw = cos(yaw * .5f);
+// 	float fSinHYaw = sin(yaw * .5f);
+// 
+// 	Eigen::Quaternionf q;
+// 	q.w() = fCosHRoll * fCosHPitch * fCosHYaw + fSinHRoll * fSinHPitch * fSinHYaw;
+// 	q.x() = fCosHRoll * fSinHPitch * fCosHYaw + fSinHRoll * fCosHPitch * fSinHYaw;
+// 	q.y() = fCosHRoll * fCosHPitch * fSinHYaw - fSinHRoll * fSinHPitch * fCosHYaw;
+// 	q.z() = fSinHRoll * fCosHPitch * fCosHYaw - fCosHRoll * fSinHPitch * fSinHYaw;
+// 
+// 	return q;
+// }
 
 Eigen::Matrix3f RotationFromQuaternion(const Eigen::Quaternionf &q)
 {
@@ -60,24 +60,18 @@ Eigen::Vector3f EulerAngleFromQuaternion(const Eigen::Quaternionf &q)
 	return e;
 }
 
-Eigen::Vector3f EulerAngleFromMatrix4f(const Eigen::Matrix4f &matrix)
-{
-	Eigen::Vector3f e;
-	e(0) = atan2(matrix(2, 1), matrix(2, 2));
-	e(1) = atan2(-matrix(2, 0), sqrt(matrix(2, 1) * matrix(2, 1) + matrix(2, 2) * matrix(2, 2)));
-	e(2) = atan2(matrix(1, 0), matrix(0, 0));
-
-	return e;
+Eigen::Vector3f YawPitchRollFromMatrix4f(const Eigen::Matrix4f &matrix)
+{ 
+	Eigen::Affine3f a(matrix);
+	return a.rotation().eulerAngles(2, 1, 0);
 }
 
 bool IsTransformationBigEnough(const Eigen::Matrix4f &matrix)
 {
 	Eigen::Vector3f t = TranslationFromMatrix4f(matrix);
-	Eigen::Vector3f e = EulerAngleFromMatrix4f(matrix);
-
+	Eigen::Vector3f e = EulerAngleFromQuaternion(QuaternionFromMatrix4f(matrix));
 	e *= 180.0 / M_PI;
 	double max_angle = std::max(e(0), std::max(e(1), e(2)));
-
 	return (t.norm() > Config::instance()->get<double>("min_translation_meter")
 		|| max_angle > Config::instance()->get<double>("min_rotation_degree"));
 }

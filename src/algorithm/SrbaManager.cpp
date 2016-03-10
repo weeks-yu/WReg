@@ -224,13 +224,18 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 					obs_field.obs.feat_id = keyframe_id[this->active_window.active_frames[frames[i]]];
 
 					Eigen::Vector3f translation = TranslationFromMatrix4f(tran);
-					Eigen::Vector3f eulerAngle = EulerAngleFromMatrix4f(tran);
+					Eigen::Vector3f yawPitchRoll = YawPitchRollFromMatrix4f(tran);
 					obs_field.obs.obs_data.x = translation(0);
 					obs_field.obs.obs_data.y = translation(1);
 					obs_field.obs.obs_data.z = translation(2);
-					obs_field.obs.obs_data.yaw = eulerAngle(0);
-					obs_field.obs.obs_data.pitch = eulerAngle(1);
-					obs_field.obs.obs_data.roll = eulerAngle(2);
+					obs_field.obs.obs_data.yaw = yawPitchRoll(0);
+					obs_field.obs.obs_data.pitch = yawPitchRoll(1);
+					obs_field.obs.obs_data.roll = yawPitchRoll(2);
+
+					if (k == 198)
+					{
+						cout << endl << translation << ", " << yawPitchRoll << endl;
+					}
 
 					list_obs.push_back(obs_field);
 					count++;
@@ -585,7 +590,9 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 						{
 							SrbaT::pose_t pose = -edges[j]->inv_pose;
 							Eigen::Vector3f translation(pose.x(), pose.y(), pose.z());
-							Eigen::Quaternionf quaternion = QuaternionFromEulerAngle(pose.yaw(), pose.pitch(), pose.roll());
+							mrpt::math::CQuaternionDouble q;
+							pose.getAsQuaternion(q);
+							Eigen::Quaternionf quaternion(q.r(), q.x(), q.y(), q.z());
 							Eigen::Matrix4f rt = transformationFromQuaternionsAndTranslation(quaternion, translation);
 							tran = rt * graph[edges[j]->from]->tran;
 							break;
@@ -693,9 +700,11 @@ void SrbaManager::visit_k2k(
 	{
 		SrbaGraphT::pose_t pose = edge->inv_pose;
 		Eigen::Vector3f translation(pose.x(), pose.y(), pose.z());
-		Eigen::Quaternionf quaternion = QuaternionFromEulerAngle(pose.yaw(), pose.pitch(), pose.roll());
+		mrpt::math::CQuaternionDouble q;
+		pose.getAsQuaternion(q);
+		Eigen::Quaternionf quaternion(q.r(), q.x(), q.y(), q.z());
 		Eigen::Matrix4f rt = transformationFromQuaternionsAndTranslation(quaternion, translation);
-		keyframe_poses[next_kf] = rt.inverse() * keyframe_poses[current_kf];
+		keyframe_poses[next_kf] = rt * keyframe_poses[current_kf];
 		is_keyfram_pose_set[next_kf] = true;
 	}
 }
