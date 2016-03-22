@@ -9,7 +9,8 @@ Config::Config() {
 
 	// RANSAC
 	config["candidate_number"]		= static_cast<int>    (10);
-	config["min_matches"]			= static_cast<int>    (100);
+	config["min_matches"]			= static_cast<int>    (150);
+	config["min_inliers"]			= static_cast<int>    (150);
 	config["max_dist_for_inliers"]	= static_cast<double> (0.03);
 	config["matches_criterion"]		= static_cast<float>  (0.75);
 

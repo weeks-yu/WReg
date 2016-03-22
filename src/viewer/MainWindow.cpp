@@ -81,6 +81,7 @@ void MainWindow::ShowBenchmarkTest(const QString &directory)
 	connect(uiDockBenchmark->pushButtonDirectory, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonDirectoryClicked);
 	connect(uiDockBenchmark->pushButtonSave, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonSaveClicked);
 	connect(uiDockBenchmark->pushButtonSaveKeyframes, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonSaveKeyframesClicked);
+	connect(uiDockBenchmark->pushButtonSaveLogs, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonSaveLogsClicked);
 
 	// center
 	benchmarkViewer = new BenchmarkViewer(this);
@@ -225,6 +226,9 @@ void MainWindow::onBenchmarkPushButtonSaveClicked(bool checked)
 	QString filename = QFileDialog::getSaveFileName(this, tr("Save Transformations"), "", tr("txt files(*.txt)"));
 	if (!filename.isNull())
 	{
+		if (!engine)
+			return;
+
 		vector<pair<double, Eigen::Matrix4f>> trans = engine->GetTransformations();
 		ofstream outfile(filename.toStdString());
 		for (int i = 0; i < trans.size(); i++)
@@ -252,6 +256,9 @@ void MainWindow::onBenchmarkPushButtonSaveKeyframesClicked(bool checked)
 			return;
 		}
 
+		if (!engine)
+			return;
+
 		for (int i = 0; i < engine->keyframe_candidates.size(); i++)
 		{
 			QString fn = fi.absoluteFilePath() + "/keyframe_candidate_" + QString::number(i) + "_rgb.png";
@@ -270,6 +277,21 @@ void MainWindow::onBenchmarkPushButtonSaveKeyframesClicked(bool checked)
 // 			fn = fi.absoluteFilePath() + "/keyframe_" + QString::number(i) + "_depth.png";
 // 			cv::imwrite(fn.toStdString(), engine->keyframe_candidates[i].second);
 		}
+	}
+}
+
+void MainWindow::onBenchmarkPushButtonSaveLogsClicked(bool checked)
+{
+	QString filename = QFileDialog::getSaveFileName(this, tr("Save Transformations"), "", tr("txt files(*.txt)"));
+	if (!filename.isNull())
+	{
+		
+		ofstream outfile(filename.toStdString());
+		if (engine)
+		{
+			engine->SaveLogs(outfile);
+		}
+		outfile.close();
 	}
 }
 

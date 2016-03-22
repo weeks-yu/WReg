@@ -71,8 +71,11 @@ public:
 
 	vector<int> baseid;
 	vector<int> targetid;
-	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> ransac_tran;
-	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> icp_tran;
+	vector<float> rmses;
+	vector<int> matchescount;
+	vector<int> inlierscount;
+	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> ransactrans;
+
 
 private:
 

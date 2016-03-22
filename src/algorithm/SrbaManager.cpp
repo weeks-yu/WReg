@@ -232,10 +232,12 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 					obs_field.obs.obs_data.pitch = yawPitchRoll(1);
 					obs_field.obs.obs_data.roll = yawPitchRoll(2);
 
-					if (k == 198)
-					{
-						cout << endl << translation << ", " << yawPitchRoll << endl;
-					}
+					baseid.push_back(k);
+					targetid.push_back(this->active_window.active_frames[frames[i]]);
+					rmses.push_back(rmse);
+					matchescount.push_back(matches[i].size());
+					inlierscount.push_back(inliers.size());
+					ransactrans.push_back(tran);
 
 					list_obs.push_back(obs_field);
 					count++;
@@ -254,12 +256,15 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 			}
 
 			start = clock();
-			SrbaGraphT::TNewKeyFrameInfo new_kf_info;
-			rba_graph.define_new_keyframe(
-				list_obs,      // Input observations for the new KF
-				new_kf_info,   // Output info
-				true           // Also run local optimization?
-				);
+			if (list_obs.size() > 0)
+			{
+				SrbaGraphT::TNewKeyFrameInfo new_kf_info;
+				rba_graph.define_new_keyframe(
+					list_obs,      // Input observations for the new KF
+					new_kf_info,   // Output info
+					true           // Also run local optimization?
+					);
+			}
 			keyframe_id.insert(pair<int, int>(k, keyframe_indices.size() - 1));
 
 			time = (clock() - start) / 1000.0;
@@ -308,7 +313,7 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 			delete keyframeTest;
 			delete keyframeExists;
 
-			if (keyframeTestCount + N * M - keyframeExistsCount < N * M * Config::instance()->get<double>("keyframe_check_P"))
+			if (list_obs.size() > 0 && keyframeTestCount + N * M - keyframeExistsCount < N * M * Config::instance()->get<double>("keyframe_check_P"))
 			{
 				frame_in_quadtree_indices.insert(k);
 				Eigen::Vector3f translation = TranslationFromMatrix4f(this->graph[k]->tran);
@@ -367,10 +372,11 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 // 					}
 // 				}
 // 			}
-			for (int i = 0; i < is_keyfram_pose_set.size(); i++)
+			for (int i = 1; i < is_keyfram_pose_set.size(); i++)
 			{
 				is_keyfram_pose_set[i] = false;
 			}
+			is_keyfram_pose_set[0] = true;
 			rba_graph.bfs_visitor(0, 1000000, false, *this, *this, *this, *this);
 
 			int ki = 0;
@@ -380,7 +386,7 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 					ki++;
 
 				Eigen::Matrix4f tran = Eigen::Matrix4f::Identity();
-				if (ki < keyframe_indices.size() && keyframe_indices[ki] == i)
+				if (ki < keyframe_indices.size() && keyframe_indices[ki] == i && is_keyfram_pose_set[ki])
 				{
 					tran = keyframe_poses[ki];
 				}

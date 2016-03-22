@@ -51,6 +51,7 @@ public:
 	int GetFrameID() { return frame_id; }
 	vector<pair<double, Eigen::Matrix4f>> GetTransformations();
 
+	void SaveLogs(ofstream &outfile);
 	void ShowStatistics();
 	void SaveTestInfo()
 	{

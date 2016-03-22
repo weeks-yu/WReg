@@ -360,10 +360,30 @@ vector<pair<double, Eigen::Matrix4f>> SlamEngine::GetTransformations()
 	{
 		if (using_hogman_optimizer)
 			ret.push_back(pair<double, Eigen::Matrix4f>(timestamps[i], hogman_manager.getTransformation(i)));
+		else if (using_srba_optimizer)
+			ret.push_back(pair<double, Eigen::Matrix4f>(timestamps[i], srba_manager.getTransformation(i)));
 		else
 			ret.push_back(pair<double, Eigen::Matrix4f>(timestamps[i], transformation_matrix[i]));
 	}
 	return ret;
+}
+
+void SlamEngine::SaveLogs(ofstream &outfile)
+{
+	if (using_srba_optimizer)
+	{
+		outfile << "base\ttarget\trmse\tmatches\tinliers\ttransformation" << endl;
+		outfile << srba_manager.baseid.size() << endl;
+		for (int i = 0; i < srba_manager.baseid.size(); i++)
+		{
+			outfile << srba_manager.baseid[i] << "\t"
+				<< srba_manager.targetid[i] << "\t"
+				<< srba_manager.rmses[i] << "\t"
+				<< srba_manager.matchescount[i] << "\t"
+				<< srba_manager.inlierscount[i] << endl;
+			outfile << srba_manager.ransactrans[i] << endl;
+		}
+	}
 }
 
 void SlamEngine::ShowStatistics()
