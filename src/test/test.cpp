@@ -15,6 +15,7 @@
 
 #include "Config.h"
 #include "ICPOdometry.h"
+#include "ICPSlowdometry.h"
 
 #include "Frame.h"
 #include "Transformation.h"
@@ -36,6 +37,79 @@ typedef RbaEngine <
 	observations::RelativePoses_3D, // Type of observations
 	RBA_OPTIONS_GRAPH
 > SrbaGraphT;
+
+typedef boost::shared_ptr<pcl::visualization::PCLVisualizer> ViewerPtr;
+
+map<int, cv::Mat> rgbs, depths;
+map<int, PointCloudPtr> clouds;
+vector<pair<int, int>> pairs;
+vector<float> rmses;
+vector<pair<int, int>> matches_and_inliers;
+vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> trans;
+vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> refined_trans;
+int pairs_count, now;
+vector<bool> is_keyframe_pose_set;
+vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> keyframe_poses;
+bool show_refined = false;
+
+struct bfs_visitor_struct
+{
+	bool visit_filter_feat(const TLandmarkID lm_ID, const topo_dist_t cur_dist)
+	{
+		return false;
+	}
+
+	void visit_feat(const TLandmarkID lm_ID, const topo_dist_t cur_dist) { }
+
+	bool visit_filter_kf(const TKeyFrameID kf_ID, const topo_dist_t cur_dist)
+	{
+		return true;
+	}
+
+	void visit_kf(const TKeyFrameID kf_ID, const topo_dist_t cur_dist) { }
+
+	bool visit_filter_k2k(
+		const TKeyFrameID current_kf,
+		const TKeyFrameID next_kf,
+		const SrbaGraphT::k2k_edge_t* edge,
+		const topo_dist_t cur_dist)
+	{
+		return true;
+	}
+
+	void visit_k2k(
+		const TKeyFrameID current_kf,
+		const TKeyFrameID next_kf,
+		const SrbaGraphT::k2k_edge_t* edge,
+		const topo_dist_t cur_dist)
+	{
+		if (!is_keyframe_pose_set[next_kf])
+		{
+			SrbaGraphT::pose_t pose = edge->inv_pose;
+			Eigen::Vector3f translation(pose.x(), pose.y(), pose.z());
+			mrpt::math::CQuaternionDouble q;
+			pose.getAsQuaternion(q);
+			Eigen::Quaternionf quaternion(q.r(), q.x(), q.y(), q.z());
+			Eigen::Matrix4f rt = transformationFromQuaternionsAndTranslation(quaternion, translation);
+
+			keyframe_poses[next_kf] = keyframe_poses[current_kf] * rt.inverse();
+			is_keyframe_pose_set[next_kf] = true;
+		}
+	}
+
+	bool visit_filter_k2f(
+		const TKeyFrameID current_kf,
+		const SrbaGraphT::k2f_edge_t* edge,
+		const topo_dist_t cur_dist)
+	{
+		return false;
+	}
+
+	void visit_k2f(
+		const TKeyFrameID current_kf,
+		const SrbaGraphT::k2f_edge_t *edge,
+		const topo_dist_t cur_dist) { }
+};
 
 void draw_feature_point(cv::Mat &img, const vector<cv::KeyPoint> &kp)
 {
@@ -129,30 +203,7 @@ void something()
 
 void icp_test()
 {
-	cv::Mat d1 = cv::imread("G:/d1.png", -1);
-	cv::Mat d2 = cv::imread("G:/d3.png", -1);
 
-	int width = Config::instance()->get<int>("image_width");
-	int height = Config::instance()->get<int>("image_height");
-	double cx = Config::instance()->get<double>("camera_cx");
-	double cy = Config::instance()->get<double>("camera_cy");
-	double fx = Config::instance()->get<double>("camera_fx");
-	double fy = Config::instance()->get<double>("camera_fy");
-	double depthFactor = Config::instance()->get<double>("depth_factor");
-	ICPOdometry *icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor);
-
-	icpcuda->initICPModel((unsigned short *)d1.data, 20.0f, Eigen::Matrix4f::Identity());
-	icpcuda->initICP((unsigned short *)d2.data, 20.0f);
-	Eigen::Vector3f tra = Eigen::Matrix4f::Identity().topRightCorner(3, 1);
-	Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = Eigen::Matrix4f::Identity().topLeftCorner(3, 3);
-
-	int threads = Config::instance()->get<int>("icpcuda_threads");
-	int blocks = Config::instance()->get<int>("icpcuda_blocks");
-	icpcuda->getIncrementalTransformation(tra, rot, threads, blocks);
-	Eigen::Matrix4f tran = Eigen::Matrix4f::Identity();
-	tran.topLeftCorner(3, 3) = rot;
-	tran.topRightCorner(3, 1) = tra;
-	double w = icpcuda->lastICPError > 0 ? sqrt(1.0 / icpcuda->lastICPError) : sqrt(1000000);
 }
 
 void Ransac_Test()
@@ -234,10 +285,472 @@ void Ransac_Test()
 	
 }
 
+void KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void* viewer_void)
+{
+	ViewerPtr viewer = *static_cast<ViewerPtr *> (viewer_void);
+	if (event.getKeySym() == "z" && event.keyDown())
+	{
+		if (now > /*1*/ 0)
+		{
+			viewer->removeAllPointClouds();
+			now--;
+// 			cout << now - 1 << " " << now << endl;
+// 			PointCloudPtr cloud_all(new PointCloudT);
+// 			PointCloudPtr tran_cloud(new PointCloudT);
+// 			*cloud_all += *clouds[now - 1];
+// 			pcl::transformPointCloud(*clouds[now], *tran_cloud, trans[now]);
+// 			*cloud_all += *tran_cloud;
+// 
+// 			pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud_all);
+// 			viewer->addPointCloud<pcl::PointXYZRGB>(cloud_all, rgb, "cloud");
+// 			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
+
+			cout << "pair " << now << ": " << pairs[now].first << "\t" << pairs[now].second << "\t"
+				<< rmses[now] << "\t" << matches_and_inliers[now].first << "\t" << matches_and_inliers[now].second << endl;
+			show_refined = false;
+			pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(clouds[pairs[now].first]);
+			stringstream ss;
+			ss << pairs[now].first;
+			viewer->addPointCloud<pcl::PointXYZRGB>(clouds[pairs[now].first], rgb, ss.str());
+			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, ss.str());
+
+			PointCloudPtr tran_cloud(new PointCloudT);
+			pcl::transformPointCloud(*clouds[pairs[now].second], *tran_cloud, trans[now]);
+			pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb2(tran_cloud);
+			ss << pairs[now].second;
+			viewer->addPointCloud<pcl::PointXYZRGB>(tran_cloud, rgb2, ss.str());
+			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, ss.str());
+		}
+	}
+	else if (event.getKeySym() == "x" && event.keyDown())
+	{
+		if (now < pairs_count - 1)
+		{
+			viewer->removeAllPointClouds();
+			now++;
+// 			cout << now - 1 << " " << now << endl;
+// 			PointCloudPtr cloud_all(new PointCloudT);
+// 			PointCloudPtr tran_cloud(new PointCloudT);
+// 			*cloud_all += *clouds[now - 1];
+// 			pcl::transformPointCloud(*clouds[now], *tran_cloud, trans[now]);
+// 			*cloud_all += *tran_cloud;
+// 
+// 			pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud_all);
+// 			viewer->addPointCloud<pcl::PointXYZRGB>(cloud_all, rgb, "cloud");
+// 			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
+
+			cout << "pair " << now << ": " << pairs[now].first << "\t" << pairs[now].second << "\t"
+				<< rmses[now] << "\t" << matches_and_inliers[now].first << "\t" << matches_and_inliers[now].second << endl;
+			show_refined = false;
+			pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(clouds[pairs[now].first]);
+			stringstream ss;
+			ss << pairs[now].first;
+			viewer->addPointCloud<pcl::PointXYZRGB>(clouds[pairs[now].first], rgb, ss.str());
+			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, ss.str());
+
+			PointCloudPtr tran_cloud(new PointCloudT);
+			pcl::transformPointCloud(*clouds[pairs[now].second], *tran_cloud, trans[now]);
+			pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb2(tran_cloud);
+			ss << pairs[now].second;
+			viewer->addPointCloud<pcl::PointXYZRGB>(tran_cloud, rgb2, ss.str());
+			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, ss.str());
+		}
+	}
+	else if (event.getKeySym() == "n" && event.keyDown())
+	{
+// 		viewer->removeAllPointClouds();
+// 		PointCloudPtr cloud_all(new PointCloudT);
+// 		Eigen::Matrix4f tran = Eigen::Matrix4f::Identity();
+// 		for (int i = 0; i < pairs_count; i++)
+// 		{
+// 			tran = tran * trans[i];
+// 			PointCloudPtr tran_cloud(new PointCloudT);
+// 			pcl::transformPointCloud(*clouds[i], *tran_cloud, tran);
+// 			*cloud_all += *tran_cloud;
+// 		}
+// 
+// 		pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud_all);
+// 		viewer->addPointCloud<pcl::PointXYZRGB>(cloud_all, rgb, "cloud");
+// 		viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
+
+		if (show_refined)
+		{
+			show_refined = false;
+			cout << "showing not refined" << endl;
+			viewer->removeAllPointClouds();
+			pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(clouds[pairs[now].first]);
+			stringstream ss;
+			ss << pairs[now].first;
+			viewer->addPointCloud<pcl::PointXYZRGB>(clouds[pairs[now].first], rgb, ss.str());
+			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, ss.str());
+
+			PointCloudPtr tran_cloud(new PointCloudT);
+			pcl::transformPointCloud(*clouds[pairs[now].second], *tran_cloud, trans[now]);
+			pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb2(tran_cloud);
+			ss << pairs[now].second;
+			viewer->addPointCloud<pcl::PointXYZRGB>(tran_cloud, rgb2, ss.str());
+			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, ss.str());
+		}
+		else
+		{
+			show_refined = true;
+			cout << "showing refined" << endl;
+			viewer->removeAllPointClouds();
+			pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(clouds[pairs[now].first]);
+			stringstream ss;
+			ss << pairs[now].first;
+			viewer->addPointCloud<pcl::PointXYZRGB>(clouds[pairs[now].first], rgb, ss.str());
+			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, ss.str());
+
+			PointCloudPtr tran_cloud(new PointCloudT);
+			pcl::transformPointCloud(*clouds[pairs[now].second], *tran_cloud, refined_trans[now]);
+			pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb2(tran_cloud);
+			ss << pairs[now].second;
+			viewer->addPointCloud<pcl::PointXYZRGB>(tran_cloud, rgb2, ss.str());
+			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, ss.str());
+		}
+	}
+}
+
+void Ransac_Result_Show()
+{
+	set<int> cloud_needed;
+	ifstream result_infile("G:/360-1.txt");
+	result_infile >> pairs_count;
+	for (int i = 0; i < pairs_count; i++)
+	{
+		int base_id, target_id;
+		float rmse;
+		int match_count, inlier_count;
+		Eigen::Matrix4f tran;
+		float temp;
+		result_infile >> target_id >> base_id >> rmse >> match_count >> inlier_count;
+		for (int j = 0; j < 4; j++)
+		{
+			for (int k = 0; k < 4; k++)
+			{
+				result_infile >> temp;
+				tran(j, k) = temp;
+			}
+		}
+
+		cloud_needed.insert(base_id);
+		cloud_needed.insert(target_id);
+		pairs.push_back(pair<int, int>(base_id, target_id));
+		rmses.push_back(rmse);
+		matches_and_inliers.push_back(pair<int, int>(match_count, inlier_count));
+		trans.push_back(tran);
+	}
+
+	string directory = "G:/kinect data/rgbd_dataset_freiburg1_360";
+
+	ifstream cloud_infile(directory + "/read.txt");
+	string line;
+	int k = 0;
+	map<int, int> keyframe_id;
+	vector<int> keyframe_indices;
+	while (getline(cloud_infile, line))
+	{
+		if (cloud_needed.find(k) != cloud_needed.end())
+		{
+			int pos = line.find(' ');
+			cv::Mat rgb = cv::imread(directory + "/" + line.substr(0, pos));
+			cv::Mat depth = cv::imread(directory + "/" + line.substr(pos + 1, line.length() - pos - 1), -1);
+			rgbs[k] = rgb;
+			depths[k] = depth;
+			PointCloudPtr cloud = ConvertToPointCloudWithoutMissingData(depth, rgb, k, k);
+			clouds[k] = cloud;
+
+			keyframe_indices.push_back(k);
+			keyframe_id[k] = keyframe_indices.size() - 1;
+		}
+		k++;
+	}
+
+	// test srba
+	SrbaGraphT rba_graph;
+	// --------------------------------------------------------------------------------
+	// Set parameters
+	// --------------------------------------------------------------------------------
+	rba_graph.setVerbosityLevel(1);   // 0: None; 1:Important only; 2:Verbose
+
+	rba_graph.parameters.srba.use_robust_kernel = false;
+	//rba.parameters.srba.optimize_new_edges_alone  = false;  // skip optimizing new edges one by one? Relative graph-slam without landmarks should be robust enough, but just to make sure we can leave this to "true" (default)
+
+	// Information matrix for relative pose observations:
+	{
+		const double STD_NOISE_XYZ = 0.01;
+		const double STD_NOISE_ANGLES = mrpt::utils::DEG2RAD(0.5);
+		Eigen::Matrix<double, 6, 6> ObsL;
+		ObsL.setZero();
+		// X,Y,Z:
+		for (int i = 0; i < 3; i++) ObsL(i, i) = 1 / mrpt::utils::square(STD_NOISE_XYZ);
+		// Yaw,pitch,roll:
+		for (int i = 0; i < 3; i++) ObsL(3 + i, 3 + i) = 1 / mrpt::utils::square(STD_NOISE_ANGLES);
+
+		// Set:
+		rba_graph.parameters.obs_noise.lambda = ObsL;
+	}
+
+	// =========== Topology parameters ===========
+	rba_graph.parameters.srba.max_tree_depth = 3;
+	rba_graph.parameters.srba.max_optimize_depth = 3;
+	rba_graph.parameters.ecp.submap_size = 5;
+	rba_graph.parameters.ecp.min_obs_to_loop_closure = 1;
+	// ===========================================
+
+	// srba test;
+	Eigen::Matrix4f test_tran = trans[0];
+	Eigen::Vector3f translation = TranslationFromMatrix4f(test_tran);
+	Eigen::Vector3f yawPitchRoll = YawPitchRollFromMatrix4f(test_tran);
+	SrbaGraphT::pose_t test_pose;
+	test_pose.x() = translation(0);
+	test_pose.y() = translation(1);
+	test_pose.z() = translation(2);
+	test_pose.setYawPitchRoll(yawPitchRoll(0), yawPitchRoll(1), yawPitchRoll(2));
+
+	Eigen::Vector3f t2(test_pose.x(), test_pose.y(), test_pose.z());
+	mrpt::math::CQuaternionDouble q;
+	test_pose.getAsQuaternion(q);
+	Eigen::Quaternionf quaternion(q.r(), q.x(), q.y(), q.z());
+	Eigen::Matrix4f rt = transformationFromQuaternionsAndTranslation(quaternion, t2);
+
+	if (rt != test_tran)
+	{
+		int a = 1;
+	}
+
+	for (int i = 0; i < keyframe_indices.size(); i++)
+	{
+		keyframe_poses.push_back(Eigen::Matrix4f::Identity());
+		is_keyframe_pose_set.push_back(false);
+
+		SrbaGraphT::new_kf_observations_t list_obs;
+		SrbaGraphT::new_kf_observation_t obs_field;
+
+		// fake landmark
+		obs_field.is_fixed = true;
+		obs_field.obs.feat_id = i; // Feature ID == keyframe ID
+		obs_field.obs.obs_data.x = 0;   // Landmark values are actually ignored.
+		obs_field.obs.obs_data.y = 0;
+		obs_field.obs.obs_data.z = 0;
+		obs_field.obs.obs_data.yaw = 0;
+		obs_field.obs.obs_data.pitch = 0;
+		obs_field.obs.obs_data.roll = 0;
+		list_obs.push_back(obs_field);
+
+		for (int j = 0; j < pairs_count; j++)
+		{
+			if (pairs[j].second == keyframe_indices[i])
+			{
+				obs_field.is_fixed = false;   // "Landmarks" (relative poses) have unknown relative positions (i.e. treat them as unknowns to be estimated)
+				obs_field.is_unknown_with_init_val = false; // Ignored, since all observed "fake landmarks" already have an initialized value.
+
+				obs_field.obs.feat_id = keyframe_id[pairs[j].first];
+
+				Eigen::Matrix4f tran_i = trans[j].inverse();
+				Eigen::Vector3f translation = TranslationFromMatrix4f(tran_i);
+				Eigen::Vector3f yawPitchRoll = YawPitchRollFromMatrix4f(tran_i);
+				obs_field.obs.obs_data.x = translation(0);
+				obs_field.obs.obs_data.y = translation(1);
+				obs_field.obs.obs_data.z = translation(2);
+				obs_field.obs.obs_data.yaw = yawPitchRoll(0);
+				obs_field.obs.obs_data.pitch = yawPitchRoll(1);
+				obs_field.obs.obs_data.roll = yawPitchRoll(2);
+				list_obs.push_back(obs_field);
+			}
+		}
+
+		SrbaGraphT::TNewKeyFrameInfo new_kf_info;
+		rba_graph.define_new_keyframe(
+			list_obs,      // Input observations for the new KF
+			new_kf_info,   // Output info
+			true           // Also run local optimization?
+			);
+
+		for (int i = 1; i < is_keyframe_pose_set.size(); i++)
+		{
+			is_keyframe_pose_set[i] = false;
+		}
+		is_keyframe_pose_set[0] = true;
+		bfs_visitor_struct bfsvs;
+		rba_graph.bfs_visitor(0, 1000000, false, bfsvs, bfsvs, bfsvs, bfsvs);
+	}
+
+// 	keyframe_poses[0] = Eigen::Matrix4f::Identity();
+// 	for (int i = 1; i < keyframe_indices.size(); i++)
+// 	{
+// 		for (int j = 0; j < pairs_count; j++)
+// 		{
+// 			if (pairs[j].second == keyframe_indices[i] && keyframe_indices[i] > pairs[j].first)
+// 			{
+// 				keyframe_poses[i] = keyframe_poses[keyframe_id[pairs[j].first]] * trans[j];
+// 				break;
+// 			}
+// 		}
+// 	}
+
+// 	now = 0;
+// 	cout << "pair " << now << ": " << pairs[now].first << "\t" << pairs[now].second << "\t"
+// 		<< rmses[now] << "\t" << matches_and_inliers[now].first << "\t" << matches_and_inliers[now].second << endl;
+
+	ViewerPtr viewer(new pcl::visualization::PCLVisualizer("test"));
+//	viewer->registerKeyboardCallback(KeyboardEventOccurred, (void*)&viewer);
+	viewer->setBackgroundColor(0, 0, 0);
+	viewer->addCoordinateSystem(1.0);
+	viewer->initCameraParameters();
+
+	PointCloudPtr cloud_all(new PointCloudT);
+	for (int i = 0; i < keyframe_indices.size(); i++)
+	{
+		PointCloudPtr tran_cloud(new PointCloudT);
+		pcl::transformPointCloud(*clouds[keyframe_indices[i]], *tran_cloud, keyframe_poses[i]);
+		*cloud_all += *tran_cloud;
+	}
+
+	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud_all);
+	stringstream ss;
+	ss << 0;
+	viewer->addPointCloud<pcl::PointXYZRGB>(cloud_all, rgb, ss.str());
+	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, ss.str());
+
+// 	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(clouds[pairs[now].first]);
+// 	stringstream ss;
+// 	ss << pairs[now].first;
+// 	viewer->addPointCloud<pcl::PointXYZRGB>(clouds[pairs[now].first], rgb, ss.str());
+// 	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, ss.str());
+// 
+// 	PointCloudPtr tran_cloud(new PointCloudT);
+// 	pcl::transformPointCloud(*clouds[pairs[now].second], *tran_cloud, trans[now]);
+// 	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb2(tran_cloud);
+// 	ss << pairs[now].second;
+// 	viewer->addPointCloud<pcl::PointXYZRGB>(tran_cloud, rgb2, ss.str());
+// 	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, ss.str());
+
+	while (!viewer->wasStopped())
+	{
+		viewer->spinOnce(100);
+		//boost::this_thread::sleep (boost::posix_time::microseconds (100000));
+	}
+}
+
+void Registration_Result_Show()
+{
+	string directory = "G:/kinect data/rgbd_dataset_freiburg1_360";
+	int id_end = 0;
+	cin >> id_end;
+
+	ifstream cloud_infile(directory + "/read.txt");
+	string line;
+	int k = 0;
+	while (getline(cloud_infile, line))
+	{
+		if (k <= id_end)
+		{
+			cout << k << endl;;
+			int pos = line.find(' ');
+			cv::Mat rgb = cv::imread(directory + "/" + line.substr(0, pos));
+			cv::Mat depth = cv::imread(directory + "/" + line.substr(pos + 1, line.length() - pos - 1), -1);
+			rgbs[k] = rgb;
+			depths[k] = depth;
+			PointCloudPtr cloud = ConvertToPointCloudWithoutMissingData(depth, rgb, k, k);
+			clouds[k] = cloud;
+		}
+		else
+		{
+			break;
+		}
+		k++;
+	}
+	cloud_infile.close();
+
+	ICPOdometry *icpcuda = nullptr;
+	int threads = Config::instance()->get<int>("icpcuda_threads");
+	int blocks = Config::instance()->get<int>("icpcuda_blocks");
+	int width = Config::instance()->get<int>("image_width");
+	int height = Config::instance()->get<int>("image_height");
+	double cx = Config::instance()->get<double>("camera_cx");
+	double cy = Config::instance()->get<double>("camera_cy");
+	double fx = Config::instance()->get<double>("camera_fx");
+	double fy = Config::instance()->get<double>("camera_fy");
+	double depthFactor = Config::instance()->get<double>("depth_factor");
+	if (icpcuda == nullptr)
+		icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor);
+
+	trans.push_back(Eigen::Matrix4f::Identity());
+	
+	for (int i = 1; i < k; i++)
+	{
+		cout << i << endl;
+		icpcuda->initICPModel((unsigned short *)depths[i - 1].data, 20.0f, Eigen::Matrix4f::Identity());
+		icpcuda->initICP((unsigned short *)depths[i].data, 20.0f);
+
+		Eigen::Matrix4f ret_tran = Eigen::Matrix4f::Identity();
+		Eigen::Vector3f ret_t = ret_tran.topRightCorner(3, 1);
+		Eigen::Matrix<float, 3, 3, Eigen::RowMajor> ret_rot = ret_tran.topLeftCorner(3, 3);
+
+		Eigen::Matrix4f estimated_tran = Eigen::Matrix4f::Identity();
+		Eigen::Vector3f t = estimated_tran.topRightCorner(3, 1);
+		Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = estimated_tran.topLeftCorner(3, 3);
+
+		icpcuda->getIncrementalTransformation(ret_t, ret_rot, t, rot, threads, blocks);
+
+		ret_tran.topLeftCorner(3, 3) = rot;
+		ret_tran.topRightCorner(3, 1) = t;
+
+		trans.push_back(ret_tran);
+	}
+	
+	ViewerPtr viewer(new pcl::visualization::PCLVisualizer("test"));
+	viewer->registerKeyboardCallback(KeyboardEventOccurred, (void*)&viewer);
+	viewer->setBackgroundColor(0, 0, 0);
+	viewer->addCoordinateSystem(1.0);
+	viewer->initCameraParameters();
+
+	now = 1;
+	pairs_count = id_end + 1;
+	PointCloudPtr cloud_all(new PointCloudT);
+	PointCloudPtr tran_cloud(new PointCloudT);
+	*cloud_all += *clouds[now - 1];
+	pcl::transformPointCloud(*clouds[now], *tran_cloud, trans[now]);
+	*cloud_all += *tran_cloud;
+
+	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud_all);
+	viewer->addPointCloud<pcl::PointXYZRGB>(cloud_all, rgb, "cloud");
+	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
+
+	while (!viewer->wasStopped())
+	{
+		viewer->spinOnce(100);
+		//boost::this_thread::sleep (boost::posix_time::microseconds (100000));
+	}
+}
+
+void read_txt()
+{
+	ofstream outfile("read.txt");
+	for (int i = 0; i < 2870; i++)
+	{
+		stringstream s1, s2;
+		s1 << i;
+
+		for (int j = 0; j < 5 - s1.str().length(); j++)
+		{
+			s2 << '0';
+		}
+		s2 << s1.str();
+		outfile << "rgb/" << s2.str() << ".jpg depth/" << s2.str() << ".png" << endl;
+	}
+	outfile.close();
+}
+
 int main()
 {
 	//keyframe_test();
 	//something();
 	//icp_test();
-	Ransac_Test();
+	//Ransac_Test();
+	Ransac_Result_Show();
+	//Registration_Result_Show();
+	//read_txt();
 }

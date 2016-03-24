@@ -196,7 +196,7 @@ bool HogmanManager::addNode(Frame* frame, float weight, bool is_keyframe_candida
 						Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = tran2.topLeftCorner(3, 3);
 						int threads = Config::instance()->get<int>("icpcuda_threads");
 						int blocks = Config::instance()->get<int>("icpcuda_blocks");
-						icpcuda->getIncrementalTransformation(tra, rot, threads, blocks);
+						//icpcuda->getIncrementalTransformation(tra, rot, threads, blocks);
 						tran2.topLeftCorner(3, 3) = rot;
 						tran2.topRightCorner(3, 1) = tra;
 

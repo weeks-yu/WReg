@@ -85,8 +85,9 @@ private:
 
 	Eigen::Matrix4f last_kc_tran;
 
-	vector<bool> is_keyfram_pose_set;
-	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> keyframe_poses;
+	map<int, bool> edge_updated;
+	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> temp_poses;
+	vector<bool> is_keyframe_pose_set;
 
 public:
 
@@ -131,4 +132,6 @@ public:
 		const TKeyFrameID current_kf,
 		const SrbaGraphT::k2f_edge_t *edge,
 		const topo_dist_t cur_dist);
+
+	void set_non_keyframe_poses(const TKeyFrameID kf_ID);
 };

@@ -7,7 +7,7 @@ SlamEngine::SlamEngine()
 	frame_id = 0;
 
 	using_downsampling = true;
-	downsample_rate = 0.02;
+	downsample_rate = 0.01;
 
 	using_srba_optimizer = true;
 	feature_type = SURF;
@@ -205,7 +205,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			if (weight > max_fit) max_fit = weight;
 			std::cout << ", Weight: " << fixed << setprecision(3) << weight;
 
-			relative_tran = tran * last_transformation;	
+			relative_tran = tran * last_transformation;
 		}
 		if (using_icpcuda)
 		{
@@ -213,10 +213,14 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			icpcuda->initICPModel((unsigned short *)last_depth.data, 20.0f, Eigen::Matrix4f::Identity());
 			icpcuda->initICP((unsigned short *)imgDepth.data, 20.0f);
 
-			Eigen::Vector3f trans = relative_tran.topRightCorner(3, 1);
+			Eigen::Vector3f t = relative_tran.topRightCorner(3, 1);
 			Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = relative_tran.topLeftCorner(3, 3);
 
-			icpcuda->getIncrementalTransformation(trans, rot, threads, blocks);
+			Eigen::Matrix4f estimated_tran = Eigen::Matrix4f::Identity();
+			Eigen::Vector3f estimated_t = estimated_tran.topRightCorner(3, 1);
+			Eigen::Matrix<float, 3, 3, Eigen::RowMajor> estimated_rot = estimated_tran.topLeftCorner(3, 3);
+
+			icpcuda->getIncrementalTransformation(t, rot, estimated_t, estimated_rot, threads, blocks);
 
 			step_time = (clock() - step_start) / 1000.0;
 			if (step_time < min_icp_time) min_icp_time = step_time;
@@ -230,11 +234,11 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			std::cout << ", Weight: " << fixed << setprecision(3) << weight;
 
 			relative_tran.topLeftCorner(3, 3) = rot;
-			relative_tran.topRightCorner(3, 1) = trans;
+			relative_tran.topRightCorner(3, 1) = t;
 		}
 		if (using_hogman_optimizer)
 		{
-			global_tran = relative_tran * hogman_manager.getLastTransformation();
+			global_tran = hogman_manager.getLastTransformation() * relative_tran;
 			Frame *frame_now;
 			if (IsTransformationBigEnough(hogman_manager.getLastKeyframeTransformation().inverse() * global_tran))
 			{
@@ -276,7 +280,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 		}
 		else if (using_srba_optimizer)
 		{
-			global_tran = relative_tran * srba_manager.getLastTransformation();
+			global_tran = srba_manager.getLastTransformation() * relative_tran;
 			Frame *frame_now;
 			if (IsTransformationBigEnough(srba_manager.getLastKeyframeTransformation().inverse() * global_tran))
 			{
@@ -291,6 +295,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				}
 				frame_now->f.buildFlannIndex();
 				frame_now->relative_tran = relative_tran;
+				frame_now->tran = global_tran;
 				step_time = (clock() - step_start) / 1000.0;
 				std::cout << endl;
 				std::cout << "Feature: " << fixed << setprecision(3) << step_time;
@@ -319,7 +324,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 		}
 		else
 		{
-			transformation_matrix.push_back(relative_tran * transformation_matrix[frame_id - 1]);
+			transformation_matrix.push_back(transformation_matrix[frame_id - 1] * relative_tran);
 		}
 		last_transformation = relative_tran;
 		last_cloud = cloud_for_registration;

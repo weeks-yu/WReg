@@ -113,7 +113,8 @@ void ICPOdometry::initICPModel(unsigned short * depth,
     cudaDeviceSynchronize();
 }
 
-void ICPOdometry::getIncrementalTransformation(Eigen::Vector3f & trans, Eigen::Matrix<float, 3, 3, Eigen::RowMajor> & rot, int threads, int blocks)
+void ICPOdometry::getIncrementalTransformation(Eigen::Vector3f & trans, Eigen::Matrix<float, 3, 3, Eigen::RowMajor> & rot,
+	Eigen::Vector3f & estimated_trans, Eigen::Matrix<float, 3, 3, Eigen::RowMajor> & estimated_rot, int threads, int blocks)
 {
     iterations.push_back(10);
     iterations.push_back(5);
@@ -122,8 +123,8 @@ void ICPOdometry::getIncrementalTransformation(Eigen::Vector3f & trans, Eigen::M
     Eigen::Matrix<float, 3, 3, Eigen::RowMajor> Rprev = rot;
     Eigen::Vector3f tprev = trans;
 
-    Eigen::Matrix<float, 3, 3, Eigen::RowMajor> Rcurr = Rprev;
-    Eigen::Vector3f tcurr = tprev;
+    Eigen::Matrix<float, 3, 3, Eigen::RowMajor> Rcurr = estimated_rot;
+    Eigen::Vector3f tcurr = estimated_trans;
 
     Eigen::Matrix<float, 3, 3, Eigen::RowMajor> Rprev_inv = Rprev.inverse();
     Mat33 & device_Rprev_inv = device_cast<Mat33>(Rprev_inv);

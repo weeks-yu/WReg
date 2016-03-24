@@ -395,7 +395,7 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform, float
 		return false;
 	}
 
-	unsigned int min_inlier_threshold = (unsigned int)Config::instance()->get<int>("min_inliers");
+	unsigned int min_inlier_threshold = (unsigned int)(initial_matches.size() * Config::instance()->get<float>("min_inliers_percent"));
 	std::vector<cv::DMatch> inlier; //holds those feature correspondences that support the transformation
 	double inlier_error; //all squared errors
 	srand((long)std::clock());
