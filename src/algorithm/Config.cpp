@@ -10,7 +10,7 @@ Config::Config() {
 	// RANSAC
 	config["candidate_number"]		= static_cast<int>    (10);
 	config["min_matches"]			= static_cast<int>    (100);
-	config["min_inliers_percent"]	= static_cast<float>  (0.2);
+	config["min_inliers_percent"]	= static_cast<float>  (0.3);
 	config["max_dist_for_inliers"]	= static_cast<double> (0.03);
 	config["matches_criterion"]		= static_cast<float>  (0.75);
 
@@ -42,7 +42,7 @@ Config::Config() {
 	config["camera_fy"]				= static_cast<double> (516.5);
 	config["camera_cx"]				= static_cast<double> (318.6);
 	config["camera_cy"]				= static_cast<double> (255.3);
-	config["depth_factor"]			= static_cast<double> (5000.0);
+	config["depth_factor"]			= static_cast<double> (1000.0);
 
 	// hogman parameters
 	config["graph_levels"]			= static_cast<int>    (3);

@@ -314,10 +314,10 @@ void MainWindow::onBenchmarkOneIterationDone(const cv::Mat &rgb, const cv::Mat &
 		tempDepth.cols * tempDepth.channels(),
 		QImage::Format_RGB888);
 	benchmarkViewer->ShowDepthImage(depthImage);
-	if (engine->GetFrameID() % 30 == 0)
-	{
-		benchmarkViewer->ShowPointCloud(engine->GetScene());
-	}
+// 	if (engine->GetFrameID() % 30 == 0)
+// 	{
+// 		benchmarkViewer->ShowPointCloud(engine->GetScene());
+// 	}
 }
 
 void MainWindow::onBenchmarkRegistrationDone()

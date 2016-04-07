@@ -219,10 +219,14 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 			obs_field.obs.obs_data.roll = 0;
 			list_obs.push_back(obs_field);
 
-			bool has_edge_to_last_keyframe = false;
+			//bool has_edge_to_last_keyframe = false;
 
 			for (int i = 0; i < frames.size(); i++)
 			{
+				if (keyframe_id[this->active_window.active_frames[frames[i]]] == keyframe_indices.size() - 2)
+				{
+					continue; // do not run ransac between this and last keyframe
+				}
 				Eigen::Matrix4f tran;
 				float rmse;
 				vector<cv::DMatch> inliers;
@@ -255,11 +259,6 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 					list_obs.push_back(obs_field);
 					count++;
 
-					if (keyframe_id[this->active_window.active_frames[frames[i]]] == keyframe_indices.size() - 2)
-					{
-						has_edge_to_last_keyframe = true;
-					}
-
 					for (int j = 0; j < inliers.size(); j++)
 					{
 						cv::KeyPoint keypoint = this->graph[k]->f.feature_pts[inliers[j].queryIdx];
@@ -273,8 +272,10 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 				}
 			}
 
-			if (!has_edge_to_last_keyframe && keyframe_indices.size() > 1)
+			if (keyframe_indices.size() > 1)
 			{
+				// add observation between this and last keyframe
+				// using icp results as relative pose
 				obs_field.is_fixed = false;   // "Landmarks" (relative poses) have unknown relative positions (i.e. treat them as unknowns to be estimated)
 				obs_field.is_unknown_with_init_val = false; // Ignored, since all observed "fake landmarks" already have an initialized value.
 

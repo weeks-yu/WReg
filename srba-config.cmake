@@ -34,7 +34,7 @@ SET(SRBA_REQUIRED_MRPT_MODULES base opengl graphs tfest)
 # Extract the directory where *this* file has been installed (determined at cmake run-time)
 get_filename_component(THIS_SRBA_CONFIG_PATH "${CMAKE_CURRENT_LIST_FILE}" PATH)
 
-SET(SRBA_INCLUDE_DIRS "G:/srba/include")  # SRBA include directories
+SET(SRBA_INCLUDE_DIRS "E:/lab/srba/include")  # SRBA include directories
 
 # Compiler flags:
 if(MSVC)
