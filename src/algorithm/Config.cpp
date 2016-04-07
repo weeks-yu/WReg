@@ -15,8 +15,9 @@ Config::Config() {
 	config["matches_criterion"]		= static_cast<float>  (0.75);
 
 	// Keyframe
-	config["min_translation_meter"] = static_cast<double> (0.1);
-	config["min_rotation_degree"]	= static_cast<double> (10.0);
+	config["max_keyframe_interval"] = static_cast<int>    (15);
+	config["min_translation_meter"] = static_cast<double> (0.25);
+	config["min_rotation_degree"]	= static_cast<double> (15.0);
 	config["keyframe_check_N"]		= static_cast<int>    (4);
 	config["keyframe_check_M"]		= static_cast<int>    (4);
 	config["keyframe_check_F"]		= static_cast<int>    (1);

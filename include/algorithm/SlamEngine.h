@@ -69,6 +69,9 @@ public:
 		out.close();
 	}
 
+private:
+	bool IsTransformationBigEnough();
+
 public:
 	vector<pair<cv::Mat, cv::Mat>> keyframe_candidates;
 	vector<pair<cv::Mat, cv::Mat>> keyframes;
@@ -80,6 +83,8 @@ private:
 
 	// results
 	Eigen::Matrix4f last_transformation;
+	Eigen::Matrix4f accumulated_transformation;
+	int accumulated_frame_count;
 	vector<Eigen::Matrix4f> transformation_matrix;
 	vector<PointCloudPtr> point_clouds;
 	vector<double> timestamps;

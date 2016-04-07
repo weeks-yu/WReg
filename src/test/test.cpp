@@ -207,7 +207,92 @@ void something()
 
 void icp_test()
 {
+	const int icount = 6;
+	std::string rname[icount], dname[icount];
+	rname[0] = "G:/kinect data/living_room_1/rgb/00590.jpg";
+	rname[1] = "G:/kinect data/living_room_1/rgb/00591.jpg";
+	rname[2] = "G:/kinect data/living_room_1/rgb/00592.jpg";
+	rname[3] = "G:/kinect data/living_room_1/rgb/00593.jpg";
+	rname[4] = "G:/kinect data/living_room_1/rgb/00594.jpg";
+	rname[5] = "G:/kinect data/living_room_1/rgb/00595.jpg";
 
+	dname[0] = "G:/kinect data/living_room_1/depth/00590.png";
+	dname[1] = "G:/kinect data/living_room_1/depth/00591.png";
+	dname[2] = "G:/kinect data/living_room_1/depth/00592.png";
+	dname[3] = "G:/kinect data/living_room_1/depth/00593.png";
+	dname[4] = "G:/kinect data/living_room_1/depth/00594.png";
+	dname[5] = "G:/kinect data/living_room_1/depth/00595.png";
+
+	cv::Mat r[icount], d[icount];
+	PointCloudPtr cloud[icount];
+
+	for (int i = 0; i < icount; i++)
+	{
+		r[i] = cv::imread(rname[i]);
+		d[i] = cv::imread(dname[i], -1);
+		cloud[i] = ConvertToPointCloudWithoutMissingData(d[i], r[i], i, i);
+	}
+
+	ICPOdometry *icpcuda = nullptr;
+	int threads = Config::instance()->get<int>("icpcuda_threads");
+	int blocks = Config::instance()->get<int>("icpcuda_blocks");
+	int width = Config::instance()->get<int>("image_width");
+	int height = Config::instance()->get<int>("image_height");
+	double cx = Config::instance()->get<double>("camera_cx");
+	double cy = Config::instance()->get<double>("camera_cy");
+	double fx = Config::instance()->get<double>("camera_fx");
+	double fy = Config::instance()->get<double>("camera_fy");
+	double depthFactor = Config::instance()->get<double>("depth_factor");
+	if (icpcuda == nullptr)
+		icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor);
+
+	trans.push_back(Eigen::Matrix4f::Identity());
+
+	for (int i = 1; i < icount; i++)
+	{
+		cout << i << endl;
+		icpcuda->initICPModel((unsigned short *)d[i - 1].data, 20.0f, Eigen::Matrix4f::Identity());
+		icpcuda->initICP((unsigned short *)d[i].data, 20.0f);
+
+		Eigen::Matrix4f ret_tran = Eigen::Matrix4f::Identity();
+		Eigen::Vector3f ret_t = ret_tran.topRightCorner(3, 1);
+		Eigen::Matrix<float, 3, 3, Eigen::RowMajor> ret_rot = ret_tran.topLeftCorner(3, 3);
+
+		Eigen::Matrix4f estimated_tran = Eigen::Matrix4f::Identity();
+		Eigen::Vector3f t = estimated_tran.topRightCorner(3, 1);
+		Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = estimated_tran.topLeftCorner(3, 3);
+
+		icpcuda->getIncrementalTransformation(ret_t, ret_rot, t, rot, threads, blocks);
+
+		ret_tran.topLeftCorner(3, 3) = ret_rot;
+		ret_tran.topRightCorner(3, 1) = ret_t;
+
+		trans.push_back(ret_tran);
+	}
+
+
+	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("test"));
+	viewer->setBackgroundColor(0, 0, 0);
+	viewer->addCoordinateSystem(1.0);
+	viewer->initCameraParameters();
+
+	Eigen::Matrix4f tran = Eigen::Matrix4f::Identity();
+	for (int i = 0; i < icount; i++)
+	{
+		tran = tran * trans[i];
+		PointCloudPtr tran_cloud(new PointCloudT);
+		pcl::transformPointCloud(*cloud[i], *tran_cloud, tran);
+
+		pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(tran_cloud);
+		viewer->addPointCloud<pcl::PointXYZRGB>(tran_cloud, rgb, rname[i]);
+		viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, rname[i]);
+	}
+
+	while (!viewer->wasStopped())
+	{
+		viewer->spinOnce(100);
+		//boost::this_thread::sleep (boost::posix_time::microseconds (100000));
+	}
 }
 
 void Ransac_Test()
@@ -786,9 +871,9 @@ int main()
 {
 	//keyframe_test();
 	//something();
-	//icp_test();
+	icp_test();
 	//Ransac_Test();
 	//Ransac_Result_Show();
-	Registration_Result_Show();
+	//Registration_Result_Show();
 	//read_txt();
 }

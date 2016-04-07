@@ -259,6 +259,7 @@ void MainWindow::onBenchmarkPushButtonSaveKeyframesClicked(bool checked)
 		if (!engine)
 			return;
 
+		cout << engine->keyframe_candidates.size() << endl;
 		for (int i = 0; i < engine->keyframe_candidates.size(); i++)
 		{
 			QString fn = fi.absoluteFilePath() + "/keyframe_candidate_" + QString::number(i) + "_rgb.png";
@@ -267,6 +268,7 @@ void MainWindow::onBenchmarkPushButtonSaveKeyframesClicked(bool checked)
 // 			cv::imwrite(fn.toStdString(), engine->keyframe_candidates[i].second);
 		}
 
+		cout << engine->keyframes.size() << endl;
 		for (int i = 0; i < engine->keyframes.size(); i++)
 		{
 			QString inliers_sig = QString::fromStdString(engine->keyframes_inliers_sig[i]);

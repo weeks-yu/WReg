@@ -31,6 +31,9 @@ SlamEngine::SlamEngine()
 	total_icp_time = 0;
 	min_fit = numeric_limits<float>::max();
 	max_fit = 0;
+
+	accumulated_frame_count = 0;
+	accumulated_transformation = Eigen::Matrix4f::Identity();
 }
 
 SlamEngine::~SlamEngine()
@@ -161,6 +164,8 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 		{
 			transformation_matrix.push_back(Eigen::Matrix4f::Identity());
 		}
+		accumulated_frame_count = 0;
+		accumulated_transformation = Eigen::Matrix4f::Identity();
 		last_transformation = Eigen::Matrix4f::Identity();
 	}
 	else
@@ -236,11 +241,14 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			relative_tran.topLeftCorner(3, 3) = rot;
 			relative_tran.topRightCorner(3, 1) = t;
 		}
+		accumulated_frame_count++;
+		accumulated_transformation = accumulated_transformation * relative_tran;
+
 		if (using_hogman_optimizer)
 		{
 			global_tran = hogman_manager.getLastTransformation() * relative_tran;
 			Frame *frame_now;
-			if (IsTransformationBigEnough(hogman_manager.getLastKeyframeTransformation().inverse() * global_tran))
+			if (IsTransformationBigEnough())
 			{
 				step_start = clock();
 				if (feature_type == SIFT)
@@ -255,6 +263,9 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				step_time = (clock() - step_start) / 1000.0;
 				std::cout << endl;
 				std::cout << "Feature: " << fixed << setprecision(3) << step_time;
+
+				accumulated_frame_count = 0;
+				accumulated_transformation = Eigen::Matrix4f::Identity();
 
 				// test
 				string inliers, exists;
@@ -282,7 +293,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 		{
 			global_tran = srba_manager.getLastTransformation() * relative_tran;
 			Frame *frame_now;
-			if (IsTransformationBigEnough(srba_manager.getLastKeyframeTransformation().inverse() * global_tran))
+			if (IsTransformationBigEnough())
 			{
 				step_start = clock();
 				if (feature_type == SIFT)
@@ -297,15 +308,18 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				frame_now->relative_tran = relative_tran;
 				frame_now->tran = global_tran;
 				step_time = (clock() - step_start) / 1000.0;
+
 				std::cout << endl;
 				std::cout << "Feature: " << fixed << setprecision(3) << step_time;
+
+				accumulated_frame_count = 0;
+				accumulated_transformation = Eigen::Matrix4f::Identity();
 
 				// test
 				string inliers, exists;
 				bool isKeyframe = srba_manager.addNode(frame_now, weight, true, &inliers, &exists);
 
 				// record all keyframe
-
 				keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 				if (isKeyframe)
 				{
@@ -428,4 +442,28 @@ void SlamEngine::ShowStatistics()
 		cout << "Min Edge Weight       : " << srba_manager.min_edge_weight << "\t\tMax Edge Weight: " << srba_manager.max_edge_weight << endl;
 	}
 	cout << endl;
+}
+
+bool SlamEngine::IsTransformationBigEnough()
+{
+	if (accumulated_frame_count >= Config::instance()->get<int>("max_keyframe_interval"))
+	{
+		return true;
+	}
+
+	Eigen::Vector3f t = TranslationFromMatrix4f(accumulated_transformation);
+	double tnorm = t.norm();
+	Eigen::Vector3f e = EulerAngleFromQuaternion(QuaternionFromMatrix4f(accumulated_transformation));
+	e *= 180.0 / M_PI;
+	double max_angle = std::max(e(0), std::max(e(1), e(2)));
+
+	cout << ", " << tnorm << ", " << max_angle;
+
+	if (tnorm > Config::instance()->get<double>("min_translation_meter")
+		|| max_angle > Config::instance()->get<double>("min_rotation_degree"))
+	{
+		return true;
+	}
+
+	return false;
 }

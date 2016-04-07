@@ -66,16 +66,6 @@ Eigen::Vector3f YawPitchRollFromMatrix4f(const Eigen::Matrix4f &matrix)
 	return a.rotation().eulerAngles(2, 1, 0);
 }
 
-bool IsTransformationBigEnough(const Eigen::Matrix4f &matrix)
-{
-	Eigen::Vector3f t = TranslationFromMatrix4f(matrix);
-	Eigen::Vector3f e = EulerAngleFromQuaternion(QuaternionFromMatrix4f(matrix));
-	e *= 180.0 / M_PI;
-	double max_angle = std::max(e(0), std::max(e(1), e(2)));
-	return (t.norm() > Config::instance()->get<double>("min_translation_meter")
-		|| max_angle > Config::instance()->get<double>("min_rotation_degree"));
-}
-
 Transformation3 eigenToHogman(const Eigen::Matrix4f &eigen_matrix) {
 
 	Eigen::Affine3f eigen_transform(eigen_matrix);
