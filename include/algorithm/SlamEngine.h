@@ -73,7 +73,9 @@ private:
 	bool IsTransformationBigEnough();
 
 public:
+	vector<int> keyframe_candidates_id;
 	vector<pair<cv::Mat, cv::Mat>> keyframe_candidates;
+	vector<int> keyframes_id;
 	vector<pair<cv::Mat, cv::Mat>> keyframes;
 	vector<string> keyframes_inliers_sig;
 	vector<string> keyframes_exists_sig;

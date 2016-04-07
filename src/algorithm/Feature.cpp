@@ -154,9 +154,9 @@ bool Feature::findMatchedPairsMultiple(vector<int> &frames, vector<vector<cv::DM
 
 	int frame_count = this->getFrameCount();
 
-	if (frame_count * 3 < k)
+	if (frame_count * 4 < k)
 	{
-		k = frame_count * 3;
+		k = frame_count * 4;
 	}
 
 	cv::Mat indices(other.feature_descriptors.rows, k, CV_32S);
@@ -390,7 +390,7 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform, float
 {
 	if (matches != nullptr)	matches->clear();
 
-	if (initial_matches.size() <= (unsigned int) Config::instance()->get<int>("min_matches"))
+	if (initial_matches.size() < (unsigned int) Config::instance()->get<int>("min_matches"))
 	{
 		return false;
 	}

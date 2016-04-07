@@ -9,7 +9,7 @@ Config::Config() {
 
 	// RANSAC
 	config["candidate_number"]		= static_cast<int>    (10);
-	config["min_matches"]			= static_cast<int>    (100);
+	config["min_matches"]			= static_cast<int>    (50);
 	config["min_inliers_percent"]	= static_cast<float>  (0.3);
 	config["max_dist_for_inliers"]	= static_cast<double> (0.03);
 	config["matches_criterion"]		= static_cast<float>  (0.75);
@@ -21,17 +21,17 @@ Config::Config() {
 	config["keyframe_check_N"]		= static_cast<int>    (4);
 	config["keyframe_check_M"]		= static_cast<int>    (4);
 	config["keyframe_check_F"]		= static_cast<int>    (1);
-	config["keyframe_check_P"]		= static_cast<double> (0.8);
+	config["keyframe_check_P"]		= static_cast<double> (0.75);
 
 	// KDTree
 	config["kdtree_trees"]			= static_cast<int>    (4);
 	config["kdtree_max_leaf"]		= static_cast<int>    (64);
-	config["kdtree_max_leaf_mult"]	= static_cast<int>    (128);
-	config["kdtree_k_mult"]			= static_cast<int>    (30);
+	config["kdtree_max_leaf_mult"]	= static_cast<int>    (512);
+	config["kdtree_k_mult"]			= static_cast<int>    (60);
 
 	// Quad Tree
 	config["quadtree_size"]			= static_cast<float>  (20.0);
-	config["active_window_size"]	= static_cast<float>  (5.0);
+	config["active_window_size"]	= static_cast<float>  (2.0);
 
 	// HOG-man
 	config["hogman_iterations"]		= static_cast<int>    (10);
@@ -43,7 +43,7 @@ Config::Config() {
 	config["camera_fy"]				= static_cast<double> (516.5);
 	config["camera_cx"]				= static_cast<double> (318.6);
 	config["camera_cy"]				= static_cast<double> (255.3);
-	config["depth_factor"]			= static_cast<double> (1000.0);
+	config["depth_factor"]			= static_cast<double> (5000.0);
 
 	// hogman parameters
 	config["graph_levels"]			= static_cast<int>    (3);
@@ -52,6 +52,8 @@ Config::Config() {
 	// cuda parameters
 	config["icpcuda_threads"]		= static_cast<int>    (240);
 	config["icpcuda_blocks"]		= static_cast<int>    (80);
+	config["dist_threshold"]		= static_cast<double> (0.1);
+	config["angle_threshold"]		= static_cast<double> (0.34202);
 
 // 	config["start_paused"]                 =  static_cast<bool>  (1);
 // 	config["subscriber_queue_size"]        =  static_cast<int>   (20);

@@ -70,6 +70,11 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 	graph.push_back(frame);
 	temp_poses.push_back(frame->tran);
 
+	if (graph.size() == 598)
+	{
+		int a = 1;
+	}
+
 	if (!is_keyframe_candidate)
 		return false;
 
@@ -195,7 +200,7 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 					keyframeExists[tM * N + tN] = true;
 				}
 			}
-
+			std::cout << ", aw: " << active_window.active_frames.size();
 			vector<int> frames;
 			vector<vector<cv::DMatch>> matches;
 			this->active_window.feature_pool->findMatchedPairsMultiple(frames, matches, this->graph[k]->f,
@@ -225,7 +230,7 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 			{
 				if (keyframe_id[this->active_window.active_frames[frames[i]]] == keyframe_indices.size() - 2)
 				{
-					continue; // do not run ransac between this and last keyframe
+					//continue; // do not run ransac between this and last keyframe
 				}
 				Eigen::Matrix4f tran;
 				float rmse;
@@ -340,16 +345,17 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 // 				<< " | # kf-to-kf edges created:" << new_kf_info.created_edge_ids.size() << endl
 // 				<< "Optimization error: " << new_kf_info.optimize_results.total_sqr_error_init << " -> " << new_kf_info.optimize_results.total_sqr_error_final << endl
 // 				<< "-------------------------------------------------------" << endl;
-
+			cout << endl;
 			for (int i = 0; i < M; i++)
 			{
 				for (int j = 0; j < N; j++)
 				{
+					cout << keyframeTest[i * N + j] << " ";
 					if (keyframeTest[i * N + j] >= F)
 						keyframeTestCount++;
 				}
 			}
-
+			cout << endl;
 			// for test
 			if (inliers_sig != nullptr)
 			{

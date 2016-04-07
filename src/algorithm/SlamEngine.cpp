@@ -75,8 +75,10 @@ void SlamEngine::setUsingIcpcuda(bool use)
 		double fx = Config::instance()->get<double>("camera_fx");
 		double fy = Config::instance()->get<double>("camera_fy");
 		double depthFactor = Config::instance()->get<double>("depth_factor");
+		double distThresh = Config::instance()->get<double>("dist_threshold");
+		double angleThresh = Config::instance()->get<double>("angle_threshold");
 		if (icpcuda == nullptr)
-			icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor);
+			icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor, distThresh, angleThresh);
 	}
 	else if (icpcuda)
 	{
@@ -128,9 +130,11 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			// test
 			string inliers, exists;
 			bool isKeyframe = hogman_manager.addNode(frame, 1.0, true, &inliers, &exists);
+			keyframe_candidates_id.push_back(frame_id);
 			keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 			if (isKeyframe)
 			{
+				keyframes_id.push_back(frame_id);
 				keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 				keyframes_inliers_sig.push_back(inliers);
 				keyframes_exists_sig.push_back(exists);
@@ -152,9 +156,11 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			srba_manager.active_window.build(0.0, 0.0, Config::instance()->get<float>("quadtree_size"), 4);
 			string inliers, exists;
 			bool isKeyframe = srba_manager.addNode(frame, 1.0, true, &inliers, &exists);
+			keyframe_candidates_id.push_back(frame_id);
 			keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 			if (isKeyframe)
 			{
+				keyframes_id.push_back(frame_id);
 				keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 				keyframes_inliers_sig.push_back(inliers);
 				keyframes_exists_sig.push_back(exists);
@@ -272,10 +278,11 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				bool isKeyframe = hogman_manager.addNode(frame_now, weight, true, &inliers, &exists);
 
 				// record all keyframe
-				
+				keyframe_candidates_id.push_back(frame_id);
 				keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 				if (isKeyframe)
 				{
+					keyframes_id.push_back(frame_id);
 					keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 					keyframes_inliers_sig.push_back(inliers);
 					keyframes_exists_sig.push_back(exists);
@@ -320,9 +327,11 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				bool isKeyframe = srba_manager.addNode(frame_now, weight, true, &inliers, &exists);
 
 				// record all keyframe
+				keyframe_candidates_id.push_back(frame_id);
 				keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 				if (isKeyframe)
 				{
+					keyframes_id.push_back(frame_id);
 					keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 					keyframes_inliers_sig.push_back(inliers);
 					keyframes_exists_sig.push_back(exists);
@@ -455,7 +464,7 @@ bool SlamEngine::IsTransformationBigEnough()
 	double tnorm = t.norm();
 	Eigen::Vector3f e = EulerAngleFromQuaternion(QuaternionFromMatrix4f(accumulated_transformation));
 	e *= 180.0 / M_PI;
-	double max_angle = std::max(e(0), std::max(e(1), e(2)));
+	double max_angle = std::max(fabs(e(0)), std::max(fabs(e(1)), fabs(e(2))));
 
 	cout << ", " << tnorm << ", " << max_angle;
 

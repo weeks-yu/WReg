@@ -297,15 +297,13 @@ void icp_test()
 
 void Ransac_Test()
 {
-	const int icount = 3;
+	const int icount = 2;
 	std::string rname[icount], dname[icount];
-	rname[0] = "E:/lab/test/r1.png";
-	rname[1] = "E:/lab/test/r2.png";
-	rname[2] = "E:/lab/test/r3.png";
+	rname[0] = "G:/kinect data/living_room_1/rgb/00038.jpg";
+	rname[1] = "G:/kinect data/living_room_1/rgb/00053.jpg";
 
-	dname[0] = "E:/lab/test/d1.png";
-	dname[1] = "E:/lab/test/d2.png";
-	dname[2] = "E:/lab/test/d3.png";
+	dname[0] = "G:/kinect data/living_room_1/depth/00038.png";
+	dname[1] = "G:/kinect data/living_room_1/depth/00053.png";
 
 	cv::Mat r[icount], d[icount];
 	PointCloudPtr cloud[icount];
@@ -318,6 +316,9 @@ void Ransac_Test()
 	f[0] = new Frame(r[0], d[0], "SURF", Eigen::Matrix4f::Identity());
 	f[0]->f.buildFlannIndex();
 
+	int N = 4, M = 4;
+	int keyframeTest[16] = {0};
+
 	for (int i = 1; i < icount; i++)
 	{
 		r[i] = cv::imread(rname[i]);
@@ -328,29 +329,25 @@ void Ransac_Test()
 		vector<cv::DMatch> matches;
 		f[0]->f.findMatchedPairs(matches, f[i]->f, 128, 2);
 
-		Eigen::Matrix4f tran;
+		Eigen::Matrix4f tran = Eigen::Matrix4f::Identity();
 		float rmse;
 		vector<cv::DMatch> inliers;
 		Feature::getTransformationByRANSAC(tran, rmse, &inliers,
 			&f[0]->f, &f[i]->f, matches);
+		cout << matches.size() << ", " << inliers.size() << endl;
+
+		for (int j = 0; j < inliers.size(); j++)
+		{
+			cv::KeyPoint keypoint = f[i]->f.feature_pts[inliers[j].queryIdx];
+			int tN = N * keypoint.pt.x / 640;
+			int tM = M * keypoint.pt.y / 480;
+			tN = tN < 0 ? 0 : (tN >= N ? N - 1 : tN);
+			tM = tM < 0 ? 0 : (tM >= M ? M - 1 : tM);
+
+			keyframeTest[tM * N + tN]++;
+		}
 
 		pcl::transformPointCloud(*cloud[i], *cloud[i], tran);
-
-		Eigen::Vector3f translation = TranslationFromMatrix4f(tran);
-		Eigen::Vector3f ypr = YawPitchRollFromMatrix4f(tran);
-		SrbaGraphT::pose_t pose;
-		pose.x() = translation(0);
-		pose.y() = translation(1);
-		pose.z() = translation(2);
-		pose.setYawPitchRoll(ypr(0), ypr(1), ypr(2));
-		mrpt::math::CQuaternionDouble q;
-		pose.getAsQuaternion(q);
-		Eigen::Quaternionf quaternion(q.r(), q.x(), q.y(), q.z());
-		Eigen::Matrix4f tt = transformationFromQuaternionsAndTranslation(quaternion, translation);
-		if (tt != tran)
-		{
-			int b = 1;
-		}
 	}
 
 	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("test"));
@@ -867,13 +864,31 @@ void read_txt()
 	outfile.close();
 }
 
+void feature_test()
+{
+	std::string name;
+	cin >> name;
+	std::string rname = "G:/kinect data/living_room_1/rgb/" + name + ".jpg";
+	std::string dname = "G:/kinect data/living_room_1/depth/" + name + ".png";
+	cv::Mat r, d;
+	r = cv::imread(rname);
+	d = cv::imread(dname, -1);
+	Frame *f = new Frame(r, d, "SURF", Eigen::Matrix4f::Identity());
+	
+	cv::Mat result;
+	cv::drawKeypoints(r, f->f.feature_pts, result);
+	cv::imshow("result", result);
+	cv::waitKey();
+}
+
 int main()
 {
 	//keyframe_test();
 	//something();
-	icp_test();
-	//Ransac_Test();
+	//icp_test();
+	Ransac_Test();
 	//Ransac_Result_Show();
 	//Registration_Result_Show();
 	//read_txt();
+	//feature_test();
 }

@@ -262,7 +262,7 @@ void MainWindow::onBenchmarkPushButtonSaveKeyframesClicked(bool checked)
 		cout << engine->keyframe_candidates.size() << endl;
 		for (int i = 0; i < engine->keyframe_candidates.size(); i++)
 		{
-			QString fn = fi.absoluteFilePath() + "/keyframe_candidate_" + QString::number(i) + "_rgb.png";
+			QString fn = fi.absoluteFilePath() + "/keyframe_candidate_" + QString::number(engine->keyframe_candidates_id[i]) + "_rgb.png";
 			cv::imwrite(fn.toStdString(), engine->keyframe_candidates[i].first);
 // 			fn = fi.absoluteFilePath() + "/keyframe_candidate_" + QString::number(i) + "_depth.png";
 // 			cv::imwrite(fn.toStdString(), engine->keyframe_candidates[i].second);
@@ -273,9 +273,9 @@ void MainWindow::onBenchmarkPushButtonSaveKeyframesClicked(bool checked)
 		{
 			QString inliers_sig = QString::fromStdString(engine->keyframes_inliers_sig[i]);
 			QString exists_sig = QString::fromStdString(engine->keyframes_exists_sig[i]);
-			QString fn = fi.absoluteFilePath() + "/keyframe_" + QString::number(i) + "_rgb_" +
+			QString fn = fi.absoluteFilePath() + "/keyframe_" + QString::number(engine->keyframes_id[i]) + "_rgb_" +
 				inliers_sig + "_" + exists_sig + ".png";
-			cv::imwrite(fn.toStdString(), engine->keyframe_candidates[i].first);
+			cv::imwrite(fn.toStdString(), engine->keyframes[i].first);
 // 			fn = fi.absoluteFilePath() + "/keyframe_" + QString::number(i) + "_depth.png";
 // 			cv::imwrite(fn.toStdString(), engine->keyframe_candidates[i].second);
 		}
