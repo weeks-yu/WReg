@@ -26,12 +26,12 @@ Config::Config() {
 	// KDTree
 	config["kdtree_trees"]			= static_cast<int>    (4);
 	config["kdtree_max_leaf"]		= static_cast<int>    (64);
-	config["kdtree_max_leaf_mult"]	= static_cast<int>    (512);
-	config["kdtree_k_mult"]			= static_cast<int>    (60);
+	config["kdtree_max_leaf_mult"]	= static_cast<int>    (256);
+	config["kdtree_k_mult"]			= static_cast<int>    (30);
 
 	// Quad Tree
 	config["quadtree_size"]			= static_cast<float>  (20.0);
-	config["active_window_size"]	= static_cast<float>  (2.0);
+	config["active_window_size"]	= static_cast<float>  (2.5);
 
 	// HOG-man
 	config["hogman_iterations"]		= static_cast<int>    (10);
@@ -39,11 +39,16 @@ Config::Config() {
 	// Camera parameters
 	config["image_width"]			= static_cast<int>    (640);
 	config["image_height"]			= static_cast<int>    (480);
-	config["camera_fx"]				= static_cast<double> (517.3);
-	config["camera_fy"]				= static_cast<double> (516.5);
-	config["camera_cx"]				= static_cast<double> (318.6);
-	config["camera_cy"]				= static_cast<double> (255.3);
-	config["depth_factor"]			= static_cast<double> (5000.0);
+// 	config["camera_fx"]				= static_cast<double> (517.3);
+// 	config["camera_fy"]				= static_cast<double> (516.5);
+// 	config["camera_cx"]				= static_cast<double> (318.6);
+// 	config["camera_cy"]				= static_cast<double> (255.3);
+	config["camera_fx"]				= static_cast<double> (525.0);
+	config["camera_fy"]				= static_cast<double> (525.0);
+	config["camera_cx"]				= static_cast<double> (315.5);
+	config["camera_cy"]				= static_cast<double> (239.5);
+
+	config["depth_factor"]			= static_cast<double> (1000.0);
 
 	// hogman parameters
 	config["graph_levels"]			= static_cast<int>    (3);

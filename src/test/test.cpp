@@ -6,6 +6,9 @@
 #include <pcl/common/common_headers.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/common/transforms.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
 
 #include <iostream>
 #include <vector>
@@ -209,19 +212,19 @@ void icp_test()
 {
 	const int icount = 6;
 	std::string rname[icount], dname[icount];
-	rname[0] = "G:/kinect data/living_room_1/rgb/00590.jpg";
-	rname[1] = "G:/kinect data/living_room_1/rgb/00591.jpg";
-	rname[2] = "G:/kinect data/living_room_1/rgb/00592.jpg";
-	rname[3] = "G:/kinect data/living_room_1/rgb/00593.jpg";
-	rname[4] = "G:/kinect data/living_room_1/rgb/00594.jpg";
-	rname[5] = "G:/kinect data/living_room_1/rgb/00595.jpg";
+	rname[0] = "E:/lab/pcl/kinect data/living_room_1/rgb/00590.jpg";
+	rname[1] = "E:/lab/pcl/kinect data/living_room_1/rgb/00591.jpg";
+	rname[2] = "E:/lab/pcl/kinect data/living_room_1/rgb/00592.jpg";
+	rname[3] = "E:/lab/pcl/kinect data/living_room_1/rgb/00593.jpg";
+	rname[4] = "E:/lab/pcl/kinect data/living_room_1/rgb/00594.jpg";
+	rname[5] = "E:/lab/pcl/kinect data/living_room_1/rgb/00595.jpg";
 
-	dname[0] = "G:/kinect data/living_room_1/depth/00590.png";
-	dname[1] = "G:/kinect data/living_room_1/depth/00591.png";
-	dname[2] = "G:/kinect data/living_room_1/depth/00592.png";
-	dname[3] = "G:/kinect data/living_room_1/depth/00593.png";
-	dname[4] = "G:/kinect data/living_room_1/depth/00594.png";
-	dname[5] = "G:/kinect data/living_room_1/depth/00595.png";
+	dname[0] = "E:/lab/pcl/kinect data/living_room_1/depth/00590.png";
+	dname[1] = "E:/lab/pcl/kinect data/living_room_1/depth/00591.png";
+	dname[2] = "E:/lab/pcl/kinect data/living_room_1/depth/00592.png";
+	dname[3] = "E:/lab/pcl/kinect data/living_room_1/depth/00593.png";
+	dname[4] = "E:/lab/pcl/kinect data/living_room_1/depth/00594.png";
+	dname[5] = "E:/lab/pcl/kinect data/living_room_1/depth/00595.png";
 
 	cv::Mat r[icount], d[icount];
 	PointCloudPtr cloud[icount];
@@ -881,14 +884,124 @@ void feature_test()
 	cv::waitKey();
 }
 
+void PlaneFitting()
+{
+	std::string name;
+	cin >> name;
+	std::string rname = "G:/kinect data/living_room_1/rgb/" + name + ".jpg";
+	std::string dname = "G:/kinect data/living_room_1/depth/" + name + ".png";
+	cv::Mat r, d;
+	r = cv::imread(rname);
+	d = cv::imread(dname, -1);
+
+	srand((unsigned)time(NULL));
+
+	int plane_ids[640][480];
+
+	for (int i = 0; i < 640; i++)
+	{
+		for (int j = 0; j < 480; j++)
+		{
+			plane_ids[i][j] = -1;
+		}
+	}
+
+	int new_id = 0;
+
+	for (int i = 0; i < 20; i++)
+	{
+		int u, v;
+		do 
+		{
+			u = rand() % 640;
+			v = rand() % 480;
+		} while (d.at<ushort>(v, u) <= 0 || plane_ids[u][v] != -1);
+
+		int u_st = (u - 50) > 0 ? u - 50 : 0;
+		int u_ed = (u + 50) < 640 ? u + 50 : 639;
+		int v_st = (v - 50) > 0 ? v - 50 : 0;
+		int v_ed = (v + 50) < 480 ? v + 50 : 479;
+		vector<pair<int, int>> initial_point_indices;
+		
+		for (int x = u_st; x <= u_ed; x++)
+		{
+			for (int y = v_st; y <= v_ed; y++)
+			{
+				if (d.at<ushort>(y, x) > 0 && plane_ids[x][y] == -1)
+				{
+					initial_point_indices.push_back(pair<int, int>(x, y));
+				}
+			}
+		}
+		vector<pair<int, int>> *inliers = new vector<pair<int, int>>();
+		Eigen::Vector4f plane;
+		Feature::getPlanesByRANSAC(plane, inliers, d, initial_point_indices);
+		if (inliers->size() > 10000)
+		{
+			for (int j = 0; j < inliers->size(); j++)
+			{
+				plane_ids[(*inliers)[j].first][(*inliers)[j].second] = new_id;
+			}
+			new_id++;
+		}
+	}
+
+	int rgb[20][3] = {
+		{ 255, 0, 0 },
+		{ 0, 255, 0 },
+		{ 0, 0, 255 },
+		{ 0, 255, 255 },
+		{ 255, 0, 255 },
+		{ 255, 255, 0 },
+		{ 0, 255, 128 },
+		{ 255, 128, 0 },
+		{ 128, 0, 255 },
+		{ 255, 128, 128 },
+		{ 128, 128, 255 },
+		{ 0, 0, 128 },
+		{ 0, 128, 0 },
+		{ 128, 0, 0 },
+		{ 128, 128, 0 },
+		{ 128, 0, 128 },
+		{ 0, 128, 128 },
+		{ 64, 0, 0 },
+		{ 0, 64, 0 },
+		{ 0, 0, 64 }
+	};
+
+	cv::Mat result;
+	r.copyTo(result);
+	for (int i = 0; i < 640; i++)
+	{
+		for (int j = 0; j < 480; j++)
+		{
+			if (plane_ids[i][j] == -1)
+			{
+				result.at<cv::Vec3b>(i, j)[0] = 200;
+				result.at<cv::Vec3b>(i, j)[1] = 200;
+				result.at<cv::Vec3b>(i, j)[2] = 200;
+			}
+			else
+			{
+				result.at<cv::Vec3b>(i, j)[0] = rgb[plane_ids[i][j]][0];
+				result.at<cv::Vec3b>(i, j)[1] = rgb[plane_ids[i][j]][1];
+				result.at<cv::Vec3b>(i, j)[2] = rgb[plane_ids[i][j]][2];
+			}
+		}
+	}
+
+	cv::imshow("result", result);
+}
+
 int main()
 {
 	//keyframe_test();
 	//something();
 	//icp_test();
-	Ransac_Test();
+	//Ransac_Test();
 	//Ransac_Result_Show();
 	//Registration_Result_Show();
 	//read_txt();
 	//feature_test();
+	PlaneFitting();
 }

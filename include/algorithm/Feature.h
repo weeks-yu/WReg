@@ -104,4 +104,7 @@ public:
 		const Feature* earlier, const Feature* now,
 		const vector<cv::DMatch> &initial_matches,
 		unsigned int ransac_iterations = 1000);
+
+	static bool getPlanesByRANSAC(Eigen::Vector4f &result_plane, vector<pair<int, int>> *matches,
+		const cv::Mat &depth, const vector<pair<int, int>> &initial_point_indices);
 };

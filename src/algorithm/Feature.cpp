@@ -4,6 +4,9 @@
 #include <opencv2/nonfree/features2d.hpp>
 // #include <opencv2/nonfree/nonfree.hpp>
 #include <pcl/common/transformation_from_correspondences.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
 #include "PointCloud.h"
 
 unsigned long* Feature::new_id = nullptr;
@@ -514,4 +517,52 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform, float
 	} //iterations
 
 	return best_inlier_cnt >= min_inlier_threshold;
+}
+
+bool Feature::getPlanesByRANSAC(Eigen::Vector4f &result_plane, vector<pair<int, int>> *matches,
+	const cv::Mat &depth, const vector<pair<int, int>> &initial_point_indices)
+{
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+
+	// Generate the data
+	for (size_t i = 0; i < initial_point_indices.size(); ++i)
+	{
+		Eigen::Vector3f point = ConvertPointTo3D(initial_point_indices[i].first, initial_point_indices[i].second, depth);
+		cloud->push_back(pcl::PointXYZ(point(0), point(1), point(2)));
+	}
+
+	pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
+	pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+	// Create the segmentation object
+	pcl::SACSegmentation<pcl::PointXYZ> seg;
+	// Optional
+	seg.setOptimizeCoefficients(true);
+	// Mandatory
+	seg.setModelType(pcl::SACMODEL_PLANE);
+	seg.setMethodType(pcl::SAC_RANSAC);
+	seg.setDistanceThreshold(0.01);
+
+	seg.setInputCloud(cloud);
+	seg.segment(*inliers, *coefficients);
+
+	if (inliers->indices.size() == 0)
+	{
+		return false;
+	}
+
+	result_plane(0) = coefficients->values[0];
+	result_plane(1) = coefficients->values[1];
+	result_plane(2) = coefficients->values[2];
+	result_plane(3) = coefficients->values[3];
+
+	if (matches != nullptr)
+	{
+		matches->clear();
+		for (size_t i = 0; i < inliers->indices.size(); ++i)
+		{
+			matches->push_back(initial_point_indices[inliers->indices[i]]);
+		}
+	}
+
+	return true;
 }
