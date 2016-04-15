@@ -107,4 +107,6 @@ public:
 
 	static bool getPlanesByRANSAC(Eigen::Vector4f &result_plane, vector<pair<int, int>> *matches,
 		const cv::Mat &depth, const vector<pair<int, int>> &initial_point_indices);
+
+	static float distToPlane(const Eigen::Vector3f &point, const Eigen::Vector4f &plane);
 };

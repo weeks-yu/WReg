@@ -12,7 +12,7 @@ include_directories(${Boost_INCLUDE_DIR})
 include_directories(${CUDA_INCLUDE_DIRS})
 include_directories(${EIGEN_INCLUDE_DIRS})
 
-file(GLOB hdrs *.h)
+file(GLOB hdrs *.h Cuda/*.h Cuda/*.hpp Cuda/containers/*.hpp)
 file(GLOB srcs *.cpp)
 file(GLOB cuda Cuda/*.cu)
 file(GLOB containers Cuda/containers/*.cpp)

@@ -59,10 +59,10 @@ PointCloudPtr ConvertToPointCloudWithoutMissingData(const cv::Mat &depth, const 
 		for (int i = 0; i < rgb.size().width; i++)
 		{
 			ushort temp = depth.at<ushort>(j, i);
-			if (depth.at<ushort>(j, i) != 0)
+			if (temp != 0)
 			{
 				PointT pt;
-				pt.z = ((double)depth.at<ushort>(j, i)) / factor;
+				pt.z = ((double)temp) / factor;
 				pt.x = (i - cx) * pt.z / fx;
 				pt.y = (j - cy) * pt.z / fy;
 				pt.b = rgb.at<cv::Vec3b>(j, i)[0];

@@ -8,7 +8,15 @@
 #include <pcl/common/transforms.h>
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
+#include <pcl/sample_consensus/sac_model_plane.h>
 #include <pcl/segmentation/sac_segmentation.h>
+
+#include <pcl/cuda/point_types.h>
+#include <pcl/cuda/point_cloud.h>
+#include <pcl/cuda/sample_consensus/multi_ransac.h>
+#include <pcl/cuda/sample_consensus/sac_model_1point_plane.h>
+#include <pcl/cuda/segmentation/connected_components.h>
+#include <pcl/cuda/features/normal_3d.h>
 
 #include <iostream>
 #include <vector>
@@ -58,6 +66,9 @@ map<int, int> keyframe_id;
 vector<int> keyframe_indices;
 vector<PointCloudPtr> downsampled_combined_clouds;
 vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> combined_trans;
+
+int plane_ids[640][480];
+bool bfs_visited[640][480];
 
 struct bfs_visitor_struct
 {
@@ -884,9 +895,10 @@ void feature_test()
 	cv::waitKey();
 }
 
-void PlaneFitting()
+void PlaneFittingTest()
 {
 	std::string name;
+	cout << "rgb image name (without .jpg): ";
 	cin >> name;
 	std::string rname = "G:/kinect data/living_room_1/rgb/" + name + ".jpg";
 	std::string dname = "G:/kinect data/living_room_1/depth/" + name + ".png";
@@ -894,57 +906,24 @@ void PlaneFitting()
 	r = cv::imread(rname);
 	d = cv::imread(dname, -1);
 
-	srand((unsigned)time(NULL));
+	ICPOdometry *icpcuda = nullptr;
+	int threads = Config::instance()->get<int>("icpcuda_threads");
+	int blocks = Config::instance()->get<int>("icpcuda_blocks");
+	int width = Config::instance()->get<int>("image_width");
+	int height = Config::instance()->get<int>("image_height");
+	double cx = Config::instance()->get<double>("camera_cx");
+	double cy = Config::instance()->get<double>("camera_cy");
+	double fx = Config::instance()->get<double>("camera_fx");
+	double fy = Config::instance()->get<double>("camera_fy");
+	double depthFactor = Config::instance()->get<double>("depth_factor");
+	if (icpcuda == nullptr)
+		icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor);
 
-	int plane_ids[640][480];
+	icpcuda->initICP((unsigned short *)d.data, 20.f);
+	cv::Mat normals;
+	icpcuda->getNMapCurr(normals);
 
-	for (int i = 0; i < 640; i++)
-	{
-		for (int j = 0; j < 480; j++)
-		{
-			plane_ids[i][j] = -1;
-		}
-	}
-
-	int new_id = 0;
-
-	for (int i = 0; i < 20; i++)
-	{
-		int u, v;
-		do 
-		{
-			u = rand() % 640;
-			v = rand() % 480;
-		} while (d.at<ushort>(v, u) <= 0 || plane_ids[u][v] != -1);
-
-		int u_st = (u - 50) > 0 ? u - 50 : 0;
-		int u_ed = (u + 50) < 640 ? u + 50 : 639;
-		int v_st = (v - 50) > 0 ? v - 50 : 0;
-		int v_ed = (v + 50) < 480 ? v + 50 : 479;
-		vector<pair<int, int>> initial_point_indices;
-		
-		for (int x = u_st; x <= u_ed; x++)
-		{
-			for (int y = v_st; y <= v_ed; y++)
-			{
-				if (d.at<ushort>(y, x) > 0 && plane_ids[x][y] == -1)
-				{
-					initial_point_indices.push_back(pair<int, int>(x, y));
-				}
-			}
-		}
-		vector<pair<int, int>> *inliers = new vector<pair<int, int>>();
-		Eigen::Vector4f plane;
-		Feature::getPlanesByRANSAC(plane, inliers, d, initial_point_indices);
-		if (inliers->size() > 10000)
-		{
-			for (int j = 0; j < inliers->size(); j++)
-			{
-				plane_ids[(*inliers)[j].first][(*inliers)[j].second] = new_id;
-			}
-			new_id++;
-		}
-	}
+	memset(bfs_visited, 0, sizeof(bool) * 480 * 640);
 
 	int rgb[20][3] = {
 		{ 255, 0, 0 },
@@ -975,22 +954,113 @@ void PlaneFitting()
 	{
 		for (int j = 0; j < 480; j++)
 		{
-			if (plane_ids[i][j] == -1)
+			if (plane_ids[i][j] != -1)
 			{
-				result.at<cv::Vec3b>(i, j)[0] = 200;
-				result.at<cv::Vec3b>(i, j)[1] = 200;
-				result.at<cv::Vec3b>(i, j)[2] = 200;
-			}
-			else
-			{
-				result.at<cv::Vec3b>(i, j)[0] = rgb[plane_ids[i][j]][0];
-				result.at<cv::Vec3b>(i, j)[1] = rgb[plane_ids[i][j]][1];
-				result.at<cv::Vec3b>(i, j)[2] = rgb[plane_ids[i][j]][2];
+				result.at<cv::Vec3b>(j, i)[0] = rgb[plane_ids[i][j]][0];
+				result.at<cv::Vec3b>(j, i)[1] = rgb[plane_ids[i][j]][1];
+				result.at<cv::Vec3b>(j, i)[2] = rgb[plane_ids[i][j]][2];
 			}
 		}
 	}
 
 	cv::imshow("result", result);
+	cv::waitKey();
+}
+
+void continuousPlaneExtractingTest()
+{
+
+}
+
+void cudaTest()
+{
+	const int icount = 2;
+	std::string rname[icount], dname[icount];
+	rname[0] = "G:/kinect data/living_room_1/rgb/00590.jpg";
+	rname[1] = "G:/kinect data/living_room_1/rgb/00591.jpg";
+// 	rname[2] = "E:/lab/pcl/kinect data/living_room_1/rgb/00592.jpg";
+// 	rname[3] = "E:/lab/pcl/kinect data/living_room_1/rgb/00593.jpg";
+// 	rname[4] = "E:/lab/pcl/kinect data/living_room_1/rgb/00594.jpg";
+// 	rname[5] = "E:/lab/pcl/kinect data/living_room_1/rgb/00595.jpg";
+
+	dname[0] = "G:/kinect data/living_room_1/depth/00590.png";
+	dname[1] = "G:/kinect data/living_room_1/depth/00591.png";
+// 	dname[2] = "E:/lab/pcl/kinect data/living_room_1/depth/00592.png";
+// 	dname[3] = "E:/lab/pcl/kinect data/living_room_1/depth/00593.png";
+// 	dname[4] = "E:/lab/pcl/kinect data/living_room_1/depth/00594.png";
+// 	dname[5] = "E:/lab/pcl/kinect data/living_room_1/depth/00595.png";
+
+	cv::Mat r[icount], d[icount];
+	PointCloudPtr cloud[icount];
+
+	for (int i = 0; i < icount; i++)
+	{
+		r[i] = cv::imread(rname[i]);
+		d[i] = cv::imread(dname[i], -1);
+		cloud[i] = ConvertToPointCloudWithoutMissingData(d[i], r[i], i, i);
+	}
+
+	ICPOdometry *icpcuda = nullptr;
+	int threads = Config::instance()->get<int>("icpcuda_threads");
+	int blocks = Config::instance()->get<int>("icpcuda_blocks");
+	int width = Config::instance()->get<int>("image_width");
+	int height = Config::instance()->get<int>("image_height");
+	double cx = Config::instance()->get<double>("camera_cx");
+	double cy = Config::instance()->get<double>("camera_cy");
+	double fx = Config::instance()->get<double>("camera_fx");
+	double fy = Config::instance()->get<double>("camera_fy");
+	double depthFactor = Config::instance()->get<double>("depth_factor");
+	if (icpcuda == nullptr)
+		icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor);
+
+	trans.push_back(Eigen::Matrix4f::Identity());
+
+	icpcuda->initICPModel((unsigned short *)d[0].data, 20.0f, Eigen::Matrix4f::Identity());
+	clock_t start = clock();
+	icpcuda->initICP((unsigned short *)d[1].data, 20.0f);
+	cv::Mat vmap, nmap, pmap;
+	icpcuda->getVMapCurr(vmap);
+	icpcuda->getNMapCurr(nmap);
+	icpcuda->getPMapCurr(pmap);
+	cout << (clock() - start) / 1000.0 << endl;
+
+	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cc(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+	for (int j = 0; j < 480; j++)
+	{
+		for (int i = 0; i < 640; i++)
+		{
+			ushort temp = d[1].at<ushort>(j, i);
+			if (temp != 0)
+			{
+				pcl::PointXYZRGBNormal pt;
+				pt.z = ((double)temp) / depthFactor;
+				pt.x = (i - cx) * pt.z / fx;
+				pt.y = (j - cy) * pt.z / fy;
+				pt.b = r[1].at<cv::Vec3b>(j, i)[0];
+				pt.g = r[1].at<cv::Vec3b>(j, i)[1];
+				pt.r = r[1].at<cv::Vec3b>(j, i)[2];
+				pt.normal[0] = -nmap.at<cv::Vec3f>(j, i)[0];
+				pt.normal[1] = -nmap.at<cv::Vec3f>(j, i)[1];
+				pt.normal[2] = -nmap.at<cv::Vec3f>(j, i)[2];
+				cc->push_back(pt);
+			}
+		}
+	}
+
+	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("3D Viewer"));
+	viewer->setBackgroundColor(0, 0, 0);
+	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBNormal> rgb(cc);
+	viewer->addPointCloud<pcl::PointXYZRGBNormal>(cc, rgb, "sample cloud");
+	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "sample cloud");
+	viewer->addPointCloudNormals<pcl::PointXYZRGBNormal, pcl::PointXYZRGBNormal>(cc, cc, 100, 0.05, "normals");
+	viewer->addCoordinateSystem(1.0);
+	viewer->initCameraParameters();
+
+	while (!viewer->wasStopped())
+	{
+		viewer->spinOnce(100);
+		//boost::this_thread::sleep(boost::posix_time::microseconds(100000));
+	}
 }
 
 int main()
@@ -1003,5 +1073,104 @@ int main()
 	//Registration_Result_Show();
 	//read_txt();
 	//feature_test();
-	PlaneFitting();
+	//PlaneFittingTest();
+	//continuousPlaneExtractingTest();
+	cudaTest();
+}  
+
+bool getPlanesByRANSACCuda(
+	vector<Eigen::Vector4f, Eigen::aligned_allocator<Eigen::Vector4f>> &result_planes,
+	vector<vector<pair<int, int>>> *matches,
+	const cv::Mat &rgb, const cv::Mat &depth)
+{
+// 	pcl::cuda::PointCloudAOS<pcl::cuda::Device>::Ptr cloud;
+// 	cloud.reset(new pcl::cuda::PointCloudAOS<pcl::cuda::Device>);
+// 	cloud->width = depth.size().width;
+// 	cloud->height = depth.size().height;
+// 	cloud->points.resize(cloud->width * cloud->height);
+// 
+// 	double fx = Config::instance()->get<double>("camera_fx");  // focal length x
+// 	double fy = Config::instance()->get<double>("camera_fy");  // focal length y
+// 	double cx = Config::instance()->get<double>("camera_cx");  // optical center x
+// 	double cy = Config::instance()->get<double>("camera_cy");  // optical center y
+// 
+// 	double factor = Config::instance()->get<double>("depth_factor");	// for the 16-bit PNG files
+// 
+// 	for (int j = 0; j < depth.size().height; j++)
+// 	{
+// 		for (int i = 0; i < depth.size().width; i++)
+// 		{
+// 			ushort temp = depth.at<ushort>(j, i);
+// 			if (depth.at<ushort>(j, i) != 0)
+// 			{
+// 				pcl::cuda::PointXYZRGB pt;
+// 				pt.z = ((double)depth.at<ushort>(j, i)) / factor;
+// 				pt.x = (i - cx) * pt.z / fx;
+// 				pt.y = (j - cy) * pt.z / fy;
+// 				pt.rgb.b = rgb.at<cv::Vec3b>(j, i)[0];
+// 				pt.rgb.g = rgb.at<cv::Vec3b>(j, i)[1];
+// 				pt.rgb.r = rgb.at<cv::Vec3b>(j, i)[2];
+// 				pt.rgb.alpha = 255;
+// 				cloud->points.push_back(pt);
+// 			}
+// 		}
+// 	}
+// 
+// 	boost::shared_ptr<pcl::cuda::Device<float4>::type> normals;
+// 	normals = pcl::cuda::computeFastPointNormals<pcl::cuda::Device>(cloud);
+// 
+// 	pcl::cuda::SampleConsensusModel1PointPlane<pcl::cuda::Device>::Ptr sac_model(
+// 		new pcl::cuda::SampleConsensusModel1PointPlane<pcl::cuda::Device>(cloud));
+// 	sac_model->setNormals(normals);
+// 
+// 	pcl::cuda::MultiRandomSampleConsensus<pcl::cuda::Device> sac(sac_model);
+// 	sac.setMinimumCoverage(0.90); // at least 95% points should be explained by planes
+// 	sac.setMaximumBatches(5);
+// 	sac.setIerationsPerBatch(1000);
+// 	sac.setDistanceThreshold(25 / 100.0);
+// 
+// 	if (!sac.computeModel(0))
+// 	{
+// 		return false;
+// 	}
+// 
+// 	std::vector<pcl::cuda::SampleConsensusModel1PointPlane<pcl::cuda::Device>::IndicesPtr> planes;
+// 	pcl::cuda::Device<int>::type region_mask;
+// 	pcl::cuda::markInliers<pcl::cuda::Device>(cloud, region_mask, planes);
+// 	thrust::host_vector<int> regions_host;
+// 	std::copy(regions_host.begin(), regions_host.end(), std::ostream_iterator<int>(std::cerr, " "));
+// 	planes = sac.getAllInliers();
+// 
+// 	std::vector<int> planes_inlier_counts = sac.getAllInlierCounts();
+// 	std::vector<float4> coeffs = sac.getAllModelCoefficients();
+// 	std::vector<float3> centroids = sac.getAllModelCentroids();
+// 	std::cerr << "Found " << planes_inlier_counts.size() << " planes" << std::endl;
+// 
+// 	if (planes_inlier_counts.size() == 0)
+// 		return false;
+// 
+// 	if (matches)
+// 	{
+// 		matches->clear();
+// 	}
+// 
+// 	for (unsigned int i = 0; i < planes.size(); i++)
+// 	{
+// 		Eigen::Vector4f result_plane(coeffs[i].x, coeffs[i].y, coeffs[i].z, coeffs[i].w);
+// 		result_plane.normalize();
+// 		result_planes.push_back(result_plane);
+// 
+// 		if (matches)
+// 		{
+// 			vector<pair<int, int>> match;
+// 			thrust::device_vector<int> iptr = *planes[i];
+// 			for (unsigned int j = 0; j < iptr.size(); j++)
+// 			{
+// 				match.push_back(pair<int, int>(iptr[j] % 640, iptr[j] / 640));
+// 			}
+// 			matches->push_back(match);
+// 		}
+// 	}
+// 
+	return true;
 }

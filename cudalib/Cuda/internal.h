@@ -148,6 +148,8 @@ void icpStep(const Mat33& Rcurr,
 void pyrDown(const DeviceArray2D<unsigned short> & src, DeviceArray2D<unsigned short> & dst);
 void createVMap(const Intr& intr, const DeviceArray2D<unsigned short> & depth, DeviceArray2D<float> & vmap, const float depthCutoff, const float depthFactor);
 void createNMap(const DeviceArray2D<float>& vmap, DeviceArray2D<float>& nmap);
+void createPMap(const DeviceArray2D<float>& vmap, DeviceArray2D<float>& pmap);
+void createNMapAndPMap(const DeviceArray2D<float>& vmap, DeviceArray2D<float>& nmap, DeviceArray2D<float>& pmap);
 void tranformMaps(const DeviceArray2D<float>& vmap_src,
                   const DeviceArray2D<float>& nmap_src,
                   const Mat33& Rmat, const float3& tvec,
@@ -157,6 +159,9 @@ void copyMaps(const DeviceArray<float>& vmap_src,
               const DeviceArray<float>& nmap_src,
               DeviceArray2D<float>& vmap_dst,
               DeviceArray2D<float>& nmap_dst);
+
+void rearrangeMap(const DeviceArray2D<float>& src,
+	              DeviceArray2D<float>& dst);
 
 void resizeVMap(const DeviceArray2D<float>& input, DeviceArray2D<float>& output);
 void resizeNMap(const DeviceArray2D<float>& input, DeviceArray2D<float>& output);

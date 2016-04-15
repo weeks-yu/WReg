@@ -172,6 +172,58 @@ __global__ void computeNmapKernel(int rows, int cols, const PtrStep<float> vmap,
         nmap.ptr (v)[u] = __int_as_float(0x7fffffff); /*CUDART_NAN_F*/
 }
 
+__global__ void computeNmapKernel2(int rows, int cols, const PtrStep<float> vmap, PtrStep<float> nmap)
+{
+	int u = threadIdx.x + blockIdx.x * blockDim.x;
+	int v = threadIdx.y + blockIdx.y * blockDim.y;
+
+	if (u >= cols || v >= rows)
+		return;
+
+	if (u == 0 || v == 0 || u == cols - 1 || v == rows - 1)
+	{
+		nmap.ptr(v)[u] = __int_as_float(0x7fffffff); /*CUDART_NAN_F*/
+		return;
+	}
+
+	float3 v00, v01, v10, v0f1, vf10;
+	v00.x = vmap.ptr(v)[u];
+	v01.x = vmap.ptr(v)[u + 1];
+	v10.x = vmap.ptr(v + 1)[u];
+	v0f1.x = vmap.ptr(v)[u - 1];
+	vf10.x = vmap.ptr(v - 1)[u];
+
+	if (!isnan(v00.x) && !isnan(v01.x) && !isnan(v10.x) && !isnan(v0f1.x) && !isnan(vf10.x))
+	{
+		v00.y = vmap.ptr(v + rows)[u];
+		v01.y = vmap.ptr(v + rows)[u + 1];
+		v10.y = vmap.ptr(v + 1 + rows)[u];
+		v0f1.y = vmap.ptr(v + rows)[u - 1];
+		vf10.y = vmap.ptr(v - 1 + rows)[u];
+
+		v00.z = vmap.ptr(v + 2 * rows)[u];
+		v01.z = vmap.ptr(v + 2 * rows)[u + 1];
+		v10.z = vmap.ptr(v + 1 + 2 * rows)[u];
+		v0f1.z = vmap.ptr(v + 2 * rows)[u - 1];
+		vf10.z = vmap.ptr(v - 1 + 2 * rows)[u];
+
+		float3 n0 = normalized(cross(v01 - v00, v10 - v00));
+		float3 n1 = normalized(cross(v10 - v00, v0f1 - v00));
+		float3 n2 = normalized(cross(v0f1 - v00, vf10 - v00));
+		float3 n3 = normalized(cross(vf10 - v00, v01 - v00));
+		float3 n;
+		n.x = (n0.x + n1.x + n2.x + n3.x) / 4.0;
+		n.y = (n0.y + n1.y + n2.y + n3.y) / 4.0;
+		n.z = (n0.z + n1.z + n2.z + n3.z) / 4.0;
+
+		nmap.ptr(v)[u] = n.x;
+		nmap.ptr(v + rows)[u] = n.y;
+		nmap.ptr(v + 2 * rows)[u] = n.z;
+	}
+	else
+		nmap.ptr(v)[u] = __int_as_float(0x7fffffff); /*CUDART_NAN_F*/
+}
+
 void createNMap(const DeviceArray2D<float>& vmap, DeviceArray2D<float>& nmap)
 {
     nmap.create (vmap.rows (), vmap.cols ());
@@ -184,8 +236,143 @@ void createNMap(const DeviceArray2D<float>& vmap, DeviceArray2D<float>& nmap)
     grid.x = divUp (cols, block.x);
     grid.y = divUp (rows, block.y);
 
-    computeNmapKernel<<<grid, block>>>(rows, cols, vmap, nmap);
+	computeNmapKernel2<<<grid, block>>>(rows, cols, vmap, nmap);
     cudaSafeCall (cudaGetLastError ());
+}
+
+__global__ void computePmapKernel(int rows, int cols, const PtrStep<float> vmap, PtrStep<float> pmap)
+{
+	int u = threadIdx.x + blockIdx.x * blockDim.x;
+	int v = threadIdx.y + blockIdx.y * blockDim.y;
+
+	if (u >= cols || v >= rows)
+		return;
+
+	if (u == 0 || v == 0 || u == cols - 1 || v == rows - 1)
+	{
+		pmap.ptr(v)[u] = __int_as_float(0x7fffffff); /*CUDART_NAN_F*/
+		return;
+	}
+
+	float3 v00, v01, v10, v0f1, vf10;
+	v00.x = vmap.ptr(v)[u];
+	v01.x = vmap.ptr(v)[u + 1];
+	v10.x = vmap.ptr(v + 1)[u];
+	v0f1.x = vmap.ptr(v)[u - 1];
+	vf10.x = vmap.ptr(v - 1)[u];
+
+	if (!isnan(v00.x) && !isnan(v01.x) && !isnan(v10.x) && !isnan(v0f1.x) && !isnan(vf10.x))
+	{
+		v00.y = vmap.ptr(v + rows)[u];
+		v01.y = vmap.ptr(v + rows)[u + 1];
+		v10.y = vmap.ptr(v + 1 + rows)[u];
+		v0f1.y = vmap.ptr(v + rows)[u - 1];
+		vf10.y = vmap.ptr(v - 1 + rows)[u];
+
+		v00.z = vmap.ptr(v + 2 * rows)[u];
+		v01.z = vmap.ptr(v + 2 * rows)[u + 1];
+		v10.z = vmap.ptr(v + 1 + 2 * rows)[u];
+		v0f1.z = vmap.ptr(v + 2 * rows)[u - 1];
+		vf10.z = vmap.ptr(v - 1 + 2 * rows)[u];
+
+		float3 n0 = normalized(cross(v01 - v00, v10 - v00));
+		float3 n1 = normalized(cross(v10 - v00, v0f1 - v00));
+		float3 n2 = normalized(cross(v0f1 - v00, vf10 - v00));
+		float3 n3 = normalized(cross(vf10 - v00, v01 - v00));
+		float3 n = n0 + n1 + n2 + n3;
+		float a = norm(n0) + norm(n1) + norm(n2) + norm(n3);
+		float b = norm(n);
+		pmap.ptr(v)[u] = a - b;
+	}
+	else
+		pmap.ptr(v)[u] = __int_as_float(0x7fffffff); /*CUDART_NAN_F*/
+}
+
+void createPMap(const DeviceArray2D<float>& vmap, DeviceArray2D<float>& pmap)
+{
+	int rows = vmap.rows() / 3;
+	int cols = vmap.cols();
+
+	pmap.create(rows, cols);
+
+	dim3 block(32, 8);
+	dim3 grid(1, 1, 1);
+	grid.x = divUp(cols, block.x);
+	grid.y = divUp(rows, block.y);
+
+	computePmapKernel<<<grid, block>>>(rows, cols, vmap, pmap);
+	cudaSafeCall(cudaGetLastError());
+}
+
+__global__ void computeNmapAndPmapKernel(int rows, int cols, const PtrStep<float> vmap, PtrStep<float> nmap, PtrStep<float> pmap)
+{
+	int u = threadIdx.x + blockIdx.x * blockDim.x;
+	int v = threadIdx.y + blockIdx.y * blockDim.y;
+
+	if (u >= cols || v >= rows)
+		return;
+
+	if (u == 0 || v == 0 || u == cols - 1 || v == rows - 1)
+	{
+		nmap.ptr(v)[u] = __int_as_float(0x7fffffff); /*CUDART_NAN_F*/
+		return;
+	}
+
+	float3 v00, v01, v10, v0f1, vf10;
+	v00.x = vmap.ptr(v)[u];
+	v01.x = vmap.ptr(v)[u + 1];
+	v10.x = vmap.ptr(v + 1)[u];
+	v0f1.x = vmap.ptr(v)[u - 1];
+	vf10.x = vmap.ptr(v - 1)[u];
+
+	if (!isnan(v00.x) && !isnan(v01.x) && !isnan(v10.x) && !isnan(v0f1.x) && !isnan(vf10.x))
+	{
+		v00.y = vmap.ptr(v + rows)[u];
+		v01.y = vmap.ptr(v + rows)[u + 1];
+		v10.y = vmap.ptr(v + 1 + rows)[u];
+		v0f1.y = vmap.ptr(v + rows)[u - 1];
+		vf10.y = vmap.ptr(v - 1 + rows)[u];
+
+		v00.z = vmap.ptr(v + 2 * rows)[u];
+		v01.z = vmap.ptr(v + 2 * rows)[u + 1];
+		v10.z = vmap.ptr(v + 1 + 2 * rows)[u];
+		v0f1.z = vmap.ptr(v + 2 * rows)[u - 1];
+		vf10.z = vmap.ptr(v - 1 + 2 * rows)[u];
+
+		float3 n0 = normalized(cross(v01 - v00, v10 - v00));
+		float3 n1 = normalized(cross(v10 - v00, v0f1 - v00));
+		float3 n2 = normalized(cross(v0f1 - v00, vf10 - v00));
+		float3 n3 = normalized(cross(vf10 - v00, v01 - v00));
+		float3 n = n0 + n1 + n2 + n3;
+
+		pmap.ptr(v)[u] = norm(n0) + norm(n1) + norm(n2) + norm(n3) - norm(n);
+		n = normalized(n);
+		nmap.ptr(v)[u] = n.x;
+		nmap.ptr(v + rows)[u] = n.y;
+		nmap.ptr(v + 2 * rows)[u] = n.z;
+	}
+	else
+	{
+		pmap.ptr(v)[u] = __int_as_float(0x7fffffff);
+		nmap.ptr(v)[u] = __int_as_float(0x7fffffff); /*CUDART_NAN_F*/
+	}
+}
+
+void createNMapAndPMap(const DeviceArray2D<float>& vmap, DeviceArray2D<float>& nmap, DeviceArray2D<float>& pmap)
+{
+	int rows = vmap.rows() / 3;
+	int cols = vmap.cols();
+
+	nmap.create(vmap.rows(), vmap.cols());
+	pmap.create(rows, cols);
+
+	dim3 block(32, 8);
+	dim3 grid(1, 1, 1);
+	grid.x = divUp(cols, block.x);
+	grid.y = divUp(rows, block.y);
+
+	computeNmapAndPmapKernel<<<grid, block>>>(rows, cols, vmap, nmap, pmap);
+	cudaSafeCall(cudaGetLastError());
 }
 
 __global__ void tranformMapsKernel(int rows, int cols, const PtrStep<float> vmap_src, const PtrStep<float> nmap_src,
@@ -312,6 +499,50 @@ void copyMaps(const DeviceArray<float>& vmap_src,
 
     copyMapsKernel<<<grid, block>>>(rows, cols, vmap_src, nmap_src, vmap_dst, nmap_dst);
     cudaSafeCall(cudaGetLastError());
+}
+
+__global__ void rearrangeMapKernel(int rows, int cols,
+	const PtrStep<float> src, PtrStep<float> dst)
+{
+	int x = threadIdx.x + blockIdx.x * blockDim.x;
+	int y = threadIdx.y + blockIdx.y * blockDim.y;
+
+	if (x >= cols || y >= rows)
+		return;
+
+	float3 n;
+	n.x = src.ptr(y)[x];
+	if (!isnan(n.x))
+	{
+		n.y = src.ptr(y + rows)[x];
+		n.z = src.ptr(y + 2 * rows)[x];
+
+		dst.ptr(y)[x * 3] = n.x;
+		dst.ptr(y)[x * 3 + 1] = n.y;
+		dst.ptr(y)[x * 3 + 2] = n.z;
+	}
+	else
+	{
+		dst.ptr(y)[x * 3] = 0;
+		dst.ptr(y)[x * 3 + 1] = 0;
+		dst.ptr(y)[x * 3 + 2] = 0;
+	}
+}
+
+void rearrangeMap(const DeviceArray2D<float>& src,
+	              DeviceArray2D<float>& dst)
+{
+	int cols = src.cols();
+	int rows = src.rows() / 3;
+
+	dst.create(rows, cols * 3);
+	dim3 block(32, 8);
+	dim3 grid(1, 1, 1);
+	grid.x = divUp(cols, block.x);
+	grid.y = divUp(rows, block.y);
+
+	rearrangeMapKernel<<<grid, block>>>(rows, cols, src, dst);
+	cudaSafeCall(cudaGetLastError());
 }
 
 __global__ void pyrDownKernelGaussF(const PtrStepSz<float> src, PtrStepSz<float> dst, float * gaussKernel)

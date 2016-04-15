@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 
 include_directories(../../include/algorithm)
 include_directories(../../aislib)
-include_directories(../../icpcuda)
+include_directories(../../cudalib)
 link_directories(${PROJECT_BINARY_DIR}/lib)
 
 find_package(PCL 1.7 REQUIRED)
@@ -28,7 +28,7 @@ include_directories(${CUDA_INCLUDE_DIRS})
 set(CUDA_ARCH_BIN "20 30 32 35 37 50 52" CACHE STRING "Specify 'real' GPU arch to build binaries for, BIN(PTX) format is supported. Example: 1.3 2.1(1.3) or 13 21(13)")
 set(CUDA_ARCH_PTX "" CACHE STRING "Specify 'virtual' PTX arch to build PTX intermediate code for. Example: 1.0 1.2 or 10 12")              
 
-include(${PROJECT_SOURCE_DIR}/icpcuda/CudaComputeTargetFlags.cmake)                  
+include(${PROJECT_SOURCE_DIR}/cudalib/CudaComputeTargetFlags.cmake)                  
 APPEND_TARGET_ARCH_FLAGS()
 
 set(ALGORITHM_HEADER

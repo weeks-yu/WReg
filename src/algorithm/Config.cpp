@@ -60,6 +60,10 @@ Config::Config() {
 	config["dist_threshold"]		= static_cast<double> (0.1);
 	config["angle_threshold"]		= static_cast<double> (0.34202);
 
+	// plane fitting
+	config["plane_max_iteration"]	= static_cast<int>    (20);
+	config["plane_dist_threshold"]	= static_cast<double> (0.02);
+
 // 	config["start_paused"]                 =  static_cast<bool>  (1);
 // 	config["subscriber_queue_size"]        =  static_cast<int>   (20);
 // 	config["publisher_queue_size"]         =  static_cast<int>   (1);

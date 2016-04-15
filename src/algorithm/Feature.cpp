@@ -527,20 +527,22 @@ bool Feature::getPlanesByRANSAC(Eigen::Vector4f &result_plane, vector<pair<int, 
 	// Generate the data
 	for (size_t i = 0; i < initial_point_indices.size(); ++i)
 	{
-		Eigen::Vector3f point = ConvertPointTo3D(initial_point_indices[i].first, initial_point_indices[i].second, depth);
+		Eigen::Vector3f point = ConvertPointTo3D(initial_point_indices[i].first * 2, initial_point_indices[i].second * 2, depth);
 		cloud->push_back(pcl::PointXYZ(point(0), point(1), point(2)));
 	}
 
 	pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
 	pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
 	// Create the segmentation object
+	
 	pcl::SACSegmentation<pcl::PointXYZ> seg;
 	// Optional
 	seg.setOptimizeCoefficients(true);
 	// Mandatory
 	seg.setModelType(pcl::SACMODEL_PLANE);
 	seg.setMethodType(pcl::SAC_RANSAC);
-	seg.setDistanceThreshold(0.01);
+	seg.setMaxIterations(Config::instance()->get<int>("plane_max_iteration"));
+	seg.setDistanceThreshold(Config::instance()->get<double>("plane_dist_threshold"));
 
 	seg.setInputCloud(cloud);
 	seg.segment(*inliers, *coefficients);
@@ -554,6 +556,7 @@ bool Feature::getPlanesByRANSAC(Eigen::Vector4f &result_plane, vector<pair<int, 
 	result_plane(1) = coefficients->values[1];
 	result_plane(2) = coefficients->values[2];
 	result_plane(3) = coefficients->values[3];
+	result_plane.normalize();
 
 	if (matches != nullptr)
 	{
@@ -565,4 +568,10 @@ bool Feature::getPlanesByRANSAC(Eigen::Vector4f &result_plane, vector<pair<int, 
 	}
 
 	return true;
+}
+
+float Feature::distToPlane(const Eigen::Vector3f &point, const Eigen::Vector4f &plane)
+{
+	float a = plane(0) * point(0) + plane(1) * point(1) + plane(2) * point(2) + plane(3);
+	return fabs(a);
 }

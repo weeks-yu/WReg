@@ -41,6 +41,7 @@ ICPOdometry::ICPOdometry(int width,
 
     vmaps_curr_.resize(NUM_PYRS);
     nmaps_curr_.resize(NUM_PYRS);
+	pmaps_curr_.resize(NUM_PYRS);
 
     for (int i = 0; i < NUM_PYRS; ++i)
     {
@@ -54,6 +55,7 @@ ICPOdometry::ICPOdometry(int width,
 
         vmaps_curr_[i].create (pyr_rows*3, pyr_cols);
         nmaps_curr_[i].create (pyr_rows*3, pyr_cols);
+		pmaps_curr_[i].create (pyr_rows,   pyr_cols);
     }
 }
 
@@ -77,7 +79,24 @@ void ICPOdometry::initICP(unsigned short * depth, const float depthCutoff)
         createNMap(vmaps_curr_[i], nmaps_curr_[i]);
     }
 
+	createPMap(vmaps_curr_[0], pmaps_curr_[0]);
+
     cudaDeviceSynchronize();
+
+	DeviceArray2D<float> dst;
+	
+	rearrangeMap(vmaps_curr_[0], dst);
+	vmap_curr = cv::Mat(height, width, CV_32FC3);
+	dst.download(vmap_curr.data, vmap_curr.step[0]);
+
+	rearrangeMap(nmaps_curr_[0], dst);
+	nmap_curr = cv::Mat(height, width, CV_32FC3);
+	dst.download(nmap_curr.data, nmap_curr.step[0]);
+
+	pmap_curr = cv::Mat(height, width, CV_32FC1);
+	pmaps_curr_[0].download(pmap_curr.data, pmap_curr.step[0]);
+
+	dst.release();
 }
 
 void ICPOdometry::initICPModel(unsigned short * depth,
@@ -203,4 +222,19 @@ void ICPOdometry::getIncrementalTransformation(Eigen::Vector3f & trans, Eigen::M
 Eigen::MatrixXd ICPOdometry::getCovariance()
 {
     return lastA.cast<double>().lu().inverse();
+}
+
+void ICPOdometry::getVMapCurr(cv::Mat &mat)
+{
+	vmap_curr.copyTo(mat);
+}
+
+void ICPOdometry::getNMapCurr(cv::Mat &mat)
+{
+	nmap_curr.copyTo(mat);
+}
+
+void ICPOdometry::getPMapCurr(cv::Mat &mat)
+{
+	pmap_curr.copyTo(mat);
 }

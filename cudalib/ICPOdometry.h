@@ -43,6 +43,10 @@ class ICPOdometry
 
         Eigen::MatrixXd getCovariance();
 
+		void getVMapCurr(cv::Mat &mat);
+		void getNMapCurr(cv::Mat &mat);
+		void getPMapCurr(cv::Mat &mat);
+
         float lastICPError;
         float lastICPCount;
 
@@ -57,6 +61,11 @@ class ICPOdometry
 
         std::vector<DeviceArray2D<float> > vmaps_curr_;
         std::vector<DeviceArray2D<float> > nmaps_curr_;
+		std::vector<DeviceArray2D<float> > pmaps_curr_;
+
+		cv::Mat vmap_curr;
+		cv::Mat nmap_curr;
+		cv::Mat pmap_curr;
 
         Intr intr;
 
