@@ -70,6 +70,29 @@ vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> combined_tran
 int plane_ids[640][480];
 bool bfs_visited[640][480];
 
+int rgb[20][3] = {
+	{ 255, 0, 0 },
+	{ 0, 255, 0 },
+	{ 0, 0, 255 },
+	{ 0, 255, 255 },
+	{ 255, 0, 255 },
+	{ 255, 255, 0 },
+	{ 0, 255, 128 },
+	{ 255, 128, 0 },
+	{ 128, 0, 255 },
+	{ 255, 128, 128 },
+	{ 128, 128, 255 },
+	{ 0, 0, 128 },
+	{ 0, 128, 0 },
+	{ 128, 0, 0 },
+	{ 128, 128, 0 },
+	{ 128, 0, 128 },
+	{ 0, 128, 128 },
+	{ 64, 0, 0 },
+	{ 0, 64, 0 },
+	{ 0, 0, 64 }
+};
+
 struct bfs_visitor_struct
 {
 	bool visit_filter_feat(const TLandmarkID lm_ID, const topo_dist_t cur_dist)
@@ -223,19 +246,19 @@ void icp_test()
 {
 	const int icount = 6;
 	std::string rname[icount], dname[icount];
-	rname[0] = "E:/lab/pcl/kinect data/living_room_1/rgb/00590.jpg";
-	rname[1] = "E:/lab/pcl/kinect data/living_room_1/rgb/00591.jpg";
-	rname[2] = "E:/lab/pcl/kinect data/living_room_1/rgb/00592.jpg";
-	rname[3] = "E:/lab/pcl/kinect data/living_room_1/rgb/00593.jpg";
-	rname[4] = "E:/lab/pcl/kinect data/living_room_1/rgb/00594.jpg";
-	rname[5] = "E:/lab/pcl/kinect data/living_room_1/rgb/00595.jpg";
+	rname[0] = "G:/kinect data/living_room_1/rgb/00590.jpg";
+	rname[1] = "G:/kinect data/living_room_1/rgb/00591.jpg";
+	rname[2] = "G:/kinect data/living_room_1/rgb/00592.jpg";
+	rname[3] = "G:/kinect data/living_room_1/rgb/00593.jpg";
+	rname[4] = "G:/kinect data/living_room_1/rgb/00594.jpg";
+	rname[5] = "G:/kinect data/living_room_1/rgb/00595.jpg";
 
-	dname[0] = "E:/lab/pcl/kinect data/living_room_1/depth/00590.png";
-	dname[1] = "E:/lab/pcl/kinect data/living_room_1/depth/00591.png";
-	dname[2] = "E:/lab/pcl/kinect data/living_room_1/depth/00592.png";
-	dname[3] = "E:/lab/pcl/kinect data/living_room_1/depth/00593.png";
-	dname[4] = "E:/lab/pcl/kinect data/living_room_1/depth/00594.png";
-	dname[5] = "E:/lab/pcl/kinect data/living_room_1/depth/00595.png";
+	dname[0] = "G:/kinect data/living_room_1/depth/00590.png";
+	dname[1] = "G:/kinect data/living_room_1/depth/00591.png";
+	dname[2] = "G:/kinect data/living_room_1/depth/00592.png";
+	dname[3] = "G:/kinect data/living_room_1/depth/00593.png";
+	dname[4] = "G:/kinect data/living_room_1/depth/00594.png";
+	dname[5] = "G:/kinect data/living_room_1/depth/00595.png";
 
 	cv::Mat r[icount], d[icount];
 	PointCloudPtr cloud[icount];
@@ -925,29 +948,6 @@ void PlaneFittingTest()
 
 	memset(bfs_visited, 0, sizeof(bool) * 480 * 640);
 
-	int rgb[20][3] = {
-		{ 255, 0, 0 },
-		{ 0, 255, 0 },
-		{ 0, 0, 255 },
-		{ 0, 255, 255 },
-		{ 255, 0, 255 },
-		{ 255, 255, 0 },
-		{ 0, 255, 128 },
-		{ 255, 128, 0 },
-		{ 128, 0, 255 },
-		{ 255, 128, 128 },
-		{ 128, 128, 255 },
-		{ 0, 0, 128 },
-		{ 0, 128, 0 },
-		{ 128, 0, 0 },
-		{ 128, 128, 0 },
-		{ 128, 0, 128 },
-		{ 0, 128, 128 },
-		{ 64, 0, 0 },
-		{ 0, 64, 0 },
-		{ 0, 0, 64 }
-	};
-
 	cv::Mat result;
 	r.copyTo(result);
 	for (int i = 0; i < 640; i++)
@@ -1063,6 +1063,305 @@ void cudaTest()
 	}
 }
 
+void plane_icp_test()
+{
+	const int icount = 2;
+	std::string rname[icount], dname[icount];
+	rname[0] = "G:/kinect data/living_room_1/rgb/00594.jpg";
+	rname[1] = "G:/kinect data/living_room_1/rgb/00595.jpg";
+	// 	rname[2] = "E:/lab/pcl/kinect data/living_room_1/rgb/00592.jpg";
+	// 	rname[3] = "E:/lab/pcl/kinect data/living_room_1/rgb/00593.jpg";
+	// 	rname[4] = "E:/lab/pcl/kinect data/living_room_1/rgb/00594.jpg";
+	// 	rname[5] = "E:/lab/pcl/kinect data/living_room_1/rgb/00595.jpg";
+
+	dname[0] = "G:/kinect data/living_room_1/depth/00594.png";
+	dname[1] = "G:/kinect data/living_room_1/depth/00595.png";
+	// 	dname[2] = "E:/lab/pcl/kinect data/living_room_1/depth/00592.png";
+	// 	dname[3] = "E:/lab/pcl/kinect data/living_room_1/depth/00593.png";
+	// 	dname[4] = "E:/lab/pcl/kinect data/living_room_1/depth/00594.png";
+	// 	dname[5] = "E:/lab/pcl/kinect data/living_room_1/depth/00595.png";
+
+	cv::Mat r[icount], d[icount];
+	PointCloudPtr cloud[icount];
+
+	for (int i = 0; i < icount; i++)
+	{
+		r[i] = cv::imread(rname[i]);
+		d[i] = cv::imread(dname[i], -1);
+		cloud[i] = ConvertToPointCloudWithoutMissingData(d[i], r[i], i, i);
+	}
+
+	ICPOdometry *icpcuda = nullptr;
+	int threads = Config::instance()->get<int>("icpcuda_threads");
+	int blocks = Config::instance()->get<int>("icpcuda_blocks");
+	int width = Config::instance()->get<int>("image_width");
+	int height = Config::instance()->get<int>("image_height");
+	double cx = Config::instance()->get<double>("camera_cx");
+	double cy = Config::instance()->get<double>("camera_cy");
+	double fx = Config::instance()->get<double>("camera_fx");
+	double fy = Config::instance()->get<double>("camera_fy");
+	double depthFactor = Config::instance()->get<double>("depth_factor");
+	if (icpcuda == nullptr)
+		icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor);
+
+	trans.push_back(Eigen::Matrix4f::Identity());
+
+	srand((unsigned)time(NULL));
+	cv::Mat p[icount];
+	vector<pair<int, int>> initials;
+	int new_id = 0;
+	int move[4][2] = { {1, 0}, {0, 1}, {-1, 0}, {0, -1} };
+	vector<Eigen::Vector4f, Eigen::aligned_allocator<Eigen::Vector4f>> planes[icount];
+
+	for (int i = 0; i < icount; i++)
+	{
+		cout << "frame " << i << " ";
+		p[i] = cv::Mat(480, 640, CV_8SC1);
+		for (int x = 0; x < 480; x++)
+		{
+			for (int y = 0; y < 640; y++)
+			{
+				p[i].at<char>(x, y) = -1;
+			}
+		}
+
+		for (int j = 0; j < 20; j++)
+		{
+			cout << ", " << j;
+			int r, c, count = 0;
+			do 
+			{
+				r = rand() % 480;
+				c = rand() % 640;
+			} while ((p[i].at<char>(r, c) != -1 || d[i].at<ushort>(r, c) == 0) && count++ < 10);
+			
+			if (count >= 10)
+			{
+				continue;
+			}
+
+			int u_st = (r - 50) > 0 ? r - 50 : 0;
+			int u_ed = (r + 50) < 480 ? r + 50 : 479;
+			int v_st = (c - 50) > 0 ? c - 50 : 0;
+			int v_ed = (c + 50) < 640 ? c + 50 : 639;
+			initials.clear();
+			memset(bfs_visited, 0, 480 * 640 * sizeof(bool));
+			for (int x = u_st; x <= u_ed; x++)
+			{
+				for (int y = v_st; y <= v_ed; y++)
+				{
+					if (d[i].at<ushort>(x, y) != 0 && p[i].at<char>(x, y) == -1)
+					{
+						initials.push_back(pair<int, int>(x, y));
+					}
+					bfs_visited[x][y] = true;
+				}
+			}
+
+			if (initials.size() > 10000)
+			{
+				Eigen::Vector4f plane;
+				vector<pair<int, int>> inliers;
+				bool success = Feature::getPlanesByRANSAC(plane, &inliers, d[i], initials);
+
+				if (success && inliers.size() > 10000)
+				{
+					std::queue<pair<int, int>> q;
+					for (int k = 0; k < inliers.size(); k++)
+					{
+						if (inliers[k].first == u_st || inliers[k].first == u_ed ||
+							inliers[k].second == v_st || inliers[k].second == v_ed)
+						{
+							q.push(inliers[k]);
+						}
+						p[i].at<char>(inliers[k].first, inliers[k].second) = new_id;
+					}
+
+					while (!q.empty())
+					{
+						pair<int, int> now = q.front();
+						q.pop();
+						for (int k = 0; k < 4; k++)
+						{
+							int x = now.first + move[k][0];
+							int y = now.second + move[k][1];
+							if (x < 0 || y < 0 || x >= 480 || y >= 640 ||
+								d[i].at<ushort>(x, y) == 0 || p[i].at<char>(x, y) != -1 || bfs_visited[x][y])
+							{
+								continue;
+							}
+							bfs_visited[x][y] = true;
+							Eigen::Vector3f point;
+							point(2) = ((double)d[i].at<ushort>(x, y)) / depthFactor;
+							point(0) = (y - cx) * point(2) / fx;
+							point(1) = (x - cy) * point(2) / fy;
+
+							float dist = fabs(plane(0) * point(0) + plane(1) * point(1) + plane(2) * point(2) + plane(3));
+							if (dist < 0.02)
+							{
+								p[i].at<char>(x, y) = new_id;
+								q.push(pair<int, int>(x, y));
+							}
+						}
+					}
+					planes[i].push_back(plane);
+					new_id++;
+				}
+			}
+		}
+		cout << endl;
+	}
+
+	icpcuda->initICPModel((unsigned short *)d[0].data, 20.0f, Eigen::Matrix4f::Identity());
+	icpcuda->initICP((unsigned short *)d[1].data, 20.0f);
+
+	Eigen::Matrix4f ret_tran = Eigen::Matrix4f::Identity();
+	Eigen::Vector3f ret_t = ret_tran.topRightCorner(3, 1);
+	Eigen::Matrix<float, 3, 3, Eigen::RowMajor> ret_rot = ret_tran.topLeftCorner(3, 3);
+
+	Eigen::Matrix4f estimated_tran = Eigen::Matrix4f::Identity();
+	Eigen::Vector3f t = estimated_tran.topRightCorner(3, 1);
+	Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = estimated_tran.topLeftCorner(3, 3);
+
+	icpcuda->getIncrementalTransformation(ret_t, ret_rot, t, rot, threads, blocks);
+
+	ret_tran.topLeftCorner(3, 3) = ret_rot;
+	ret_tran.topRightCorner(3, 1) = ret_t;
+
+	std::vector<std::pair<int, int>> plane_corr;
+	std::vector<int> plane_id_curr;
+	std::vector<float> planes_lambda_prev;
+	for (int i = 0; i < planes[0].size(); i++)
+	{
+		planes_lambda_prev.push_back(1);
+		for (int j = 0; j < planes[1].size(); j++)
+		{
+			float nm = (ret_tran.transpose() * planes[1][j] - planes[0][i]).norm();
+			if (nm < 0.1)
+			{
+				plane_corr.push_back(pair<int, int>(i, j));
+				for (int x = 0; x < 480; x++)
+				{
+					for (int y = 0; y < 640; y++)
+					{
+						if (p[1].at<char>(x, y) == planes[0].size() + j)
+						{
+							p[1].at<char>(x, y) = i;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	std::vector<std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f>>> plane_inliers_curr;
+	int plane_inlier_count = 5;
+	for (int i = 0; i < plane_corr.size(); i++)
+	{
+		std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f>> inliers;
+		for (int j = 0; j < plane_inlier_count; j++)
+		{
+			int r, c;
+			do 
+			{
+				r = rand() % 480;
+				c = rand() % 640;
+			} while (p[1].at<char>(r, c) != plane_corr[i].first);
+			Eigen::Vector3f point;
+			point(2) = ((double)d[i].at<ushort>(r, c)) / depthFactor;
+			point(0) = (c - cx) * point(2) / fx;
+			point(1) = (r - cy) * point(2) / fy;
+			inliers.push_back(point);
+		}
+		plane_inliers_curr.push_back(inliers);
+		planes_lambda_prev.push_back(1);
+	}
+
+	icpcuda->initICPModel((unsigned short *)d[0].data, 20.0f, Eigen::Matrix4f::Identity());
+	icpcuda->initICP((unsigned short *)d[1].data, 20.0f);
+	icpcuda->initPlanes(planes[0], planes_lambda_prev, planes[1], plane_corr, plane_inlier_count, plane_inliers_curr);
+
+	bool *ptmp = new bool[640 * 480];
+	icpcuda->getPlaneMap(ptmp);
+	cv::Mat planemap(480, 640, CV_8UC3);
+	for (int i = 0; i < 480; i++)
+	{
+		for (int j = 0; j < 640; j++)
+		{
+			planemap.at<cv::Vec3b>(i, j)[0] = ptmp[i * 640 + j] ? 255 : 0;
+			planemap.at<cv::Vec3b>(i, j)[1] = 0;
+			planemap.at<cv::Vec3b>(i, j)[2] = 0;
+		}
+	}
+	delete ptmp;
+
+	Eigen::Matrix4f ret_tran2 = Eigen::Matrix4f::Identity();
+	ret_t = ret_tran2.topRightCorner(3, 1);
+	ret_rot = ret_tran2.topLeftCorner(3, 3);
+
+	icpcuda->getIncrementalTransformationWithPlane(ret_t, ret_rot, t, rot, threads, blocks);
+
+	ret_tran2.topLeftCorner(3, 3) = ret_rot;
+	ret_tran2.topRightCorner(3, 1) = ret_t;
+
+	cv::Mat result[icount];
+	for (int i = 0; i < icount; i++)
+	{
+		result[i] = cv::Mat(480, 640, CV_8UC3);
+		for (int x = 0; x < 480; x++)
+		{
+			for (int y = 0; y < 640; y++)
+			{
+				if (p[i].at<char>(x, y) != -1)
+				{
+					result[i].at<cv::Vec3b>(x, y)[0] = rgb[p[i].at<char>(x, y)][0];
+					result[i].at<cv::Vec3b>(x, y)[1] = rgb[p[i].at<char>(x, y)][1];
+					result[i].at<cv::Vec3b>(x, y)[2] = rgb[p[i].at<char>(x, y)][2];
+				}
+				else
+				{
+					result[i].at<cv::Vec3b>(x, y)[0] = r[i].at<cv::Vec3b>(x, y)[0];
+					result[i].at<cv::Vec3b>(x, y)[1] = r[i].at<cv::Vec3b>(x, y)[1];
+					result[i].at<cv::Vec3b>(x, y)[2] = r[i].at<cv::Vec3b>(x, y)[2];
+				}
+			}
+		}
+	}
+
+	cv::imshow("0", result[0]);
+	cv::imshow("1", result[1]);
+	cv::imshow("2", planemap);
+
+	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("test"));
+	viewer->setBackgroundColor(0, 0, 0);
+	viewer->addCoordinateSystem(1.0);
+	viewer->initCameraParameters();
+
+	PointCloudPtr tran_cloud(new PointCloudT);
+	pcl::transformPointCloud(*cloud[1], *tran_cloud, ret_tran2);
+	PointCloudPtr cloud_all(new PointCloudT);
+	*cloud_all = *cloud[0] + *tran_cloud;
+
+	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud_all);
+	viewer->addPointCloud<pcl::PointXYZRGB>(cloud_all, rgb, "result");
+	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "result");
+
+	while (!viewer->wasStopped())
+	{
+		viewer->spinOnce(100);
+		//boost::this_thread::sleep (boost::posix_time::microseconds (100000));
+	}
+	
+// 	for (int i = 0; i < icount; i++)
+// 	{
+// 		cout << i << ": " << endl;
+// 		for (int j = 0; j < planes[i].size(); j++)
+// 		{
+// 			cout << "\t" << planes[i][j] << endl;
+// 		}
+// 	}
+}
+
 int main()
 {
 	//keyframe_test();
@@ -1075,7 +1374,8 @@ int main()
 	//feature_test();
 	//PlaneFittingTest();
 	//continuousPlaneExtractingTest();
-	cudaTest();
+	//cudaTest();
+	plane_icp_test();
 }  
 
 bool getPlanesByRANSACCuda(

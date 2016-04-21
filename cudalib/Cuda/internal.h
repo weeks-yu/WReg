@@ -145,11 +145,35 @@ void icpStep(const Mat33& Rcurr,
              float * residual_host,
              int threads, int blocks);
 
+void icpStep2(const Mat33& Rcurr,
+	const float3& tcurr,
+	const DeviceArray2D<float>& vmap_curr,
+	const DeviceArray2D<float>& nmap_curr,
+	const DeviceArray2D<bool>& planemap_curr,
+	const DeviceArray2D<float>& plane_inlier_curr,
+	const Mat33& Rprev_inv,
+	const float3& tprev,
+	const Intr& intr,
+	const DeviceArray2D<float>& vmap_g_prev,
+	const DeviceArray2D<float>& nmap_g_prev,
+	const DeviceArray<float>& plane_n_prev,
+	const DeviceArray<float>& plane_d_prev,
+	const DeviceArray<float>& plane_lambda_prev,
+	float distThres,
+	float angleThres,
+	DeviceArray<jtjjtr> & sum,
+	DeviceArray<jtjjtr> & out,
+	float * matrixA_host,
+	float * vectorB_host,
+	float * residual_host,
+	int threads, int blocks);
+
 void pyrDown(const DeviceArray2D<unsigned short> & src, DeviceArray2D<unsigned short> & dst);
 void createVMap(const Intr& intr, const DeviceArray2D<unsigned short> & depth, DeviceArray2D<float> & vmap, const float depthCutoff, const float depthFactor);
 void createNMap(const DeviceArray2D<float>& vmap, DeviceArray2D<float>& nmap);
 void createPMap(const DeviceArray2D<float>& vmap, DeviceArray2D<float>& pmap);
 void createNMapAndPMap(const DeviceArray2D<float>& vmap, DeviceArray2D<float>& nmap, DeviceArray2D<float>& pmap);
+void createPlaneMap(const DeviceArray2D<float>& vmap, const float4 plane, const float max_dist, DeviceArray2D<bool>& planemap);
 void tranformMaps(const DeviceArray2D<float>& vmap_src,
                   const DeviceArray2D<float>& nmap_src,
                   const Mat33& Rmat, const float3& tvec,

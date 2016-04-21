@@ -375,6 +375,52 @@ void createNMapAndPMap(const DeviceArray2D<float>& vmap, DeviceArray2D<float>& n
 	cudaSafeCall(cudaGetLastError());
 }
 
+__global__ void computePlanemapKernel(int rows, int cols, const PtrStep<float> vmap, const float4 plane, const float max_dist,
+	PtrStep<bool> planemap)
+{
+	int u = threadIdx.x + blockIdx.x * blockDim.x;
+	int v = threadIdx.y + blockIdx.y * blockDim.y;
+
+	if (u >= cols || v >= rows)
+		return;
+
+	bool is_true = planemap.ptr(v)[u];
+	if (is_true)
+		return;
+
+	float3 v_curr;
+	v_curr.x = vmap.ptr(v)[u];
+
+	if (!isnan(v_curr.x))
+	{
+		v_curr.y = vmap.ptr(v + rows)[u];
+		v_curr.z = vmap.ptr(v + 2 * rows)[u];
+		
+		float dist = abs(plane.x * v_curr.x + plane.y * v_curr.y + plane.z * v_curr.z + plane.w);
+		planemap.ptr(v)[u] = dist < max_dist;
+	}
+	else
+	{
+		planemap.ptr(v)[u] = false;
+	}
+}
+
+void createPlaneMap(const DeviceArray2D<float>& vmap, const float4 plane, const float max_dist, DeviceArray2D<bool>& planemap)
+{
+	int rows = vmap.rows() / 3;
+	int cols = vmap.cols();
+
+	planemap.create(rows, cols);
+
+	dim3 block(32, 8);
+	dim3 grid(1, 1, 1);
+	grid.x = divUp(cols, block.x);
+	grid.y = divUp(rows, block.y);
+
+	computePlanemapKernel <<<grid, block >>>(rows, cols, vmap, plane, max_dist, planemap);
+	cudaSafeCall(cudaGetLastError());
+}
+
 __global__ void tranformMapsKernel(int rows, int cols, const PtrStep<float> vmap_src, const PtrStep<float> nmap_src,
                                    const Mat33 Rmat, const float3 tvec, PtrStepSz<float> vmap_dst, PtrStep<float> nmap_dst)
 {

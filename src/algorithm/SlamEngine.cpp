@@ -227,7 +227,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			Eigen::Vector3f t = relative_tran.topRightCorner(3, 1);
 			Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = relative_tran.topLeftCorner(3, 3);
 
-			Eigen::Matrix4f estimated_tran = Eigen::Matrix4f::Identity();
+			Eigen::Matrix4f estimated_tran = Eigen::Matrix4f::Identity()/*last_transformation*/;
 			Eigen::Vector3f estimated_t = estimated_tran.topRightCorner(3, 1);
 			Eigen::Matrix<float, 3, 3, Eigen::RowMajor> estimated_rot = estimated_tran.topLeftCorner(3, 3);
 

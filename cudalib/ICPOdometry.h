@@ -38,7 +38,17 @@ class ICPOdometry
 
         void initICPModel(unsigned short * depth, const float depthCutoff, const Eigen::Matrix4f & modelPose);
 
+		void initPlanes(std::vector<Eigen::Vector4f, Eigen::aligned_allocator<Eigen::Vector4f>> planes_prev,
+			std::vector<float> planes_lambda_prev,
+			std::vector<Eigen::Vector4f, Eigen::aligned_allocator<Eigen::Vector4f>> planes_curr,
+			std::vector<std::pair<int, int>> plane_corr_id,
+			int plane_inliers_count,
+			std::vector<std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f>>> plane_inliers_curr);
+
         void getIncrementalTransformation(Eigen::Vector3f & trans, Eigen::Matrix<float, 3, 3, Eigen::RowMajor> & rot,
+			Eigen::Vector3f & estimated_trans, Eigen::Matrix<float, 3, 3, Eigen::RowMajor> & estimated_rot, int threads, int blocks);
+
+		void getIncrementalTransformationWithPlane(Eigen::Vector3f & trans, Eigen::Matrix<float, 3, 3, Eigen::RowMajor> & rot,
 			Eigen::Vector3f & estimated_trans, Eigen::Matrix<float, 3, 3, Eigen::RowMajor> & estimated_rot, int threads, int blocks);
 
         Eigen::MatrixXd getCovariance();
@@ -46,6 +56,7 @@ class ICPOdometry
 		void getVMapCurr(cv::Mat &mat);
 		void getNMapCurr(cv::Mat &mat);
 		void getPMapCurr(cv::Mat &mat);
+		void getPlaneMap(bool *ret);
 
         float lastICPError;
         float lastICPCount;
@@ -58,10 +69,16 @@ class ICPOdometry
 
         std::vector<DeviceArray2D<float> > vmaps_g_prev_;
         std::vector<DeviceArray2D<float> > nmaps_g_prev_;
+		DeviceArray<float> plane_n_prev_;
+		DeviceArray<float> plane_d_prev_;
+		DeviceArray<float> planes_lambda_prev_;
 
         std::vector<DeviceArray2D<float> > vmaps_curr_;
         std::vector<DeviceArray2D<float> > nmaps_curr_;
 		std::vector<DeviceArray2D<float> > pmaps_curr_;
+		std::vector<DeviceArray2D<bool> > planemaps_curr_;
+		DeviceArray2D<float> plane_inliers_curr_;
+		int plane_count_;
 
 		cv::Mat vmap_curr;
 		cv::Mat nmap_curr;
