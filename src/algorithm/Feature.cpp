@@ -143,12 +143,12 @@ int Feature::findMatched(vector<cv::DMatch> &matches, const cv::Mat &descriptor,
 	return matches.size();
 }
 
-int Feature::findMatchedPairs(vector<cv::DMatch> &matches, const Feature &other, int max_leafs, int k)
+int Feature::findMatchedPairs(vector<cv::DMatch> &matches, const Feature *other, int max_leafs, int k)
 {
-	return findMatched(matches, other.feature_descriptors, max_leafs, k);
+	return findMatched(matches, other->feature_descriptors, max_leafs, k);
 }
 
-bool Feature::findMatchedPairsMultiple(vector<int> &frames, vector<vector<cv::DMatch>> &matches, const Feature &other, int k, int max_leafs)
+bool Feature::findMatchedPairsMultiple(vector<int> &frames, vector<vector<cv::DMatch>> &matches, const Feature *other, int k, int max_leafs)
 {
 	if (this->flann_index == nullptr || !this->multiple)
 	{
@@ -162,11 +162,11 @@ bool Feature::findMatchedPairsMultiple(vector<int> &frames, vector<vector<cv::DM
 		k = frame_count * 4;
 	}
 
-	cv::Mat indices(other.feature_descriptors.rows, k, CV_32S);
-	cv::Mat dists(other.feature_descriptors.rows, k, CV_32F);
+	cv::Mat indices(other->feature_descriptors.rows, k, CV_32S);
+	cv::Mat dists(other->feature_descriptors.rows, k, CV_32F);
 
 	// get the best two neighbours
-	this->flann_index->knnSearch(other.feature_descriptors, indices, dists, k, cv::flann::SearchParams(max_leafs));
+	this->flann_index->knnSearch(other->feature_descriptors, indices, dists, k, cv::flann::SearchParams(max_leafs));
 
 	int* indices_ptr = indices.ptr<int> (0);
 	float* dists_ptr = dists.ptr<float> (0);
@@ -300,7 +300,7 @@ Eigen::Matrix4f Feature::getTransformFromMatches(bool &valid,
 			f.push_back(from);
 			t.push_back(to);    
 		}
-		tfc.add(from, to, 1.0 / to(0)); //the further, the less weight b/c of accuracy decay
+		tfc.add(from, to, 1.0 / to(2)); //the further, the less weight b/c of accuracy decay
 	}
 
 	// find smallest distance between a point and its neighbour in the same cloud
@@ -386,8 +386,11 @@ void Feature::computeInliersAndError(vector<cv::DMatch> &inliers, double &mean_e
 	}
 }
 
-bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform, float &rmse, vector<cv::DMatch> *matches, // output vars. if matches == nullptr, do not return inlier match
+bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
+	Eigen::Matrix<float, 6, 6, Eigen::RowMajor> &result_information,
+	float &rmse, vector<cv::DMatch> *matches, // output vars. if matches == nullptr, do not return inlier match
 	const Feature* earlier, const Feature* now,
+	PointCloudCuda *pcc,
 	const vector<cv::DMatch> &initial_matches,
 	unsigned int ransac_iterations)
 {
@@ -404,7 +407,7 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform, float
 	srand((long)std::clock());
 
 	// a point is an inlier if it's no more than max_dist_m m from its partner apart
-	const float max_dist_m = Config::instance()->get<double>("max_dist_for_inliers");
+	const float max_dist_m = Config::instance()->get<float>("max_dist_for_inliers");
 	const float squared_max_dist_m = max_dist_m * max_dist_m;
 
 	// best values of all iterations (including invalids)
@@ -413,6 +416,12 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform, float
 	Eigen::Matrix4f transformation;
 
 	const unsigned int sample_size = 3;// chose this many randomly from the correspondences:
+
+	int threads = Config::instance()->get<int>("icpcuda_threads");
+	int blocks = Config::instance()->get<int>("icpcuda_blocks");
+	float corr_percent = Config::instance()->get<float>("coresp_percent");
+	Eigen::Matrix<float, 6, 6, Eigen::RowMajor> information;
+
 	for (unsigned int n_iter = 0; n_iter < ransac_iterations; n_iter++)
 	{
 		//generate a map of samples. Using a map solves the problem of drawing a sample more than once
@@ -436,6 +445,16 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform, float
 			earlier->feature_pts_3d, now->feature_pts_3d,
 			squared_max_dist_m);
 		if (inlier_error > 1000) continue; //most possibly a false match in the samples
+
+		if (pcc != nullptr)
+		{
+			Eigen::Vector3f t = transformation.topRightCorner(3, 1);
+			Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = transformation.topLeftCorner(3, 3);
+			int point_count, point_corr_count;
+			pcc->getCoresp(t, rot, information, point_count, point_corr_count, threads, blocks);
+			if ((float)point_corr_count / point_count < corr_percent) continue;
+		}
+
 		Feature::computeInliersAndError(inlier, inlier_error, nullptr,
 			initial_matches, transformation,
 			earlier->feature_pts_3d, now->feature_pts_3d,
@@ -464,6 +483,7 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform, float
 
 		if (inlier_error < best_error) { //copy this to the result
 			result_transform = transformation;
+			result_information = information;
 			if (matches != nullptr) *matches = inlier;
 //			assert(matches.size() >= min_inlier_threshold);
 //			assert(matches.size()>= ((float)initial_matches.size()) * min_inlier_ratio);
@@ -503,6 +523,7 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform, float
 		if (new_inlier_error < best_error) 
 		{
 			result_transform = transformation;
+			result_information = information;
 			if (matches != nullptr) *matches = inlier;
 //			assert(matches->size() >= min_inlier_threshold);
 //			assert(matches.size()>= ((float)initial_matches->size())*min_inlier_ratio);
@@ -542,7 +563,7 @@ bool Feature::getPlanesByRANSAC(Eigen::Vector4f &result_plane, vector<pair<int, 
 	seg.setModelType(pcl::SACMODEL_PLANE);
 	seg.setMethodType(pcl::SAC_RANSAC);
 	//seg.setMaxIterations(Config::instance()->get<int>("plane_max_iteration"));
-	seg.setDistanceThreshold(Config::instance()->get<double>("plane_dist_threshold"));
+	seg.setDistanceThreshold(Config::instance()->get<float>("plane_dist_threshold"));
 
 	seg.setInputCloud(cloud);
 	seg.segment(*inliers, *coefficients);

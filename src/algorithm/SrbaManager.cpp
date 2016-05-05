@@ -63,17 +63,23 @@ SrbaManager::SrbaManager()
 
 	keyframeInQuadTreeCount = 0;
 	clousureCount = 0;
+
+	int width = Config::instance()->get<int>("image_width");
+	int height = Config::instance()->get<int>("image_height");
+	float cx = Config::instance()->get<float>("camera_cx");
+	float cy = Config::instance()->get<float>("camera_cy");
+	float fx = Config::instance()->get<float>("camera_fx");
+	float fy = Config::instance()->get<float>("camera_fy");
+	float depthFactor = Config::instance()->get<float>("depth_factor");
+	float distThresh = Config::instance()->get<float>("dist_threshold");
+	float angleThresh = Config::instance()->get<float>("angle_threshold");
+	pcc = new PointCloudCuda(width, height, cx, cy, fx, fy, depthFactor, distThresh, angleThresh);
 }
 
 bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate/* = false*/, string *inliers_sig, string *exists_sig)
 {
 	graph.push_back(frame);
 	temp_poses.push_back(frame->tran);
-
-	if (graph.size() == 598)
-	{
-		int a = 1;
-	}
 
 	if (!is_keyframe_candidate)
 		return false;
@@ -124,13 +130,13 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 			obs_field.is_fixed = false;
 			obs_field.is_unknown_with_init_val = false;
 
-			for (int i = 0; i < frame->f.size(); i++)
+			for (int i = 0; i < frame->f->size(); i++)
 			{
-				frame->f.feature_ids[i] = Feature::NewID();
-				obs_field.obs.feat_id = frame->f.feature_ids[i];
-				obs_field.obs.obs_data.pt.x = frame->f.feature_pts_3d[i](0);
-				obs_field.obs.obs_data.pt.y = frame->f.feature_pts_3d[i](1);
-				obs_field.obs.obs_data.pt.z = frame->f.feature_pts_3d[i](2);
+				frame->f->feature_ids[i] = Feature::NewID();
+				obs_field.obs.feat_id = frame->f->feature_ids[i];
+				obs_field.obs.obs_data.pt.x = frame->f->feature_pts_3d[i](0);
+				obs_field.obs.obs_data.pt.y = frame->f->feature_pts_3d[i](1);
+				obs_field.obs.obs_data.pt.z = frame->f->feature_pts_3d[i](2);
 				list_obs.push_back(obs_field);
 			}
 
@@ -151,6 +157,7 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 		last_kc = 0;
 		last_kc_tran = graph[0]->tran;
 		keyframeInQuadTreeCount++;
+		frame_in_quadtree_indices.insert(0);
 		Eigen::Vector3f translation = TranslationFromMatrix4f(graph[0]->tran);
 		active_window.insert(translation(0), translation(1), 0);
 		isNewKeyframe = true;
@@ -187,9 +194,9 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 				}
 			}
 
-			for (int i = 0; i < this->graph[k]->f.size(); i++)
+			for (int i = 0; i < this->graph[k]->f->size(); i++)
 			{
-				cv::KeyPoint keypoint = this->graph[k]->f.feature_pts[i];
+				cv::KeyPoint keypoint = this->graph[k]->f->feature_pts[i];
 				int tN = N * keypoint.pt.x / width;
 				int tM = M * keypoint.pt.y / height;
 				tN = tN < 0 ? 0 : (tN >= N ? N - 1 : tN);
@@ -225,6 +232,8 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 			list_obs.push_back(obs_field);
 
 			//bool has_edge_to_last_keyframe = false;
+			pcc->initCurr((unsigned short *)this->graph[k]->depth->data, 20.0f);
+			Eigen::Matrix<float, 6, 6, Eigen::RowMajor> information;
 
 			for (int i = 0; i < frames.size(); i++)
 			{
@@ -235,9 +244,11 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 				Eigen::Matrix4f tran;
 				float rmse;
 				vector<cv::DMatch> inliers;
+				pcc->initPrev((unsigned short *)this->graph[this->active_window.active_frames[frames[i]]]->depth->data, 20.0f);
 				// find edges
-				if (Feature::getTransformationByRANSAC(tran, rmse, &inliers,
-					this->active_window.feature_pool, &(this->graph[k]->f), matches[i]))
+				if (Feature::getTransformationByRANSAC(tran, information, rmse, &inliers,
+					this->active_window.feature_pool, this->graph[k]->f,
+					pcc, matches[i]))
 				{
 					obs_field.is_fixed = false;   // "Landmarks" (relative poses) have unknown relative positions (i.e. treat them as unknowns to be estimated)
 					obs_field.is_unknown_with_init_val = false; // Ignored, since all observed "fake landmarks" already have an initialized value.
@@ -254,19 +265,21 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 					obs_field.obs.obs_data.pitch = yawPitchRoll(1);
 					obs_field.obs.obs_data.roll = yawPitchRoll(2);
 
+#ifdef SAVE_TEST_INFOS
 					baseid.push_back(k);
 					targetid.push_back(this->active_window.active_frames[frames[i]]);
 					rmses.push_back(rmse);
 					matchescount.push_back(matches[i].size());
 					inlierscount.push_back(inliers.size());
 					ransactrans.push_back(tran);
+#endif
 
 					list_obs.push_back(obs_field);
 					count++;
 
 					for (int j = 0; j < inliers.size(); j++)
 					{
-						cv::KeyPoint keypoint = this->graph[k]->f.feature_pts[inliers[j].queryIdx];
+						cv::KeyPoint keypoint = this->graph[k]->f->feature_pts[inliers[j].queryIdx];
 						int tN = N * keypoint.pt.x / width;
 						int tM = M * keypoint.pt.y / height;
 						tN = tN < 0 ? 0 : (tN >= N ? N - 1 : tN);
@@ -302,14 +315,18 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 				obs_field.obs.obs_data.pitch = yawPitchRoll(1);
 				obs_field.obs.obs_data.roll = yawPitchRoll(2);
 
+#ifdef SAVE_TEST_INFOS
 				baseid.push_back(k);
 				targetid.push_back(keyframe_indices[keyframe_indices.size() - 2]);
 				rmses.push_back(0.0);
 				matchescount.push_back(0);
 				inlierscount.push_back(0);
 				ransactrans.push_back(tran);
+#endif
 
 				list_obs.push_back(obs_field);
+				if (frame_in_quadtree_indices.find(keyframe_indices[keyframe_indices.size() - 2]) == frame_in_quadtree_indices.end())
+					delete this->graph[keyframe_indices[keyframe_indices.size() - 2]]->depth;
 				count++;
 			}
 
@@ -382,7 +399,7 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 			delete keyframeTest;
 			delete keyframeExists;
 
-			if (keyframeTestCount + N * M - keyframeExistsCount < N * M * Config::instance()->get<double>("keyframe_check_P"))
+			if (keyframeTestCount + N * M - keyframeExistsCount < N * M * Config::instance()->get<float>("keyframe_check_P"))
 			{
 				frame_in_quadtree_indices.insert(k);
 				Eigen::Vector3f translation = TranslationFromMatrix4f(this->graph[k]->tran);
@@ -431,7 +448,7 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 // 					{
 // 						// keyframe pose changed
 // 						// update 3d feature points
-// 						this->graph[i]->f.updateFeaturePoints3D(tran);
+// 						this->graph[i]->f->updateFeaturePoints3D(tran);
 // 
 // 						// update quadtree
 // 						if (old_translation(0) != new_translation(0) || old_translation(1) != new_translation(1))
@@ -453,7 +470,6 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 				}
 			}
 
-			int ki = 0;
 			for (int i = 0; i < this->graph.size(); i++)
 			{
 				if (this->graph[i]->tran != temp_poses[i])
@@ -466,7 +482,7 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 					{
 						// keyframe pose changed
 						// update 3d feature points
-						this->graph[i]->f.updateFeaturePoints3D(temp_poses[i]);
+						this->graph[i]->f->updateFeaturePoints3D(temp_poses[i]);
 
 						// update quadtree
 						if (old_translation(0) != new_translation(0) || old_translation(1) != new_translation(1))
@@ -496,8 +512,8 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 				int queryid = temp_matches[i].queryIdx;
 				int trainid = temp_matches[i].trainIdx;
 				int frame_index = active_window.feature_pool->feature_frame_index[trainid];
-				int c = graph[active_window.active_frames[frame_index]]->f.findMatched(tm,
-					graph[k]->f.feature_descriptors.row(queryid), maxleaf);
+				int c = graph[active_window.active_frames[frame_index]]->f->findMatched(tm,
+					graph[k]->f->feature_descriptors.row(queryid), maxleaf);
 
 				for (int j = 0; j < tm.size(); j++)
 				{
@@ -525,9 +541,9 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 				}
 			}
 
-			for (int i = 0; i < this->graph[k]->f.size(); i++)
+			for (int i = 0; i < this->graph[k]->f->size(); i++)
 			{
-				cv::KeyPoint keypoint = this->graph[k]->f.feature_pts[i];
+				cv::KeyPoint keypoint = this->graph[k]->f->feature_pts[i];
 				int tN = N * keypoint.pt.x / width;
 				int tM = M * keypoint.pt.y / height;
 				tN = tN < 0 ? 0 : (tN >= N ? N - 1 : tN);
@@ -541,7 +557,7 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 
 			for (int i = 0; i < matches.size(); i++)
 			{
-				cv::KeyPoint keypoint = this->graph[k]->f.feature_pts[matches[i].queryIdx];
+				cv::KeyPoint keypoint = this->graph[k]->f->feature_pts[matches[i].queryIdx];
 				int tN = N * keypoint.pt.x / width;
 				int tM = M * keypoint.pt.y / height;
 				tN = tN < 0 ? 0 : (tN >= N ? N - 1 : tN);
@@ -592,7 +608,7 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 
 			for (int i = 0; i < matches.size(); i++)
 			{
-				graph[k]->f.feature_ids[matches[i].queryIdx] = active_window.feature_pool->feature_ids[matches[i].trainIdx];
+				graph[k]->f->feature_ids[matches[i].queryIdx] = active_window.feature_pool->feature_ids[matches[i].trainIdx];
 			}
 
 			SrbaT::new_kf_observations_t list_obs;
@@ -600,14 +616,14 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 			obs_field.is_fixed = false;
 			obs_field.is_unknown_with_init_val = false;
 
-			for (int i = 0; i < graph[k]->f.size(); i++)
+			for (int i = 0; i < graph[k]->f->size(); i++)
 			{
-				if (graph[k]->f.feature_ids[i] == 0)
-					graph[k]->f.feature_ids[i] = Feature::NewID();
-				obs_field.obs.feat_id = frame->f.feature_ids[i];
-				obs_field.obs.obs_data.pt.x = frame->f.feature_pts_3d[i](0);
-				obs_field.obs.obs_data.pt.y = frame->f.feature_pts_3d[i](1);
-				obs_field.obs.obs_data.pt.z = frame->f.feature_pts_3d[i](2);
+				if (graph[k]->f->feature_ids[i] == 0)
+					graph[k]->f->feature_ids[i] = Feature::NewID();
+				obs_field.obs.feat_id = frame->f->feature_ids[i];
+				obs_field.obs.obs_data.pt.x = frame->f->feature_pts_3d[i](0);
+				obs_field.obs.obs_data.pt.y = frame->f->feature_pts_3d[i](1);
+				obs_field.obs.obs_data.pt.z = frame->f->feature_pts_3d[i](2);
 				list_obs.push_back(obs_field);
 			}
 
@@ -624,7 +640,7 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 			// 			<< "Optimization error: " << new_kf_info.optimize_results.total_sqr_error_init << " -> " << new_kf_info.optimize_results.total_sqr_error_final << endl
 			// 			<< "-------------------------------------------------------" << endl;
 
-			if (keyframeTestCount + N * M - keyframeExistsCount < N * M * Config::instance()->get<double>("keyframe_check_P"))
+			if (keyframeTestCount + N * M - keyframeExistsCount < N * M * Config::instance()->get<float>("keyframe_check_P"))
 			{
 				frame_in_quadtree_indices.insert(k);
 				Eigen::Vector3f translation = TranslationFromMatrix4f(this->graph[k]->tran);
@@ -681,7 +697,7 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 					{
 						// keyframe pose changed
 						// update 3d feature points
-						this->graph[i]->f.updateFeaturePoints3D(tran);
+						this->graph[i]->f->updateFeaturePoints3D(tran);
 
 						// update quadtree
 						if (old_translation(0) != new_translation(0) || old_translation(1) != new_translation(1))

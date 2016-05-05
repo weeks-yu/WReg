@@ -11,12 +11,12 @@ PointCloudPtr ConvertToPointCloud(const cv::Mat &depth, const cv::Mat &rgb, doub
 	cloud->width = rgb.size().width;
 	cloud->points.resize(cloud->height * cloud->width);
 
-	double fx = Config::instance()->get<double>("camera_fx");  // focal length x
-	double fy = Config::instance()->get<double>("camera_fy");  // focal length y
-	double cx = Config::instance()->get<double>("camera_cx");  // optical center x
-	double cy = Config::instance()->get<double>("camera_cy");  // optical center y
+	float fx = Config::instance()->get<float>("camera_fx");  // focal length x
+	float fy = Config::instance()->get<float>("camera_fy");  // focal length y
+	float cx = Config::instance()->get<float>("camera_cx");  // optical center x
+	float cy = Config::instance()->get<float>("camera_cy");  // optical center y
 
-	double factor = Config::instance()->get<double>("depth_factor");	// for the 16-bit PNG files
+	float factor = Config::instance()->get<float>("depth_factor");	// for the 16-bit PNG files
 	// OR: factor = 1 # for the 32-bit float images in the ROS bag files
 
 	for (int j = 0; j < cloud->height; j++)
@@ -46,12 +46,12 @@ PointCloudPtr ConvertToPointCloudWithoutMissingData(const cv::Mat &depth, const 
 	// 	cloud->width = rgb.size().width;
 	//	cloud->points.resize(cloud->height * cloud->width);
 
-	double fx = Config::instance()->get<double>("camera_fx");  // focal length x
-	double fy = Config::instance()->get<double>("camera_fy");  // focal length y
-	double cx = Config::instance()->get<double>("camera_cx");  // optical center x
-	double cy = Config::instance()->get<double>("camera_cy");  // optical center y
+	float fx = Config::instance()->get<float>("camera_fx");  // focal length x
+	float fy = Config::instance()->get<float>("camera_fy");  // focal length y
+	float cx = Config::instance()->get<float>("camera_cx");  // optical center x
+	float cy = Config::instance()->get<float>("camera_cy");  // optical center y
 
-	double factor = Config::instance()->get<double>("depth_factor");	// for the 16-bit PNG files
+	float factor = Config::instance()->get<float>("depth_factor");	// for the 16-bit PNG files
 	// OR: factor = 1 # for the 32-bit float images in the ROS bag files
 
 	for (int j = 0; j < rgb.size().height; j++)
@@ -59,7 +59,7 @@ PointCloudPtr ConvertToPointCloudWithoutMissingData(const cv::Mat &depth, const 
 		for (int i = 0; i < rgb.size().width; i++)
 		{
 			ushort temp = depth.at<ushort>(j, i);
-			if (temp != 0)
+			if (temp > 0)
 			{
 				PointT pt;
 				pt.z = ((double)temp) / factor;
@@ -83,9 +83,9 @@ Eigen::Vector3f ConvertPointTo3D(int i, int j, const cv::Mat &depth)
 	ushort temp = depth.at<ushort>(j, i);
 	if (temp != 0)
 	{
-		pt(2) = ((double)temp) / Config::instance()->get<double>("depth_factor");
-		pt(0) = (i - Config::instance()->get<double>("camera_cx")) * pt(2) / Config::instance()->get<double>("camera_fx");
-		pt(1) = (j - Config::instance()->get<double>("camera_cy")) * pt(2) / Config::instance()->get<double>("camera_fy");
+		pt(2) = ((float)temp) / Config::instance()->get<float>("depth_factor");
+		pt(0) = (i - Config::instance()->get<float>("camera_cx")) * pt(2) / Config::instance()->get<float>("camera_fx");
+		pt(1) = (j - Config::instance()->get<float>("camera_cy")) * pt(2) / Config::instance()->get<float>("camera_fy");
 	}
 	else
 	{

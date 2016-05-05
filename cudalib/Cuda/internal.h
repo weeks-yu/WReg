@@ -123,6 +123,51 @@ struct jtjjtr
     }
 };
 
+struct jtj
+{
+	//21 floats for each product (21)
+	float aa, ab, ac, ad, ae, af,
+	          bb, bc, bd, be, bf,
+	              cc, cd, ce, cf,
+	                  dd, de, df,
+	                      ee, ef,
+	                          ff;
+	float a, b;
+
+	__device__ inline void add(const jtj & other)
+	{
+		aa += other.aa;
+		ab += other.ab;
+		ac += other.ac;
+		ad += other.ad;
+		ae += other.ae;
+		af += other.af;
+
+		bb += other.bb;
+		bc += other.bc;
+		bd += other.bd;
+		be += other.be;
+		bf += other.bf;
+
+		cc += other.cc;
+		cd += other.cd;
+		ce += other.ce;
+		cf += other.cf;
+
+		dd += other.dd;
+		de += other.de;
+		df += other.df;
+
+		ee += other.ee;
+		ef += other.ef;
+
+		ff += other.ff;
+
+		a += other.a;
+		b += other.b;
+	}
+};
+
 void estimateCombined(const Mat33& Rcurr, const float3& tcurr, const DeviceArray2D<float>& vmap_curr, const DeviceArray2D<float>& nmap_curr, const Mat33& Rprev_inv, const float3& tprev, const Intr& intr,
                       const DeviceArray2D<float>& vmap_g_prev, const DeviceArray2D<float>& nmap_g_prev, float distThres, float angleThres,
                       DeviceArray2D<float>& gbuf, DeviceArray<float>& mbuf, float* matrixA_host, float* vectorB_host, float * residual_host);
@@ -167,6 +212,21 @@ void icpStep2(const Mat33& Rcurr,
 	float * matrixA_host,
 	float * vectorB_host,
 	float * residual_host,
+	int threads, int blocks);
+
+void calcCorr(const Mat33& Rcurr,
+	const float3& tcurr,
+	const DeviceArray2D<float>& vmap_curr,
+	const DeviceArray2D<float>& nmap_curr,
+	const Intr& intr,
+	const DeviceArray2D<float>& vmap_g_prev,
+	const DeviceArray2D<float>& nmap_g_prev,
+	float distThres,
+	float angleThres,
+	DeviceArray<jtj> & sum,
+	DeviceArray<jtj> & out,
+	float * matrixA_host,
+	int * result,
 	int threads, int blocks);
 
 void pyrDown(const DeviceArray2D<unsigned short> & src, DeviceArray2D<unsigned short> & dst);

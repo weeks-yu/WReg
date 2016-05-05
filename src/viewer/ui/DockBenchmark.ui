@@ -300,7 +300,7 @@
       </property>
       <item>
        <property name="text">
-        <string>GICP with Graph Optimizer</string>
+        <string>GICP with HogmanOptimizer</string>
        </property>
       </item>
       <item>
@@ -310,7 +310,7 @@
       </item>
       <item>
        <property name="text">
-        <string>ICPCUDA with GraphOptimizer</string>
+        <string>ICPCUDA with HogmanOptimizer</string>
        </property>
       </item>
       <item>

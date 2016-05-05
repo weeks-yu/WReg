@@ -27,6 +27,7 @@
 #include "Config.h"
 #include "ICPOdometry.h"
 #include "ICPSlowdometry.h"
+#include "PointCloudCuda.h"
 
 #include "Frame.h"
 #include "Transformation.h"
@@ -275,11 +276,11 @@ void icp_test()
 	int blocks = Config::instance()->get<int>("icpcuda_blocks");
 	int width = Config::instance()->get<int>("image_width");
 	int height = Config::instance()->get<int>("image_height");
-	double cx = Config::instance()->get<double>("camera_cx");
-	double cy = Config::instance()->get<double>("camera_cy");
-	double fx = Config::instance()->get<double>("camera_fx");
-	double fy = Config::instance()->get<double>("camera_fy");
-	double depthFactor = Config::instance()->get<double>("depth_factor");
+	float cx = Config::instance()->get<float>("camera_cx");
+	float cy = Config::instance()->get<float>("camera_cy");
+	float fx = Config::instance()->get<float>("camera_fx");
+	float fy = Config::instance()->get<float>("camera_fy");
+	float depthFactor = Config::instance()->get<float>("depth_factor");
 	if (icpcuda == nullptr)
 		icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor);
 
@@ -336,11 +337,11 @@ void Ransac_Test()
 {
 	const int icount = 2;
 	std::string rname[icount], dname[icount];
-	rname[0] = "G:/kinect data/living_room_1/rgb/00038.jpg";
-	rname[1] = "G:/kinect data/living_room_1/rgb/00053.jpg";
+	rname[0] = "G:/kinect data/living_room_1/rgb/00554.jpg";
+	rname[1] = "G:/kinect data/living_room_1/rgb/00569.jpg";
 
-	dname[0] = "G:/kinect data/living_room_1/depth/00038.png";
-	dname[1] = "G:/kinect data/living_room_1/depth/00053.png";
+	dname[0] = "G:/kinect data/living_room_1/depth/00554.png";
+	dname[1] = "G:/kinect data/living_room_1/depth/00569.png";
 
 	cv::Mat r[icount], d[icount];
 	PointCloudPtr cloud[icount];
@@ -351,7 +352,7 @@ void Ransac_Test()
 
 	Frame *f[icount];
 	f[0] = new Frame(r[0], d[0], "SURF", Eigen::Matrix4f::Identity());
-	f[0]->f.buildFlannIndex();
+	f[0]->f->buildFlannIndex();
 
 	int N = 4, M = 4;
 	int keyframeTest[16] = {0};
@@ -364,25 +365,14 @@ void Ransac_Test()
 
 		f[i] = new Frame(r[i], d[i], "SURF", Eigen::Matrix4f::Identity());
 		vector<cv::DMatch> matches;
-		f[0]->f.findMatchedPairs(matches, f[i]->f, 128, 2);
+		f[0]->f->findMatchedPairs(matches, f[i]->f, 128, 2);
 
 		Eigen::Matrix4f tran = Eigen::Matrix4f::Identity();
 		float rmse;
 		vector<cv::DMatch> inliers;
 		Feature::getTransformationByRANSAC(tran, rmse, &inliers,
-			&f[0]->f, &f[i]->f, matches);
+			&f[0]->f, &f[i]->f, nullptr, matches);
 		cout << matches.size() << ", " << inliers.size() << endl;
-
-		for (int j = 0; j < inliers.size(); j++)
-		{
-			cv::KeyPoint keypoint = f[i]->f.feature_pts[inliers[j].queryIdx];
-			int tN = N * keypoint.pt.x / 640;
-			int tM = M * keypoint.pt.y / 480;
-			tN = tN < 0 ? 0 : (tN >= N ? N - 1 : tN);
-			tM = tM < 0 ? 0 : (tM >= M ? M - 1 : tM);
-
-			keyframeTest[tM * N + tN]++;
-		}
 
 		pcl::transformPointCloud(*cloud[i], *cloud[i], tran);
 	}
@@ -413,36 +403,37 @@ void KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void*
 	ViewerPtr viewer = *static_cast<ViewerPtr *> (viewer_void);
 	if (event.getKeySym() == "z" && event.keyDown())
 	{
-		if (now > 1 /*0*/)
+		if (now > /*1*/ 0)
 		{
 			viewer->removeAllPointClouds();
 			now--;
-			cout << now - 1 << " " << now << endl;
-			PointCloudPtr cloud_all(new PointCloudT);
-			PointCloudPtr tran_cloud(new PointCloudT);
-			*cloud_all += *clouds[now - 1];
-			pcl::transformPointCloud(*clouds[now], *tran_cloud, trans[now]);
-			*cloud_all += *tran_cloud;
 
-			pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud_all);
-			viewer->addPointCloud<pcl::PointXYZRGB>(cloud_all, rgb, "cloud");
-			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
-
-// 			cout << "pair " << now << ": " << pairs[now].first << "\t" << pairs[now].second << "\t"
-// 				<< rmses[now] << "\t" << matches_and_inliers[now].first << "\t" << matches_and_inliers[now].second << endl;
-// 			show_refined = false;
-// 			pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(clouds[pairs[now].first]);
-// 			stringstream ss;
-// 			ss << pairs[now].first;
-// 			viewer->addPointCloud<pcl::PointXYZRGB>(clouds[pairs[now].first], rgb, ss.str());
-// 			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, ss.str());
-// 
+// 			cout << now - 1 << " " << now << endl;
+// 			PointCloudPtr cloud_all(new PointCloudT);
 // 			PointCloudPtr tran_cloud(new PointCloudT);
-// 			pcl::transformPointCloud(*clouds[pairs[now].second], *tran_cloud, trans[now]);
-// 			pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb2(tran_cloud);
-// 			ss << pairs[now].second;
-// 			viewer->addPointCloud<pcl::PointXYZRGB>(tran_cloud, rgb2, ss.str());
-// 			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, ss.str());
+// 			*cloud_all += *clouds[now - 1];
+// 			pcl::transformPointCloud(*clouds[now], *tran_cloud, trans[now]);
+// 			*cloud_all += *tran_cloud;
+// 
+// 			pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud_all);
+// 			viewer->addPointCloud<pcl::PointXYZRGB>(cloud_all, rgb, "cloud");
+// 			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
+
+			cout << "pair " << now << ": " << pairs[now].first << "\t" << pairs[now].second << "\t"
+				<< rmses[now] << "\t" << matches_and_inliers[now].first << "\t" << matches_and_inliers[now].second << endl;
+			show_refined = false;
+			pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(clouds[pairs[now].first]);
+			stringstream ss;
+			ss << pairs[now].first;
+			viewer->addPointCloud<pcl::PointXYZRGB>(clouds[pairs[now].first], rgb, ss.str());
+			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, ss.str());
+
+			PointCloudPtr tran_cloud(new PointCloudT);
+			pcl::transformPointCloud(*clouds[pairs[now].second], *tran_cloud, trans[now]);
+			pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb2(tran_cloud);
+			ss << pairs[now].second;
+			viewer->addPointCloud<pcl::PointXYZRGB>(tran_cloud, rgb2, ss.str());
+			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, ss.str());
 		}
 	}
 	else if (event.getKeySym() == "x" && event.keyDown())
@@ -450,33 +441,34 @@ void KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void*
 		if (now < pairs_count - 1)
 		{
 			viewer->removeAllPointClouds();
-			now++;
-			cout << now - 1 << " " << now << endl;
-			PointCloudPtr cloud_all(new PointCloudT);
-			PointCloudPtr tran_cloud(new PointCloudT);
-			*cloud_all += *clouds[now - 1];
-			pcl::transformPointCloud(*clouds[now], *tran_cloud, trans[now]);
-			*cloud_all += *tran_cloud;
+ 			now++;
 
-			pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud_all);
-			viewer->addPointCloud<pcl::PointXYZRGB>(cloud_all, rgb, "cloud");
-			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
-
-// 			cout << "pair " << now << ": " << pairs[now].first << "\t" << pairs[now].second << "\t"
-// 				<< rmses[now] << "\t" << matches_and_inliers[now].first << "\t" << matches_and_inliers[now].second << endl;
-// 			show_refined = false;
-// 			pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(clouds[pairs[now].first]);
-// 			stringstream ss;
-// 			ss << pairs[now].first;
-// 			viewer->addPointCloud<pcl::PointXYZRGB>(clouds[pairs[now].first], rgb, ss.str());
-// 			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, ss.str());
-// 
+// 			cout << now - 1 << " " << now << endl;
+// 			PointCloudPtr cloud_all(new PointCloudT);
 // 			PointCloudPtr tran_cloud(new PointCloudT);
-// 			pcl::transformPointCloud(*clouds[pairs[now].second], *tran_cloud, trans[now]);
-// 			pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb2(tran_cloud);
-// 			ss << pairs[now].second;
-// 			viewer->addPointCloud<pcl::PointXYZRGB>(tran_cloud, rgb2, ss.str());
-// 			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, ss.str());
+// 			*cloud_all += *clouds[now - 1];
+// 			pcl::transformPointCloud(*clouds[now], *tran_cloud, trans[now]);
+// 			*cloud_all += *tran_cloud;
+// 
+// 			pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud_all);
+// 			viewer->addPointCloud<pcl::PointXYZRGB>(cloud_all, rgb, "cloud");
+// 			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
+
+			cout << "pair " << now << ": " << pairs[now].first << "\t" << pairs[now].second << "\t"
+				<< rmses[now] << "\t" << matches_and_inliers[now].first << "\t" << matches_and_inliers[now].second << endl;
+			show_refined = false;
+			pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(clouds[pairs[now].first]);
+			stringstream ss;
+			ss << pairs[now].first;
+			viewer->addPointCloud<pcl::PointXYZRGB>(clouds[pairs[now].first], rgb, ss.str());
+			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, ss.str());
+
+			PointCloudPtr tran_cloud(new PointCloudT);
+			pcl::transformPointCloud(*clouds[pairs[now].second], *tran_cloud, trans[now]);
+			pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb2(tran_cloud);
+			ss << pairs[now].second;
+			viewer->addPointCloud<pcl::PointXYZRGB>(tran_cloud, rgb2, ss.str());
+			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, ss.str());
 		}
 	}
 	else if (event.getKeySym() == "n" && event.keyDown())
@@ -551,7 +543,7 @@ void KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void*
 void Ransac_Result_Show()
 {
 	set<int> cloud_needed;
-	ifstream result_infile("E:/360-ransac.txt");
+	ifstream result_infile("G:/ransac.txt");
 	result_infile >> pairs_count;
 	for (int i = 0; i < pairs_count; i++)
 	{
@@ -570,15 +562,18 @@ void Ransac_Result_Show()
 			}
 		}
 
-		cloud_needed.insert(base_id);
-		cloud_needed.insert(target_id);
-		pairs.push_back(pair<int, int>(base_id, target_id));
-		rmses.push_back(rmse);
-		matches_and_inliers.push_back(pair<int, int>(match_count, inlier_count));
-		trans.push_back(tran);
+		if (match_count > 0)
+		{
+			cloud_needed.insert(base_id);
+			cloud_needed.insert(target_id);
+			pairs.push_back(pair<int, int>(base_id, target_id));
+			rmses.push_back(rmse);
+			matches_and_inliers.push_back(pair<int, int>(match_count, inlier_count));
+			trans.push_back(tran);
+		}
 	}
 
-	string directory = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_360";
+	string directory = "G:/kinect data/living_room_1";
 
 	ifstream cloud_infile(directory + "/read.txt");
 	string line;
@@ -601,129 +596,6 @@ void Ransac_Result_Show()
 		k++;
 	}
 
-// 	// test srba
-// 	SrbaGraphT rba_graph;
-// 	// --------------------------------------------------------------------------------
-// 	// Set parameters
-// 	// --------------------------------------------------------------------------------
-// 	rba_graph.setVerbosityLevel(1);   // 0: None; 1:Important only; 2:Verbose
-// 
-// 	rba_graph.parameters.srba.use_robust_kernel = false;
-// 	//rba.parameters.srba.optimize_new_edges_alone  = false;  // skip optimizing new edges one by one? Relative graph-slam without landmarks should be robust enough, but just to make sure we can leave this to "true" (default)
-// 
-// 	// Information matrix for relative pose observations:
-// 	{
-// 		const double STD_NOISE_XYZ = 0.01;
-// 		const double STD_NOISE_ANGLES = mrpt::utils::DEG2RAD(0.5);
-// 		Eigen::Matrix<double, 6, 6> ObsL;
-// 		ObsL.setZero();
-// 		// X,Y,Z:
-// 		for (int i = 0; i < 3; i++) ObsL(i, i) = 1 / mrpt::utils::square(STD_NOISE_XYZ);
-// 		// Yaw,pitch,roll:
-// 		for (int i = 0; i < 3; i++) ObsL(3 + i, 3 + i) = 1 / mrpt::utils::square(STD_NOISE_ANGLES);
-// 
-// 		// Set:
-// 		rba_graph.parameters.obs_noise.lambda = ObsL;
-// 	}
-// 
-// 	// =========== Topology parameters ===========
-// 	rba_graph.parameters.srba.max_tree_depth = 3;
-// 	rba_graph.parameters.srba.max_optimize_depth = 3;
-// 	rba_graph.parameters.ecp.submap_size = 5;
-// 	rba_graph.parameters.ecp.min_obs_to_loop_closure = 1;
-// 	// ===========================================
-// 
-// 	// srba test;
-// 	Eigen::Matrix4f test_tran = trans[0];
-// 	Eigen::Vector3f translation = TranslationFromMatrix4f(test_tran);
-// 	Eigen::Vector3f yawPitchRoll = YawPitchRollFromMatrix4f(test_tran);
-// 	SrbaGraphT::pose_t test_pose;
-// 	test_pose.x() = translation(0);
-// 	test_pose.y() = translation(1);
-// 	test_pose.z() = translation(2);
-// 	test_pose.setYawPitchRoll(yawPitchRoll(0), yawPitchRoll(1), yawPitchRoll(2));
-// 
-// 	Eigen::Vector3f t2(test_pose.x(), test_pose.y(), test_pose.z());
-// 	mrpt::math::CQuaternionDouble q;
-// 	test_pose.getAsQuaternion(q);
-// 	Eigen::Quaternionf quaternion(q.r(), q.x(), q.y(), q.z());
-// 	Eigen::Matrix4f rt = transformationFromQuaternionsAndTranslation(quaternion, t2);
-// 
-// 	if (rt != test_tran)
-// 	{
-// 		int a = 1;
-// 	}
-// 
-// 	for (int i = 0; i < keyframe_indices.size(); i++)
-// 	{
-// 		keyframe_poses.push_back(Eigen::Matrix4f::Identity());
-// 		is_keyframe_pose_set.push_back(false);
-// 
-// 		SrbaGraphT::new_kf_observations_t list_obs;
-// 		SrbaGraphT::new_kf_observation_t obs_field;
-// 
-// 		// fake landmark
-// 		obs_field.is_fixed = true;
-// 		obs_field.obs.feat_id = i; // Feature ID == keyframe ID
-// 		obs_field.obs.obs_data.x = 0;   // Landmark values are actually ignored.
-// 		obs_field.obs.obs_data.y = 0;
-// 		obs_field.obs.obs_data.z = 0;
-// 		obs_field.obs.obs_data.yaw = 0;
-// 		obs_field.obs.obs_data.pitch = 0;
-// 		obs_field.obs.obs_data.roll = 0;
-// 		list_obs.push_back(obs_field);
-// 
-// 		for (int j = 0; j < pairs_count; j++)
-// 		{
-// 			if (pairs[j].second == keyframe_indices[i])
-// 			{
-// 				obs_field.is_fixed = false;   // "Landmarks" (relative poses) have unknown relative positions (i.e. treat them as unknowns to be estimated)
-// 				obs_field.is_unknown_with_init_val = false; // Ignored, since all observed "fake landmarks" already have an initialized value.
-// 
-// 				obs_field.obs.feat_id = keyframe_id[pairs[j].first];
-// 
-// 				Eigen::Matrix4f tran_i = trans[j].inverse();
-// 				Eigen::Vector3f translation = TranslationFromMatrix4f(tran_i);
-// 				Eigen::Vector3f yawPitchRoll = YawPitchRollFromMatrix4f(tran_i);
-// 				obs_field.obs.obs_data.x = translation(0);
-// 				obs_field.obs.obs_data.y = translation(1);
-// 				obs_field.obs.obs_data.z = translation(2);
-// 				obs_field.obs.obs_data.yaw = yawPitchRoll(0);
-// 				obs_field.obs.obs_data.pitch = yawPitchRoll(1);
-// 				obs_field.obs.obs_data.roll = yawPitchRoll(2);
-// 				list_obs.push_back(obs_field);
-// 			}
-// 		}
-// 
-// 		SrbaGraphT::TNewKeyFrameInfo new_kf_info;
-// 		rba_graph.define_new_keyframe(
-// 			list_obs,      // Input observations for the new KF
-// 			new_kf_info,   // Output info
-// 			true           // Also run local optimization?
-// 			);
-// 
-// 		for (int i = 1; i < is_keyframe_pose_set.size(); i++)
-// 		{
-// 			is_keyframe_pose_set[i] = false;
-// 		}
-// 		is_keyframe_pose_set[0] = true;
-// 		bfs_visitor_struct bfsvs;
-// 		rba_graph.bfs_visitor(0, 1000000, false, bfsvs, bfsvs, bfsvs, bfsvs);
-// 	}
-
-// 	keyframe_poses[0] = Eigen::Matrix4f::Identity();
-// 	for (int i = 1; i < keyframe_indices.size(); i++)
-// 	{
-// 		for (int j = 0; j < pairs_count; j++)
-// 		{
-// 			if (pairs[j].second == keyframe_indices[i] && keyframe_indices[i] > pairs[j].first)
-// 			{
-// 				keyframe_poses[i] = keyframe_poses[keyframe_id[pairs[j].first]] * trans[j];
-// 				break;
-// 			}
-// 		}
-// 	}
-
 	now = 0;
 	cout << "pair " << now << ": " << pairs[now].first << "\t" << pairs[now].second << "\t"
 		<< rmses[now] << "\t" << matches_and_inliers[now].first << "\t" << matches_and_inliers[now].second << endl;
@@ -733,20 +605,6 @@ void Ransac_Result_Show()
 	viewer->setBackgroundColor(0, 0, 0);
 	viewer->addCoordinateSystem(1.0);
 	viewer->initCameraParameters();
-
-// 	PointCloudPtr cloud_all(new PointCloudT);
-// 	for (int i = 0; i < keyframe_indices.size(); i++)
-// 	{
-// 		PointCloudPtr tran_cloud(new PointCloudT);
-// 		pcl::transformPointCloud(*clouds[keyframe_indices[i]], *tran_cloud, keyframe_poses[i]);
-// 		*cloud_all += *tran_cloud;
-// 	}
-// 
-// 	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud_all);
-// 	stringstream ss;
-// 	ss << 0;
-// 	viewer->addPointCloud<pcl::PointXYZRGB>(cloud_all, rgb, ss.str());
-// 	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, ss.str());
 
 	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(clouds[pairs[now].first]);
 	stringstream ss;
@@ -803,11 +661,11 @@ void Registration_Result_Show()
 	int blocks = Config::instance()->get<int>("icpcuda_blocks");
 	int width = Config::instance()->get<int>("image_width");
 	int height = Config::instance()->get<int>("image_height");
-	double cx = Config::instance()->get<double>("camera_cx");
-	double cy = Config::instance()->get<double>("camera_cy");
-	double fx = Config::instance()->get<double>("camera_fx");
-	double fy = Config::instance()->get<double>("camera_fy");
-	double depthFactor = Config::instance()->get<double>("depth_factor");
+	float cx = Config::instance()->get<float>("camera_cx");
+	float cy = Config::instance()->get<float>("camera_cy");
+	float fx = Config::instance()->get<float>("camera_fx");
+	float fy = Config::instance()->get<float>("camera_fy");
+	float depthFactor = Config::instance()->get<float>("depth_factor");
 	if (icpcuda == nullptr)
 		icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor);
 
@@ -913,7 +771,7 @@ void feature_test()
 	Frame *f = new Frame(r, d, "SURF", Eigen::Matrix4f::Identity());
 	
 	cv::Mat result;
-	cv::drawKeypoints(r, f->f.feature_pts, result);
+	cv::drawKeypoints(r, f->f->feature_pts, result);
 	cv::imshow("result", result);
 	cv::waitKey();
 }
@@ -934,11 +792,11 @@ void PlaneFittingTest()
 	int blocks = Config::instance()->get<int>("icpcuda_blocks");
 	int width = Config::instance()->get<int>("image_width");
 	int height = Config::instance()->get<int>("image_height");
-	double cx = Config::instance()->get<double>("camera_cx");
-	double cy = Config::instance()->get<double>("camera_cy");
-	double fx = Config::instance()->get<double>("camera_fx");
-	double fy = Config::instance()->get<double>("camera_fy");
-	double depthFactor = Config::instance()->get<double>("depth_factor");
+	float cx = Config::instance()->get<float>("camera_cx");
+	float cy = Config::instance()->get<float>("camera_cy");
+	float fx = Config::instance()->get<float>("camera_fx");
+	float fy = Config::instance()->get<float>("camera_fy");
+	float depthFactor = Config::instance()->get<float>("depth_factor");
 	if (icpcuda == nullptr)
 		icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor);
 
@@ -1005,11 +863,11 @@ void cudaTest()
 	int blocks = Config::instance()->get<int>("icpcuda_blocks");
 	int width = Config::instance()->get<int>("image_width");
 	int height = Config::instance()->get<int>("image_height");
-	double cx = Config::instance()->get<double>("camera_cx");
-	double cy = Config::instance()->get<double>("camera_cy");
-	double fx = Config::instance()->get<double>("camera_fx");
-	double fy = Config::instance()->get<double>("camera_fy");
-	double depthFactor = Config::instance()->get<double>("depth_factor");
+	float cx = Config::instance()->get<float>("camera_cx");
+	float cy = Config::instance()->get<float>("camera_cy");
+	float fx = Config::instance()->get<float>("camera_fx");
+	float fy = Config::instance()->get<float>("camera_fy");
+	float depthFactor = Config::instance()->get<float>("depth_factor");
 	if (icpcuda == nullptr)
 		icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor);
 
@@ -1067,19 +925,19 @@ void plane_icp_test()
 {
 	const int icount = 2;
 	std::string rname[icount], dname[icount];
-// 	rname[0] = "G:/kinect data/living_room_1/rgb/00594.jpg";
-// 	rname[1] = "G:/kinect data/living_room_1/rgb/00595.jpg";
-	rname[0] = "E:/lab/pcl/kinect data/living_room_1/rgb/00594.jpg";
-	rname[1] = "E:/lab/pcl/kinect data/living_room_1/rgb/00595.jpg";
+ 	rname[0] = "G:/kinect data/living_room_1/rgb/00594.jpg";
+ 	rname[1] = "G:/kinect data/living_room_1/rgb/00595.jpg";
+//	rname[0] = "E:/lab/pcl/kinect data/living_room_1/rgb/00594.jpg";
+//	rname[1] = "E:/lab/pcl/kinect data/living_room_1/rgb/00595.jpg";
 	// 	rname[2] = "E:/lab/pcl/kinect data/living_room_1/rgb/00592.jpg";
 	// 	rname[3] = "E:/lab/pcl/kinect data/living_room_1/rgb/00593.jpg";
 	// 	rname[4] = "E:/lab/pcl/kinect data/living_room_1/rgb/00594.jpg";
 	// 	rname[5] = "E:/lab/pcl/kinect data/living_room_1/rgb/00595.jpg";
 
-// 	dname[0] = "G:/kinect data/living_room_1/depth/00594.png";
-// 	dname[1] = "G:/kinect data/living_room_1/depth/00595.png";
-	dname[0] = "E:/lab/pcl/kinect data/living_room_1/depth/00594.png";
-	dname[1] = "E:/lab/pcl/kinect data/living_room_1/depth/00595.png";
+ 	dname[0] = "G:/kinect data/living_room_1/depth/00594.png";
+ 	dname[1] = "G:/kinect data/living_room_1/depth/00595.png";
+//	dname[0] = "E:/lab/pcl/kinect data/living_room_1/depth/00594.png";
+//	dname[1] = "E:/lab/pcl/kinect data/living_room_1/depth/00595.png";
 	// 	dname[2] = "E:/lab/pcl/kinect data/living_room_1/depth/00592.png";
 	// 	dname[3] = "E:/lab/pcl/kinect data/living_room_1/depth/00593.png";
 	// 	dname[4] = "E:/lab/pcl/kinect data/living_room_1/depth/00594.png";
@@ -1100,11 +958,11 @@ void plane_icp_test()
 	int blocks = Config::instance()->get<int>("icpcuda_blocks");
 	int width = Config::instance()->get<int>("image_width");
 	int height = Config::instance()->get<int>("image_height");
-	double cx = Config::instance()->get<double>("camera_cx");
-	double cy = Config::instance()->get<double>("camera_cy");
-	double fx = Config::instance()->get<double>("camera_fx");
-	double fy = Config::instance()->get<double>("camera_fy");
-	double depthFactor = Config::instance()->get<double>("depth_factor");
+	float cx = Config::instance()->get<float>("camera_cx");
+	float cy = Config::instance()->get<float>("camera_cy");
+	float fx = Config::instance()->get<float>("camera_fx");
+	float fy = Config::instance()->get<float>("camera_fy");
+	float depthFactor = Config::instance()->get<float>("depth_factor");
 	if (icpcuda == nullptr)
 		icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor);
 
@@ -1380,12 +1238,90 @@ void plane_icp_test()
 // 	}
 }
 
+void corr_test()
+{
+	const int icount = 2;
+	std::string rname[icount], dname[icount];
+	rname[0] = "G:/kinect data/living_room_1/rgb/00594.jpg";
+	rname[1] = "G:/kinect data/living_room_1/rgb/00595.jpg";
+	//rname[0] = "E:/lab/pcl/kinect data/living_room_1/rgb/00594.jpg";
+	//rname[1] = "E:/lab/pcl/kinect data/living_room_1/rgb/00595.jpg";
+	// 	rname[2] = "E:/lab/pcl/kinect data/living_room_1/rgb/00592.jpg";
+	// 	rname[3] = "E:/lab/pcl/kinect data/living_room_1/rgb/00593.jpg";
+	// 	rname[4] = "E:/lab/pcl/kinect data/living_room_1/rgb/00594.jpg";
+	// 	rname[5] = "E:/lab/pcl/kinect data/living_room_1/rgb/00595.jpg";
+
+	dname[0] = "G:/kinect data/living_room_1/depth/00594.png";
+	dname[1] = "G:/kinect data/living_room_1/depth/00595.png";
+	//dname[0] = "E:/lab/pcl/kinect data/living_room_1/depth/00594.png";
+	//dname[1] = "E:/lab/pcl/kinect data/living_room_1/depth/00595.png";
+	// 	dname[2] = "E:/lab/pcl/kinect data/living_room_1/depth/00592.png";
+	// 	dname[3] = "E:/lab/pcl/kinect data/living_room_1/depth/00593.png";
+	// 	dname[4] = "E:/lab/pcl/kinect data/living_room_1/depth/00594.png";
+	// 	dname[5] = "E:/lab/pcl/kinect data/living_room_1/depth/00595.png";
+
+	cv::Mat r[icount], d[icount];
+	PointCloudPtr cloud[icount];
+
+	for (int i = 0; i < icount; i++)
+	{
+		r[i] = cv::imread(rname[i]);
+		d[i] = cv::imread(dname[i], -1);
+		cloud[i] = ConvertToPointCloudWithoutMissingData(d[i], r[i], i, i);
+	}
+
+	ICPOdometry *icpcuda = nullptr;
+	int threads = Config::instance()->get<int>("icpcuda_threads");
+	int blocks = Config::instance()->get<int>("icpcuda_blocks");
+	int width = Config::instance()->get<int>("image_width");
+	int height = Config::instance()->get<int>("image_height");
+	float cx = Config::instance()->get<float>("camera_cx");
+	float cy = Config::instance()->get<float>("camera_cy");
+	float fx = Config::instance()->get<float>("camera_fx");
+	float fy = Config::instance()->get<float>("camera_fy");
+	float depthFactor = Config::instance()->get<float>("depth_factor");
+	if (icpcuda == nullptr)
+		icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor);
+
+	trans.push_back(Eigen::Matrix4f::Identity());
+
+	icpcuda->initICPModel((unsigned short *)d[0].data, 20.0f, Eigen::Matrix4f::Identity());
+	icpcuda->initICP((unsigned short *)d[1].data, 20.0f);
+
+	Eigen::Matrix4f ret_tran = Eigen::Matrix4f::Identity();
+	Eigen::Vector3f ret_t = ret_tran.topRightCorner(3, 1);
+	Eigen::Matrix<float, 3, 3, Eigen::RowMajor> ret_rot = ret_tran.topLeftCorner(3, 3);
+
+	Eigen::Matrix4f estimated_tran = Eigen::Matrix4f::Identity();
+	Eigen::Vector3f t = estimated_tran.topRightCorner(3, 1);
+	Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = estimated_tran.topLeftCorner(3, 3);
+
+	icpcuda->getIncrementalTransformation(ret_t, ret_rot, t, rot, threads, blocks);
+
+	ret_tran.topLeftCorner(3, 3) = ret_rot;
+	ret_tran.topRightCorner(3, 1) = ret_t;
+
+	PointCloudCuda *pcc = nullptr;
+	if (pcc == nullptr)
+		pcc = new PointCloudCuda(width, height, cx, cy, fx, fy, depthFactor);
+	pcc->initPrev((unsigned short *)d[0].data, 20.0f);
+	pcc->initCurr((unsigned short *)d[1].data, 20.0f);
+	int point_count, point_corr_count;
+	pcc->getCoresp(ret_t, ret_rot, point_count, point_corr_count, threads, blocks);
+
+	cout << point_count << endl << point_corr_count << endl;
+
+	cout << cloud[1]->size() << endl;
+	int tehrjwlkt;
+	cin >> tehrjwlkt;
+}
+
 int main()
 {
 	//keyframe_test();
 	//something();
 	//icp_test();
-	//Ransac_Test();
+	Ransac_Test();
 	//Ransac_Result_Show();
 	//Registration_Result_Show();
 	//read_txt();
@@ -1393,7 +1329,8 @@ int main()
 	//PlaneFittingTest();
 	//continuousPlaneExtractingTest();
 	//cudaTest();
-	plane_icp_test();
+	//plane_icp_test();
+	//corr_test();
 }  
 
 bool getPlanesByRANSACCuda(
@@ -1407,12 +1344,12 @@ bool getPlanesByRANSACCuda(
 // 	cloud->height = depth.size().height;
 // 	cloud->points.resize(cloud->width * cloud->height);
 // 
-// 	double fx = Config::instance()->get<double>("camera_fx");  // focal length x
-// 	double fy = Config::instance()->get<double>("camera_fy");  // focal length y
-// 	double cx = Config::instance()->get<double>("camera_cx");  // optical center x
-// 	double cy = Config::instance()->get<double>("camera_cy");  // optical center y
+// 	float fx = Config::instance()->get<float>("camera_fx");  // focal length x
+// 	float fy = Config::instance()->get<float>("camera_fy");  // focal length y
+// 	float cx = Config::instance()->get<float>("camera_cx");  // optical center x
+// 	float cy = Config::instance()->get<float>("camera_cy");  // optical center y
 // 
-// 	double factor = Config::instance()->get<double>("depth_factor");	// for the 16-bit PNG files
+// 	float factor = Config::instance()->get<float>("depth_factor");	// for the 16-bit PNG files
 // 
 // 	for (int j = 0; j < depth.size().height; j++)
 // 	{

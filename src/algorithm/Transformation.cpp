@@ -66,8 +66,21 @@ Eigen::Vector3f YawPitchRollFromMatrix4f(const Eigen::Matrix4f &matrix)
 	return a.rotation().eulerAngles(2, 1, 0);
 }
 
-Transformation3 eigenToHogman(const Eigen::Matrix4f &eigen_matrix) {
+Matrix6 eigenToHogman(const Eigen::Matrix<float, 6, 6, Eigen::RowMajor> &eigen_matrix)
+{
+	Matrix6 ret;
+	for (int i = 0; i < 6; i++)
+	{
+		for (int j = 0; j < 6; j++)
+		{
+			ret[i][j] = eigen_matrix(i, j);
+		}
+	}
+	return ret;
+}
 
+Transformation3 eigenToHogman(const Eigen::Matrix4f &eigen_matrix)
+{
 	Eigen::Affine3f eigen_transform(eigen_matrix);
 	Eigen::Quaternionf eigen_quat(eigen_transform.rotation());
 	Vector3 translation(eigen_matrix(0, 3), eigen_matrix(1, 3), eigen_matrix(2, 3));

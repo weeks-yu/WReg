@@ -14,6 +14,17 @@ float __shfl_down(float val, int offset, int width = 32)
     __syncthreads();
     return val;
 }
+__inline__ __device__
+float __shfl_down(int val, int offset, int width = 32)
+{
+	static __shared__ int shared[MAX_THREADS];
+	int lane = threadIdx.x % 32;
+	shared[threadIdx.x] = val;
+	__syncthreads();
+	val = (lane + offset < width) ? shared[threadIdx.x + offset] : 0;
+	__syncthreads();
+	return val;
+}
 #endif
 
 #if __CUDA_ARCH__ < 350
@@ -535,4 +546,302 @@ void icpStep2(const Mat33& Rcurr,
 
 	residual_host[0] = host_data[27];
 	residual_host[1] = host_data[28];
+}
+
+__inline__  __device__ jtj warpReduceSum(jtj val)
+{
+	for (int offset = warpSize / 2; offset > 0; offset /= 2)
+	{
+		val.aa += __shfl_down(val.aa, offset);
+		val.ab += __shfl_down(val.ab, offset);
+		val.ac += __shfl_down(val.ac, offset);
+		val.ad += __shfl_down(val.ad, offset);
+		val.ae += __shfl_down(val.ae, offset);
+		val.af += __shfl_down(val.af, offset);
+
+		val.bb += __shfl_down(val.bb, offset);
+		val.bc += __shfl_down(val.bc, offset);
+		val.bd += __shfl_down(val.bd, offset);
+		val.be += __shfl_down(val.be, offset);
+		val.bf += __shfl_down(val.bf, offset);
+
+		val.cc += __shfl_down(val.cc, offset);
+		val.cd += __shfl_down(val.cd, offset);
+		val.ce += __shfl_down(val.ce, offset);
+		val.cf += __shfl_down(val.cf, offset);
+
+		val.dd += __shfl_down(val.dd, offset);
+		val.de += __shfl_down(val.de, offset);
+		val.df += __shfl_down(val.df, offset);
+
+		val.ee += __shfl_down(val.ee, offset);
+		val.ef += __shfl_down(val.ef, offset);
+
+		val.ff += __shfl_down(val.ff, offset);
+
+		val.a += __shfl_down(val.a, offset);
+		val.b += __shfl_down(val.b, offset);
+	}
+
+	return val;
+}
+
+__inline__  __device__ jtj blockReduceSum(jtj val)
+{
+	static __shared__ jtj shared[32];
+
+	int lane = threadIdx.x % warpSize;
+
+	int wid = threadIdx.x / warpSize;
+
+	val = warpReduceSum(val);
+
+	//write reduced value to shared memory
+	if (lane == 0)
+	{
+		shared[wid] = val;
+	}
+	__syncthreads();
+
+	const jtj zero = { 0, 0, 0, 0, 0, 0,
+	                   0, 0, 0, 0, 0,
+	                   0, 0, 0, 0,
+	                   0, 0, 0,
+	                   0, 0,
+	                   0,
+	                   0, 0};
+
+	//ensure we only grab a value from shared memory if that warp existed
+	val = (threadIdx.x < blockDim.x / warpSize) ? shared[lane] : zero;
+
+	if (wid == 0)
+	{
+		val = warpReduceSum(val);
+	}
+
+	return val;
+}
+
+__global__ void reduceSum(jtj * in, jtj * out, int N)
+{
+	jtj sum = { 0, 0, 0, 0, 0, 0,
+	            0, 0, 0, 0, 0,
+	            0, 0, 0, 0,
+	            0, 0, 0,
+	            0, 0,
+	            0,
+	            0, 0};
+
+	for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x)
+	{
+		sum.add(in[i]);
+	}
+
+	sum = blockReduceSum(sum);
+
+	if (threadIdx.x == 0)
+	{
+		out[blockIdx.x] = sum;
+	}
+}
+
+struct CorrCalculator
+{
+	Mat33 Rcurr;
+	float3 tcurr;
+
+	PtrStep<float> vmap_curr;
+	PtrStep<float> nmap_curr;
+
+	Intr intr;
+
+	PtrStep<float> vmap_g_prev;
+	PtrStep<float> nmap_g_prev;
+
+	float distThres;
+	float angleThres;
+
+	int cols;
+	int rows;
+	int N;
+
+	jtj * out;
+
+	__device__ __forceinline__ jtj
+		search(int & x, int & y) const
+	{
+		jtj ret = {0, 0, 0, 0, 0, 0,
+		              0, 0, 0, 0, 0,
+		                 0, 0, 0, 0,
+		                    0, 0, 0,
+		                       0, 0,
+		                          0,
+		                       0, 0};
+
+		float3 vcurr;
+		vcurr.x = vmap_curr.ptr(y)[x];
+		if (isnan(vcurr.x))
+			return ret;
+		ret.a = 1;
+
+		vcurr.y = vmap_curr.ptr(y + rows)[x];
+		vcurr.z = vmap_curr.ptr(y + 2 * rows)[x];
+
+		float3 vcurr_g = Rcurr * vcurr + tcurr;
+
+		int2 ukr;         //projection
+		ukr.x = __float2int_rn(vcurr_g.x * intr.fx / vcurr_g.z + intr.cx);      //4
+		ukr.y = __float2int_rn(vcurr_g.y * intr.fy / vcurr_g.z + intr.cy);                      //4
+
+		if (ukr.x < 0 || ukr.y < 0 || ukr.x >= cols || ukr.y >= rows || vcurr_g.z < 0)
+			return ret;
+
+		float3 vprev_g;
+		vprev_g.x = __ldg(&vmap_g_prev.ptr(ukr.y)[ukr.x]);
+		vprev_g.y = __ldg(&vmap_g_prev.ptr(ukr.y + rows)[ukr.x]);
+		vprev_g.z = __ldg(&vmap_g_prev.ptr(ukr.y + 2 * rows)[ukr.x]);
+
+		float3 ncurr;
+		ncurr.x = nmap_curr.ptr(y)[x];
+		ncurr.y = nmap_curr.ptr(y + rows)[x];
+		ncurr.z = nmap_curr.ptr(y + 2 * rows)[x];
+
+		float3 ncurr_g = Rcurr * ncurr;
+
+		float3 nprev_g;
+		nprev_g.x = __ldg(&nmap_g_prev.ptr(ukr.y)[ukr.x]);
+		nprev_g.y = __ldg(&nmap_g_prev.ptr(ukr.y + rows)[ukr.x]);
+		nprev_g.z = __ldg(&nmap_g_prev.ptr(ukr.y + 2 * rows)[ukr.x]);
+
+		float dist = norm(vprev_g - vcurr_g);
+		float sine = norm(cross(ncurr_g, nprev_g));
+
+		if (sine < angleThres && dist <= distThres && !isnan(ncurr.x) && !isnan(nprev_g.x))
+		{
+			ret.b = 1;
+
+			ret.aa = vcurr.y * vcurr.y + vcurr.z * vcurr.z;
+			ret.ab = -vcurr.x * vcurr.y;
+			ret.ac = -vcurr.x * vcurr.z;
+			ret.ad = 0;
+			ret.ae = -vcurr.z;
+			ret.af = vcurr.y;
+
+			ret.bb = vcurr.x * vcurr.x + vcurr.z * vcurr.z;
+			ret.bc = vcurr.y * vcurr.z;
+			ret.bd = vcurr.z;
+			ret.be = 0;
+			ret.bf = -vcurr.x;
+
+			ret.cc = vcurr.x * vcurr.x + vcurr.y * vcurr.y;
+			ret.cd = vcurr.y;
+			ret.ce = vcurr.x;
+			ret.cf = 0;
+
+			ret.dd = 1;
+			ret.de = 0;
+			ret.df = 0;
+
+			ret.ee = 1;
+			ret.ef = 0;
+
+			ret.ff = 1;
+		}
+
+		return ret;
+	}
+
+	__device__ __forceinline__ void
+		operator () () const
+	{
+		jtj sum = { 0, 0, 0, 0, 0, 0,
+		            0, 0, 0, 0, 0,
+		            0, 0, 0, 0,
+		            0, 0, 0,
+		            0, 0,
+		            0,
+		            0, 0};
+
+		for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x)
+		{
+			int y = i / cols;
+			int x = i - (y * cols);
+			sum.add(search(x, y));
+		}
+
+		sum = blockReduceSum(sum);
+
+		if (threadIdx.x == 0)
+		{
+			out[blockIdx.x] = sum;
+		}
+	}
+};
+
+__global__ void calcCorrKernel(CorrCalculator cor)
+{
+	cor();
+}
+
+void calcCorr(const Mat33& Rcurr,
+	const float3& tcurr,
+	const DeviceArray2D<float>& vmap_curr,
+	const DeviceArray2D<float>& nmap_curr,
+	const Intr& intr,
+	const DeviceArray2D<float>& vmap_g_prev,
+	const DeviceArray2D<float>& nmap_g_prev,
+	float distThres,
+	float angleThres,
+	DeviceArray<jtj> & sum,
+	DeviceArray<jtj> & out,
+	float * matrixA_host,
+	int * result,
+	int threads, int blocks)
+{
+	int cols = vmap_curr.cols();
+	int rows = vmap_curr.rows() / 3;
+
+	CorrCalculator cor;
+
+	cor.Rcurr = Rcurr;
+	cor.tcurr = tcurr;
+
+	cor.vmap_curr = vmap_curr;
+	cor.nmap_curr = nmap_curr;
+
+	cor.intr = intr;
+
+	cor.vmap_g_prev = vmap_g_prev;
+	cor.nmap_g_prev = nmap_g_prev;
+
+	cor.distThres = distThres;
+	cor.angleThres = angleThres;
+
+	cor.cols = cols;
+	cor.rows = rows;
+
+	cor.N = cols * rows;
+	cor.out = sum;
+
+	calcCorrKernel <<<blocks, threads >>>(cor);
+
+	reduceSum <<<1, MAX_THREADS >>>(sum, out, blocks);
+
+	cudaSafeCall(cudaGetLastError());
+	cudaSafeCall(cudaDeviceSynchronize());
+
+	float host_data[23];
+	out.download((jtj *)&host_data[0]);
+
+	int shift = 0;
+	for (int i = 0; i < 6; i++)
+	{
+		for (int j = i; j < 6; j++)
+		{
+			matrixA_host[j * 6 + i] = matrixA_host[i * 6 + j] = host_data[shift++];
+		}
+	}
+
+	result[0] = host_data[21];
+	result[1] = host_data[22];
 }

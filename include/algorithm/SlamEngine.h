@@ -53,25 +53,11 @@ public:
 
 	void SaveLogs(ofstream &outfile);
 	void ShowStatistics();
-	void SaveTestInfo()
-	{
-		ofstream out("test.txt");
-		if (using_hogman_optimizer)
-		{
-			for (int i = 0; i < hogman_manager.baseid.size(); i++)
-			{
-				out << hogman_manager.baseid[i] << endl;
-				out << hogman_manager.targetid[i] << endl;
-				out << hogman_manager.ransac_tran[i] << endl;
-				out << hogman_manager.icp_tran[i] << endl;
-			}
-		}
-		out.close();
-	}
 
 private:
 	bool IsTransformationBigEnough();
 
+#ifdef SAVE_TEST_INFOS
 public:
 	vector<int> keyframe_candidates_id;
 	vector<pair<cv::Mat, cv::Mat>> keyframe_candidates;
@@ -79,6 +65,7 @@ public:
 	vector<pair<cv::Mat, cv::Mat>> keyframes;
 	vector<string> keyframes_inliers_sig;
 	vector<string> keyframes_exists_sig;
+#endif
 
 private:
 	int frame_id;

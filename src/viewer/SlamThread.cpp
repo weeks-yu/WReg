@@ -57,6 +57,6 @@ void SlamThread::run()
 	if (fileInput)
 		fileInput->close();
 	engine->ShowStatistics();
-	engine->SaveTestInfo();
+	//engine->SaveTestInfo();
 	emit RegistrationDone();
 }

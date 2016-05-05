@@ -17,6 +17,8 @@ Eigen::Vector3f TranslationFromMatrix4f(const Eigen::Matrix4f &matrix);
 
 Eigen::Vector3f YawPitchRollFromMatrix4f(const Eigen::Matrix4f &matrix);
 
+Matrix6 eigenToHogman(const Eigen::Matrix<float, 6, 6, Eigen::RowMajor> &eigen_matrix);
+
 Transformation3 eigenToHogman(const Eigen::Matrix4f &eigen_matrix);
 
 Eigen::Matrix4f hogmanToEigen(const Transformation3 &hogman_matrix);

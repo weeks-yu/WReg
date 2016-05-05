@@ -70,13 +70,13 @@ void SlamEngine::setUsingIcpcuda(bool use)
 	{
 		int width = Config::instance()->get<int>("image_width");
 		int height = Config::instance()->get<int>("image_height");
-		double cx = Config::instance()->get<double>("camera_cx");
-		double cy = Config::instance()->get<double>("camera_cy");
-		double fx = Config::instance()->get<double>("camera_fx");
-		double fy = Config::instance()->get<double>("camera_fy");
-		double depthFactor = Config::instance()->get<double>("depth_factor");
-		double distThresh = Config::instance()->get<double>("dist_threshold");
-		double angleThresh = Config::instance()->get<double>("angle_threshold");
+		float cx = Config::instance()->get<float>("camera_cx");
+		float cy = Config::instance()->get<float>("camera_cy");
+		float fx = Config::instance()->get<float>("camera_fx");
+		float fy = Config::instance()->get<float>("camera_fy");
+		float depthFactor = Config::instance()->get<float>("depth_factor");
+		float distThresh = Config::instance()->get<float>("dist_threshold");
+		float angleThresh = Config::instance()->get<float>("angle_threshold");
 		if (icpcuda == nullptr)
 			icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor, distThresh, angleThresh);
 	}
@@ -91,6 +91,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 {
 	timestamps.push_back(timestamp);
 	PointCloudPtr cloud_new = ConvertToPointCloudWithoutMissingData(imgDepth, imgRGB, timestamp, frame_id);
+	PointCloudPtr cloud_downsampled = DownSamplingByVoxelGrid(cloud_new, downsample_rate, downsample_rate, downsample_rate);
 
 	std::cout << "Frame " << frame_id << ": ";
 
@@ -100,9 +101,9 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 		last_cloud = cloud_new;
 		if (using_downsampling)
 		{
-			last_cloud = DownSamplingByVoxelGrid(cloud_new, downsample_rate, downsample_rate, downsample_rate);
+			last_cloud = cloud_downsampled;
 		}
-		point_clouds.push_back(last_cloud);
+		point_clouds.push_back(cloud_downsampled);
 
 		int m_size = last_cloud->size();
 		if (m_size < min_pt_count) min_pt_count = m_size;
@@ -126,19 +127,34 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				frame = new Frame(imgRGB, imgDepth, "SURF", Eigen::Matrix4f::Identity());
 			}
 			frame->relative_tran = Eigen::Matrix4f::Identity();
+			frame->tran = frame->relative_tran;
+
 			hogman_manager.active_window.build(0.0, 0.0, Config::instance()->get<float>("quadtree_size"), 4);
+
 			// test
 			string inliers, exists;
 			bool isKeyframe = hogman_manager.addNode(frame, 1.0, true, &inliers, &exists);
+
+#ifdef SAVE_TEST_INFOS
 			keyframe_candidates_id.push_back(frame_id);
 			keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
-			if (isKeyframe)
+#endif
+
+			if (!isKeyframe)
+			{
+				delete frame->f;
+			}
+
+#ifdef SAVE_TEST_INFOS
+			else
 			{
 				keyframes_id.push_back(frame_id);
 				keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 				keyframes_inliers_sig.push_back(inliers);
 				keyframes_exists_sig.push_back(exists);
 			}
+#endif
+
 		}
 		else if (using_srba_optimizer)
 		{
@@ -151,20 +167,33 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			{
 				frame = new Frame(imgRGB, imgDepth, "SURF", Eigen::Matrix4f::Identity());
 			}
-			frame->f.buildFlannIndex();
 			frame->relative_tran = Eigen::Matrix4f::Identity();
+			frame->tran = frame->relative_tran;
+
 			srba_manager.active_window.build(0.0, 0.0, Config::instance()->get<float>("quadtree_size"), 4);
+
 			string inliers, exists;
 			bool isKeyframe = srba_manager.addNode(frame, 1.0, true, &inliers, &exists);
+
+#ifdef SAVE_TEST_INFOS
 			keyframe_candidates_id.push_back(frame_id);
 			keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
-			if (isKeyframe)
+#endif
+
+			if (!isKeyframe)
+			{
+				delete frame->f;
+			}
+
+#ifdef SAVE_TEST_INFOS
+			else
 			{
 				keyframes_id.push_back(frame_id);
 				keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 				keyframes_inliers_sig.push_back(inliers);
 				keyframes_exists_sig.push_back(exists);
 			}
+#endif
 		}
 		else
 		{
@@ -187,9 +216,9 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 
 		if (using_downsampling)
 		{
-			cloud_for_registration = DownSamplingByVoxelGrid(cloud_new, downsample_rate, downsample_rate, downsample_rate);
+			cloud_for_registration = cloud_downsampled;
 		}
-		point_clouds.push_back(cloud_for_registration);
+		point_clouds.push_back(cloud_downsampled);
 		int m_size = cloud_for_registration->size();
 		if (m_size < min_pt_count) min_pt_count = m_size;
 		if (m_size > max_pt_count) max_pt_count = m_size;
@@ -216,7 +245,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			if (weight > max_fit) max_fit = weight;
 			std::cout << ", Weight: " << fixed << setprecision(3) << weight;
 
-			relative_tran = tran * last_transformation;
+			relative_tran = last_transformation * tran;
 		}
 		if (using_icpcuda)
 		{
@@ -266,6 +295,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 					frame_now = new Frame(imgRGB, imgDepth, "SURF", global_tran);
 				}
 				frame_now->relative_tran = relative_tran;
+				frame_now->tran = global_tran;
 				step_time = (clock() - step_start) / 1000.0;
 				std::cout << endl;
 				std::cout << "Feature: " << fixed << setprecision(3) << step_time;
@@ -278,15 +308,27 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				bool isKeyframe = hogman_manager.addNode(frame_now, weight, true, &inliers, &exists);
 
 				// record all keyframe
+
+#ifdef SAVE_TEST_INFOS
 				keyframe_candidates_id.push_back(frame_id);
 				keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
-				if (isKeyframe)
+#endif
+
+				if (!isKeyframe)
+				{
+					delete frame_now->f;
+				}
+
+#ifdef SAVE_TEST_INFOS
+				else
 				{
 					keyframes_id.push_back(frame_id);
 					keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 					keyframes_inliers_sig.push_back(inliers);
 					keyframes_exists_sig.push_back(exists);
 				}
+#endif
+				
 			}
 			else
 			{
@@ -311,7 +353,6 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				{
 					frame_now = new Frame(imgRGB, imgDepth, "SURF", global_tran);
 				}
-				frame_now->f.buildFlannIndex();
 				frame_now->relative_tran = relative_tran;
 				frame_now->tran = global_tran;
 				step_time = (clock() - step_start) / 1000.0;
@@ -327,15 +368,27 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				bool isKeyframe = srba_manager.addNode(frame_now, weight, true, &inliers, &exists);
 
 				// record all keyframe
+
+#ifdef SAVE_TEST_INFOS
 				keyframe_candidates_id.push_back(frame_id);
 				keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
-				if (isKeyframe)
+#endif
+
+				if (!isKeyframe)
+				{
+					delete frame_now->f;
+				}
+
+#ifdef SAVE_TEST_INFOS
+				else
 				{
 					keyframes_id.push_back(frame_id);
 					keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 					keyframes_inliers_sig.push_back(inliers);
 					keyframes_exists_sig.push_back(exists);
 				}
+#endif
+				
 			}
 			else
 			{
@@ -398,9 +451,10 @@ vector<pair<double, Eigen::Matrix4f>> SlamEngine::GetTransformations()
 
 void SlamEngine::SaveLogs(ofstream &outfile)
 {
+#ifdef SAVE_TEST_INFOS
 	if (using_srba_optimizer)
 	{
-		outfile << "base\ttarget\trmse\tmatches\tinliers\ttransformation" << endl;
+		//outfile << "base\ttarget\trmse\tmatches\tinliers\ttransformation" << endl;
 		outfile << srba_manager.baseid.size() << endl;
 		for (int i = 0; i < srba_manager.baseid.size(); i++)
 		{
@@ -412,6 +466,21 @@ void SlamEngine::SaveLogs(ofstream &outfile)
 			outfile << srba_manager.ransactrans[i] << endl;
 		}
 	}
+	else if (using_hogman_optimizer)
+	{
+		//outfile << "base\ttarget\trmse\tmatches\tinliers\ttransformation" << endl;
+		outfile << hogman_manager.baseid.size() << endl;
+		for (int i = 0; i < hogman_manager.baseid.size(); i++)
+		{
+			outfile << hogman_manager.baseid[i] << "\t"
+				<< hogman_manager.targetid[i] << "\t"
+				<< hogman_manager.rmses[i] << "\t"
+				<< hogman_manager.matchescount[i] << "\t"
+				<< hogman_manager.inlierscount[i] << endl;
+			outfile << hogman_manager.ransactrans[i] << endl;
+		}
+	}
+#endif
 }
 
 void SlamEngine::ShowStatistics()
@@ -421,7 +490,7 @@ void SlamEngine::ShowStatistics()
 	cout << "Total runtime         : " << (clock() - total_start) / 1000.0 << endl;
 	cout << "Total frames          : " << frame_id << endl;
 	if (using_hogman_optimizer)
-		cout << "Number of keyframes   : " << hogman_manager.keyframeCount << endl;
+		cout << "Number of keyframes   : " << hogman_manager.keyframeInQuadTreeCount << endl;
 	else
 		cout << "Number of keyframes   : " << srba_manager.keyframeInQuadTreeCount << endl;
 	cout << "Min Cloud Size : " << min_pt_count << "\t\t Max Cloud Size: " << max_pt_count << endl;
@@ -461,15 +530,15 @@ bool SlamEngine::IsTransformationBigEnough()
 	}
 
 	Eigen::Vector3f t = TranslationFromMatrix4f(accumulated_transformation);
-	double tnorm = t.norm();
+	float tnorm = t.norm();
 	Eigen::Vector3f e = EulerAngleFromQuaternion(QuaternionFromMatrix4f(accumulated_transformation));
 	e *= 180.0 / M_PI;
-	double max_angle = std::max(fabs(e(0)), std::max(fabs(e(1)), fabs(e(2))));
+	float max_angle = std::max(fabs(e(0)), std::max(fabs(e(1)), fabs(e(2))));
 
 	cout << ", " << tnorm << ", " << max_angle;
 
-	if (tnorm > Config::instance()->get<double>("min_translation_meter")
-		|| max_angle > Config::instance()->get<double>("min_rotation_degree"))
+	if (tnorm > Config::instance()->get<float>("min_translation_meter")
+		|| max_angle > Config::instance()->get<float>("min_rotation_degree"))
 	{
 		return true;
 	}

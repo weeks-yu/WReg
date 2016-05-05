@@ -12,7 +12,9 @@ public:
 
 	ActiveWindow active_window;
 
-	set<int> key_frame_indices;
+	vector<int> keyframe_indices;
+	map<int, int> keyframe_id;
+	set<int> frame_in_quadtree_indices;
 
 	double min_graph_opt_time;
 	double max_graph_opt_time;
@@ -28,17 +30,23 @@ public:
 	int min_closure_candidate;
 	int max_closure_candidate;
 
-	int keyframeCount;
+	int keyframeInQuadTreeCount;
 	int clousureCount;
 
+#ifdef SAVE_TEST_INFOS
 	vector<int> baseid;
 	vector<int> targetid;
-	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> ransac_tran;
-	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> icp_tran;
+	vector<float> rmses;
+	vector<int> matchescount;
+	vector<int> inlierscount;
+	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> ransactrans;
+#endif
 
 private:
 
 	AISNavigation::GraphOptimizer3D* optimizer;
+
+	int iteration_count;
 
 	vector<Frame*> graph;
 
@@ -46,9 +54,11 @@ private:
 
 	Eigen::Matrix4f last_kc_tran;
 
-	bool keyframeOnly;
+	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> temp_poses;
 
-	ICPOdometry *icpcuda;
+	PointCloudCuda *pcc;
+	int threads;
+	int blocks;
 
 public:
 

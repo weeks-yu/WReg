@@ -259,6 +259,7 @@ void MainWindow::onBenchmarkPushButtonSaveKeyframesClicked(bool checked)
 		if (!engine)
 			return;
 
+#ifdef SAVE_TEST_INFOS
 		cout << engine->keyframe_candidates.size() << endl;
 		for (int i = 0; i < engine->keyframe_candidates.size(); i++)
 		{
@@ -279,6 +280,8 @@ void MainWindow::onBenchmarkPushButtonSaveKeyframesClicked(bool checked)
 // 			fn = fi.absoluteFilePath() + "/keyframe_" + QString::number(i) + "_depth.png";
 // 			cv::imwrite(fn.toStdString(), engine->keyframe_candidates[i].second);
 		}
+#endif
+
 	}
 }
 

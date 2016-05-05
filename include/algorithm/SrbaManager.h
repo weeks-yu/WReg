@@ -69,13 +69,14 @@ public:
 	int keyframeInQuadTreeCount;
 	int clousureCount;
 
+#ifdef SAVE_TEST_INFOS
 	vector<int> baseid;
 	vector<int> targetid;
 	vector<float> rmses;
 	vector<int> matchescount;
 	vector<int> inlierscount;
 	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> ransactrans;
-
+#endif
 
 private:
 
@@ -88,6 +89,8 @@ private:
 	map<int, bool> edge_updated;
 	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> temp_poses;
 	vector<bool> is_keyframe_pose_set;
+
+	PointCloudCuda *pcc;
 
 public:
 

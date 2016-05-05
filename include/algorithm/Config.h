@@ -1,5 +1,7 @@
 #pragma once
 
+//#define SAVE_TEST_INFOS
+
 #include <map>
 #include <string>
 #include <boost/any.hpp>

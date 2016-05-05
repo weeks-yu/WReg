@@ -6,6 +6,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include "Config.h"
+#include "PointCloudCuda.h"
 
 using namespace std;
 
@@ -68,9 +69,9 @@ public:
 
 	int findMatched(vector<cv::DMatch> &matches, const cv::Mat &descriptor, int max_leafs = 64, int k = 2);
 
-	int findMatchedPairs(vector<cv::DMatch> &matches, const Feature &other, int max_leafs = 64, int k = 2);
+	int findMatchedPairs(vector<cv::DMatch> &matches, const Feature *other, int max_leafs = 64, int k = 2);
 
-	bool findMatchedPairsMultiple(vector<int> &frames, vector<vector<cv::DMatch>> &matches, const Feature &other, int k = 30, int max_leafs = 128);
+	bool findMatchedPairsMultiple(vector<int> &frames, vector<vector<cv::DMatch>> &matches, const Feature *other, int k = 30, int max_leafs = 128);
 
 	int getFrameCount();
 
@@ -100,8 +101,11 @@ public:
 		const vector_eigen_vector3f &earlier, const vector_eigen_vector3f &now,
 		double squaredMaxInlierDistInM);
 
-	static bool getTransformationByRANSAC(Eigen::Matrix4f &result_transform, float &rmse, vector<cv::DMatch> *matches, 
+	static bool getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
+		Eigen::Matrix<float, 6, 6, Eigen::RowMajor> &result_information,
+		float &rmse, vector<cv::DMatch> *matches,
 		const Feature* earlier, const Feature* now,
+		PointCloudCuda *pcc,
 		const vector<cv::DMatch> &initial_matches,
 		unsigned int ransac_iterations = 1000);
 
