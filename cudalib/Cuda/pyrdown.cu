@@ -375,7 +375,7 @@ void createNMapAndPMap(const DeviceArray2D<float>& vmap, DeviceArray2D<float>& n
 	cudaSafeCall(cudaGetLastError());
 }
 
-__global__ void computePlanemapKernel(int rows, int cols, const PtrStep<float> vmap, const float4 plane, const float max_dist,
+__global__ void computePlanemapKernel(int rows, int cols, const PtrStep<float> vmap, const PtrStep<float> nmap, const float4 plane, const float max_dist,
 	PtrStep<bool> planemap)
 {
 	int u = threadIdx.x + blockIdx.x * blockDim.x;
@@ -388,16 +388,26 @@ __global__ void computePlanemapKernel(int rows, int cols, const PtrStep<float> v
 	if (is_true)
 		return;
 
-	float3 v_curr;
+	float3 v_curr, n_curr;
 	v_curr.x = vmap.ptr(v)[u];
+	n_curr.x = nmap.ptr(v)[u];
 
-	if (!isnan(v_curr.x))
+	if (!isnan(v_curr.x) && !isnan(n_curr.x))
 	{
 		v_curr.y = vmap.ptr(v + rows)[u];
 		v_curr.z = vmap.ptr(v + 2 * rows)[u];
+
+		n_curr.y = nmap.ptr(v + rows)[u];
+		n_curr.z = nmap.ptr(v + 2 * rows)[u];
 		
+		float3 plane_n;
+		plane_n.x = plane.x;
+		plane_n.y = plane.y;
+		plane_n.z = plane.z;
+
 		float dist = abs(plane.x * v_curr.x + plane.y * v_curr.y + plane.z * v_curr.z + plane.w);
-		planemap.ptr(v)[u] = dist < max_dist;
+		float n_norm = acos(dot(plane_n, n_curr)) * 180 / 3.141592;
+		planemap.ptr(v)[u] = dist < max_dist && n_norm < 20;
 	}
 	else
 	{
@@ -405,7 +415,7 @@ __global__ void computePlanemapKernel(int rows, int cols, const PtrStep<float> v
 	}
 }
 
-void createPlaneMap(const DeviceArray2D<float>& vmap, const float4 plane, const float max_dist, DeviceArray2D<bool>& planemap)
+void createPlaneMap(const DeviceArray2D<float>& vmap, const DeviceArray2D<float>& nmap, const float4 plane, const float max_dist, DeviceArray2D<bool>& planemap)
 {
 	int rows = vmap.rows() / 3;
 	int cols = vmap.cols();
@@ -417,7 +427,7 @@ void createPlaneMap(const DeviceArray2D<float>& vmap, const float4 plane, const 
 	grid.x = divUp(cols, block.x);
 	grid.y = divUp(rows, block.y);
 
-	computePlanemapKernel <<<grid, block >>>(rows, cols, vmap, plane, max_dist, planemap);
+	computePlanemapKernel <<<grid, block >>>(rows, cols, vmap, nmap, plane, max_dist, planemap);
 	cudaSafeCall(cudaGetLastError());
 }
 

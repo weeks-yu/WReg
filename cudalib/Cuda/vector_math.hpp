@@ -101,6 +101,12 @@ operator* (const Mat33& m, const float3& vec)
   return make_float3 (dot (m.data[0], vec), dot (m.data[1], vec), dot (m.data[2], vec));
 }
 
+__device__ __forceinline__ float3
+operator* (const float3& vec, const Mat33& m)
+{
+	return make_float3(dot(m.data[0], vec), dot(m.data[1], vec), dot(m.data[2], vec));
+}
+
 static inline int divUp(int total, int grain) { return (total + grain - 1) / grain; }
 
 #endif /* VECTOR_MATH_HPP_ */

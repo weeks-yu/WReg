@@ -137,6 +137,7 @@ struct ICPReduction
 
     PtrStep<float> vmap_g_prev;
     PtrStep<float> nmap_g_prev;
+	PtrStep<bool> planemap_g_prev;
 
     float distThres;
     float angleThres;
@@ -171,6 +172,10 @@ struct ICPReduction
 
         if(ukr.x < 0 || ukr.y < 0 || ukr.x >= cols || ukr.y >= rows || vcurr_cp.z < 0)
             return false;
+
+		bool is_plane_point = planemap_g_prev.ptr(ukr.y)[ukr.x];
+		if (P > 0 && is_plane_point)
+			return false;
 
         float3 vprev_g;
         vprev_g.x = __ldg(&vmap_g_prev.ptr (ukr.y       )[ukr.x]);
@@ -287,12 +292,13 @@ struct ICPReduction
 		float row[7] = { 0, 0, 0, 0, 0, 0, 0 };
 
 		s_cp = Rprev_inv * (s_cp - tprev);         // prev camera coo space
-		//d_cp = Rprev_inv * (d_cp - tprev);         // prev camera coo space
-		n_cp = Rprev_inv * (n_cp);                // prev camera coo space
+		d += dot(tprev, n_cp);						// prev camera coo space
+		n_cp = n_cp * Rprev_inv;                // prev camera coo space
+		
 
 		*(float3*)&row[0] = n_cp;
 		*(float3*)&row[3] = cross(s_cp, n_cp);
-		row[6] = dot(n_cp, s_cp) + d;
+		row[6] = -dot(n_cp, s_cp) - d;
 
 		jtjjtr values = { lambda * row[0] * row[0],
 						  lambda * row[0] * row[1],
@@ -454,6 +460,7 @@ void icpStep2(const Mat33& Rcurr,
 	const Intr& intr,
 	const DeviceArray2D<float>& vmap_g_prev,
 	const DeviceArray2D<float>& nmap_g_prev,
+	const DeviceArray2D<bool>& planemap_g_prev,
 	const DeviceArray<float>& plane_n_prev,
 	const DeviceArray<float>& plane_d_prev,
 	const DeviceArray<float>& plane_lambda_prev,
@@ -498,6 +505,7 @@ void icpStep2(const Mat33& Rcurr,
 	icp.P_inliner_count = plane_inlier_curr.cols();
 	icp.plane_n_prev = plane_n_prev;
 	icp.plane_d_prev = plane_d_prev;
+	icp.planemap_g_prev = planemap_g_prev;
 	icp.plane_inlier_curr = plane_inlier_curr;
 	icp.planemap_curr = planemap_curr;
 	icp.plane_lambda_prev = plane_lambda_prev;

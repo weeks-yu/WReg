@@ -56,7 +56,8 @@ class ICPOdometry
 		void getVMapCurr(cv::Mat &mat);
 		void getNMapCurr(cv::Mat &mat);
 		void getPMapCurr(cv::Mat &mat);
-		void getPlaneMap(bool *ret);
+		void getPlaneMapCurr(bool *ret);
+		void getPlaneMapPrev(bool *ret);
 
         float lastICPError;
         float lastICPCount;
@@ -69,6 +70,7 @@ class ICPOdometry
 
         std::vector<DeviceArray2D<float> > vmaps_g_prev_;
         std::vector<DeviceArray2D<float> > nmaps_g_prev_;
+		std::vector<DeviceArray2D<bool> > planemaps_g_prev_;
 		DeviceArray<float> plane_n_prev_;
 		DeviceArray<float> plane_d_prev_;
 		DeviceArray<float> planes_lambda_prev_;

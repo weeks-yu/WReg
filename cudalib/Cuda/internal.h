@@ -156,6 +156,7 @@ void icpStep2(const Mat33& Rcurr,
 	const Intr& intr,
 	const DeviceArray2D<float>& vmap_g_prev,
 	const DeviceArray2D<float>& nmap_g_prev,
+	const DeviceArray2D<bool>& planemap_g_prev,
 	const DeviceArray<float>& plane_n_prev,
 	const DeviceArray<float>& plane_d_prev,
 	const DeviceArray<float>& plane_lambda_prev,
@@ -173,7 +174,7 @@ void createVMap(const Intr& intr, const DeviceArray2D<unsigned short> & depth, D
 void createNMap(const DeviceArray2D<float>& vmap, DeviceArray2D<float>& nmap);
 void createPMap(const DeviceArray2D<float>& vmap, DeviceArray2D<float>& pmap);
 void createNMapAndPMap(const DeviceArray2D<float>& vmap, DeviceArray2D<float>& nmap, DeviceArray2D<float>& pmap);
-void createPlaneMap(const DeviceArray2D<float>& vmap, const float4 plane, const float max_dist, DeviceArray2D<bool>& planemap);
+void createPlaneMap(const DeviceArray2D<float>& vmap, const DeviceArray2D<float>& nmap, const float4 plane, const float max_dist, DeviceArray2D<bool>& planemap);
 void tranformMaps(const DeviceArray2D<float>& vmap_src,
                   const DeviceArray2D<float>& nmap_src,
                   const Mat33& Rmat, const float3& tvec,

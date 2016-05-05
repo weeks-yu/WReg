@@ -38,6 +38,7 @@ ICPOdometry::ICPOdometry(int width,
 
     vmaps_g_prev_.resize(NUM_PYRS);
     nmaps_g_prev_.resize(NUM_PYRS);
+	planemaps_g_prev_.resize(NUM_PYRS);
 
     vmaps_curr_.resize(NUM_PYRS);
     nmaps_curr_.resize(NUM_PYRS);
@@ -53,6 +54,7 @@ ICPOdometry::ICPOdometry(int width,
 
         vmaps_g_prev_[i].create (pyr_rows*3, pyr_cols);
         nmaps_g_prev_[i].create (pyr_rows*3, pyr_cols);
+		planemaps_g_prev_[i].create(pyr_rows, pyr_cols);
 
         vmaps_curr_[i].create (pyr_rows*3, pyr_cols);
         nmaps_curr_[i].create (pyr_rows*3, pyr_cols);
@@ -143,15 +145,22 @@ void ICPOdometry::initPlanes(std::vector<Eigen::Vector4f, Eigen::aligned_allocat
 {
 	for (int i = 0; i < plane_corr_id.size(); i++)
 	{
-		float4 pl;
-		pl.x = planes_curr[plane_corr_id[i].second](0);
-		pl.y = planes_curr[plane_corr_id[i].second](1);
-		pl.z = planes_curr[plane_corr_id[i].second](2);
-		pl.w = planes_curr[plane_corr_id[i].second](3);
+		float4 p1, p2;
+		p1.x = planes_prev[plane_corr_id[i].first](0);
+		p1.y = planes_prev[plane_corr_id[i].first](1);
+		p1.z = planes_prev[plane_corr_id[i].first](2);
+		p1.w = planes_prev[plane_corr_id[i].first](3);
+
+		p2.x = planes_curr[plane_corr_id[i].second](0);
+		p2.y = planes_curr[plane_corr_id[i].second](1);
+		p2.z = planes_curr[plane_corr_id[i].second](2);
+		p2.w = planes_curr[plane_corr_id[i].second](3);
 
 		for (int j = 0; j < NUM_PYRS; j++)
 		{
-			createPlaneMap(vmaps_curr_[j], pl, 0.02, planemaps_curr_[j]);
+			createPlaneMap(vmaps_g_prev_[j], nmaps_g_prev_[j], p1, 0.02, planemaps_g_prev_[j]);
+			createPlaneMap(vmaps_curr_[j], nmaps_curr_[j], p2, 0.02, planemaps_curr_[j]);
+			
 		}
 		cudaDeviceSynchronize();
 	}
@@ -319,6 +328,7 @@ void ICPOdometry::getIncrementalTransformationWithPlane(Eigen::Vector3f & trans,
 
 			DeviceArray2D<float>& vmap_g_prev = vmaps_g_prev_[i];
 			DeviceArray2D<float>& nmap_g_prev = nmaps_g_prev_[i];
+			DeviceArray2D<bool>& planemap_g_prev = planemaps_g_prev_[i];
 
 			float residual[2];
 
@@ -333,6 +343,7 @@ void ICPOdometry::getIncrementalTransformationWithPlane(Eigen::Vector3f & trans,
 				intr(i),
 				vmap_g_prev,
 				nmap_g_prev,
+				planemap_g_prev,
 				plane_n_prev_,
 				plane_d_prev_,
 				planes_lambda_prev_,
@@ -397,7 +408,12 @@ void ICPOdometry::getPMapCurr(cv::Mat &mat)
 	pmap_curr.copyTo(mat);
 }
 
-void ICPOdometry::getPlaneMap(bool *ret)
+void ICPOdometry::getPlaneMapCurr(bool *ret)
 {
 	planemaps_curr_[0].download(ret, width * sizeof(bool));
+}
+
+void ICPOdometry::getPlaneMapPrev(bool *ret)
+{
+	planemaps_g_prev_[0].download(ret, width * sizeof(bool));
 }

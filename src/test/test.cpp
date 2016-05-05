@@ -976,15 +976,15 @@ void cudaTest()
 {
 	const int icount = 2;
 	std::string rname[icount], dname[icount];
-	rname[0] = "G:/kinect data/living_room_1/rgb/00590.jpg";
-	rname[1] = "G:/kinect data/living_room_1/rgb/00591.jpg";
+	rname[0] = "E:/lab/pcl/kinect data/living_room_1/rgb/00590.jpg";
+	rname[1] = "E:/lab/pcl/kinect data/living_room_1/rgb/00591.jpg";
 // 	rname[2] = "E:/lab/pcl/kinect data/living_room_1/rgb/00592.jpg";
 // 	rname[3] = "E:/lab/pcl/kinect data/living_room_1/rgb/00593.jpg";
 // 	rname[4] = "E:/lab/pcl/kinect data/living_room_1/rgb/00594.jpg";
 // 	rname[5] = "E:/lab/pcl/kinect data/living_room_1/rgb/00595.jpg";
 
-	dname[0] = "G:/kinect data/living_room_1/depth/00590.png";
-	dname[1] = "G:/kinect data/living_room_1/depth/00591.png";
+	dname[0] = "E:/lab/pcl/kinect data/living_room_1/depth/00590.png";
+	dname[1] = "E:/lab/pcl/kinect data/living_room_1/depth/00591.png";
 // 	dname[2] = "E:/lab/pcl/kinect data/living_room_1/depth/00592.png";
 // 	dname[3] = "E:/lab/pcl/kinect data/living_room_1/depth/00593.png";
 // 	dname[4] = "E:/lab/pcl/kinect data/living_room_1/depth/00594.png";
@@ -1067,15 +1067,19 @@ void plane_icp_test()
 {
 	const int icount = 2;
 	std::string rname[icount], dname[icount];
-	rname[0] = "G:/kinect data/living_room_1/rgb/00594.jpg";
-	rname[1] = "G:/kinect data/living_room_1/rgb/00595.jpg";
+// 	rname[0] = "G:/kinect data/living_room_1/rgb/00594.jpg";
+// 	rname[1] = "G:/kinect data/living_room_1/rgb/00595.jpg";
+	rname[0] = "E:/lab/pcl/kinect data/living_room_1/rgb/00594.jpg";
+	rname[1] = "E:/lab/pcl/kinect data/living_room_1/rgb/00595.jpg";
 	// 	rname[2] = "E:/lab/pcl/kinect data/living_room_1/rgb/00592.jpg";
 	// 	rname[3] = "E:/lab/pcl/kinect data/living_room_1/rgb/00593.jpg";
 	// 	rname[4] = "E:/lab/pcl/kinect data/living_room_1/rgb/00594.jpg";
 	// 	rname[5] = "E:/lab/pcl/kinect data/living_room_1/rgb/00595.jpg";
 
-	dname[0] = "G:/kinect data/living_room_1/depth/00594.png";
-	dname[1] = "G:/kinect data/living_room_1/depth/00595.png";
+// 	dname[0] = "G:/kinect data/living_room_1/depth/00594.png";
+// 	dname[1] = "G:/kinect data/living_room_1/depth/00595.png";
+	dname[0] = "E:/lab/pcl/kinect data/living_room_1/depth/00594.png";
+	dname[1] = "E:/lab/pcl/kinect data/living_room_1/depth/00595.png";
 	// 	dname[2] = "E:/lab/pcl/kinect data/living_room_1/depth/00592.png";
 	// 	dname[3] = "E:/lab/pcl/kinect data/living_room_1/depth/00593.png";
 	// 	dname[4] = "E:/lab/pcl/kinect data/living_room_1/depth/00594.png";
@@ -1255,7 +1259,7 @@ void plane_icp_test()
 	}
 
 	std::vector<std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f>>> plane_inliers_curr;
-	int plane_inlier_count = 5;
+	int plane_inlier_count = 10;
 	for (int i = 0; i < plane_corr.size(); i++)
 	{
 		std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f>> inliers;
@@ -1268,7 +1272,7 @@ void plane_icp_test()
 				c = rand() % 640;
 			} while (p[1].at<char>(r, c) != plane_corr[i].first);
 			Eigen::Vector3f point;
-			point(2) = ((double)d[i].at<ushort>(r, c)) / depthFactor;
+			point(2) = ((double)d[1].at<ushort>(r, c)) / depthFactor;
 			point(0) = (c - cx) * point(2) / fx;
 			point(1) = (r - cy) * point(2) / fy;
 			inliers.push_back(point);
@@ -1282,7 +1286,7 @@ void plane_icp_test()
 	icpcuda->initPlanes(planes[0], planes_lambda_prev, planes[1], plane_corr, plane_inlier_count, plane_inliers_curr);
 
 	bool *ptmp = new bool[640 * 480];
-	icpcuda->getPlaneMap(ptmp);
+	icpcuda->getPlaneMapCurr(ptmp);
 	cv::Mat planemap(480, 640, CV_8UC3);
 	for (int i = 0; i < 480; i++)
 	{
@@ -1338,7 +1342,7 @@ void plane_icp_test()
 	viewer->initCameraParameters();
 
 	PointCloudPtr tran_cloud(new PointCloudT);
-	pcl::transformPointCloud(*cloud[1], *tran_cloud, ret_tran2);
+	pcl::transformPointCloud(*cloud[1], *tran_cloud, ret_tran);
 	PointCloudPtr cloud_all(new PointCloudT);
 	*cloud_all = *cloud[0] + *tran_cloud;
 
@@ -1346,7 +1350,21 @@ void plane_icp_test()
 	viewer->addPointCloud<pcl::PointXYZRGB>(cloud_all, rgb, "result");
 	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "result");
 
-	while (!viewer->wasStopped())
+	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer2(new pcl::visualization::PCLVisualizer("test2"));
+	viewer2->setBackgroundColor(0, 0, 0);
+	viewer2->addCoordinateSystem(1.0);
+	viewer2->initCameraParameters();
+
+	PointCloudPtr tran_cloud2(new PointCloudT);
+	pcl::transformPointCloud(*cloud[1], *tran_cloud2, ret_tran2);
+	PointCloudPtr cloud_all2(new PointCloudT);
+	*cloud_all2 = *cloud[0] + *tran_cloud2;
+
+	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb2(cloud_all2);
+	viewer2->addPointCloud<pcl::PointXYZRGB>(cloud_all2, rgb2, "result2");
+	viewer2->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "result2");
+
+	while (!viewer->wasStopped() && !viewer2->wasStopped())
 	{
 		viewer->spinOnce(100);
 		//boost::this_thread::sleep (boost::posix_time::microseconds (100000));
