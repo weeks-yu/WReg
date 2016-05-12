@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 include_directories(../../include/algorithm)
 include_directories(../../aislib)
 include_directories(../../cudalib)
+include_directories(../../robustoptimizer)
 link_directories(${PROJECT_BINARY_DIR}/lib)
 
 find_package(PCL 1.7 REQUIRED)
@@ -21,6 +22,10 @@ find_package(SRBA REQUIRED)
 include_directories(${SRBA_INCLUDE_DIRS})
 find_package(MRPT REQUIRED ${SRBA_REQUIRED_MRPT_MODULES})
 
+#Find G2O
+find_package(G2O REQUIRED)
+include_directories(${G2O_INCLUDE_DIR})
+
 #Find CUDA
 find_package(CUDA REQUIRED)
 include_directories(${CUDA_INCLUDE_DIRS})
@@ -37,6 +42,7 @@ set(ALGORITHM_HEADER
 	../../include/algorithm/Frame.h
 	../../include/algorithm/ActiveWindow.h
 	../../include/algorithm/HogmanManager.h
+	../../include/algorithm/RobustManager.h
 	../../include/algorithm/SrbaManager.h
 	../../include/algorithm/PointCloud.h
 	../../include/algorithm/QuadTree.h
@@ -48,6 +54,7 @@ set(ALGORITHM_SRC
 	Feature.cpp
 	ActiveWindow.cpp
 	HogmanManager.cpp
+	RobustManager.cpp
 	SrbaManager.cpp
 	PointCloud.cpp
 	Transformation.cpp
@@ -59,6 +66,8 @@ target_link_libraries(algorithm
 	${PCL_LIBRARIES}
 	${MRPT_LIBS}
 	${CUDA_LIBRARIES}
+	${G2O_LIBRARIES}
 	aislib
 	icpcuda
+	robustoptimizer
 	)

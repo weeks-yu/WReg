@@ -1,6 +1,10 @@
 #include "PointCloud.h"
 #include "Config.h"
 
+#ifdef SHOW_Z_INDEX
+float now_max_z, now_min_z;
+#endif
+
 PointCloudPtr ConvertToPointCloud(const cv::Mat &depth, const cv::Mat &rgb, double timestamp, int frameID)
 {
 	PointCloudPtr cloud(new PointCloudT);
@@ -42,6 +46,10 @@ PointCloudPtr ConvertToPointCloudWithoutMissingData(const cv::Mat &depth, const 
 	cloud->header.stamp = timestamp * 10000;
 	cloud->header.seq = frameID;
 
+#ifdef SHOW_Z_INDEX
+	float min_z = 5000.0, max_z = 0.0;
+#endif
+
 	// 	cloud->height = rgb.size().height;
 	// 	cloud->width = rgb.size().width;
 	//	cloud->points.resize(cloud->height * cloud->width);
@@ -69,10 +77,19 @@ PointCloudPtr ConvertToPointCloudWithoutMissingData(const cv::Mat &depth, const 
 				pt.g = rgb.at<cv::Vec3b>(j, i)[1];
 				pt.r = rgb.at<cv::Vec3b>(j, i)[2];
 				cloud->push_back(pt);
+
+#ifdef SHOW_Z_INDEX
+				if (pt.z < min_z) min_z = pt.z;
+				if (pt.z > max_z) max_z = pt.z;
+#endif
 			}
 		}
 	}
 
+#ifdef SHOW_Z_INDEX
+	now_min_z = min_z;
+	now_max_z = max_z;
+#endif
 	return cloud;
 }
 

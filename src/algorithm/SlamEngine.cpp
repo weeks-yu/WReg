@@ -2,6 +2,11 @@
 #include "PointCloud.h"
 #include "Transformation.h"
 
+#ifdef SHOW_Z_INDEX
+extern float now_min_z;
+extern float now_max_z;
+#endif
+
 SlamEngine::SlamEngine()
 {
 	frame_id = 0;
@@ -9,16 +14,18 @@ SlamEngine::SlamEngine()
 	using_downsampling = true;
 	downsample_rate = 0.01;
 
-	using_srba_optimizer = true;
+	using_hogman_optimizer = true;
+	using_robust_optimizer = false;
+	using_srba_optimizer = false;
 	feature_type = SURF;
 
-	using_gicp = true;
+	using_gicp = false;
 	gicp = new pcl::GeneralizedIterativeClosestPoint<pcl::PointXYZRGB, pcl::PointXYZRGB>();
 	gicp->setMaximumIterations(50);
 	gicp->setMaxCorrespondenceDistance(0.1);
 	gicp->setTransformationEpsilon(1e-4);
 
-	using_icpcuda = false;
+	using_icpcuda = true;
 	icpcuda = nullptr;
 	threads = Config::instance()->get<int>("icpcuda_threads");
 	blocks = Config::instance()->get<int>("icpcuda_blocks");
@@ -91,6 +98,11 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 {
 	timestamps.push_back(timestamp);
 	PointCloudPtr cloud_new = ConvertToPointCloudWithoutMissingData(imgDepth, imgRGB, timestamp, frame_id);
+
+#ifdef SHOW_Z_INDEX
+	cout << now_min_z << ' ' << now_max_z << endl;
+#endif
+
 	PointCloudPtr cloud_downsampled = DownSamplingByVoxelGrid(cloud_new, downsample_rate, downsample_rate, downsample_rate);
 
 	std::cout << "Frame " << frame_id << ": ";
@@ -174,6 +186,45 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 
 			string inliers, exists;
 			bool isKeyframe = srba_manager.addNode(frame, 1.0, true, &inliers, &exists);
+
+#ifdef SAVE_TEST_INFOS
+			keyframe_candidates_id.push_back(frame_id);
+			keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
+#endif
+
+			if (!isKeyframe)
+			{
+				delete frame->f;
+			}
+
+#ifdef SAVE_TEST_INFOS
+			else
+			{
+				keyframes_id.push_back(frame_id);
+				keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
+				keyframes_inliers_sig.push_back(inliers);
+				keyframes_exists_sig.push_back(exists);
+			}
+#endif
+		}
+		else if (using_robust_optimizer)
+		{
+			Frame *frame;
+			if (feature_type == SIFT)
+			{
+				frame = new Frame(imgRGB, imgDepth, "SIFT", Eigen::Matrix4f::Identity());
+			}
+			else if (feature_type == SURF)
+			{
+				frame = new Frame(imgRGB, imgDepth, "SURF", Eigen::Matrix4f::Identity());
+			}
+			frame->relative_tran = Eigen::Matrix4f::Identity();
+			frame->tran = frame->relative_tran;
+
+			robust_manager.active_window.build(0.0, 0.0, Config::instance()->get<float>("quadtree_size"), 4);
+
+			string inliers, exists;
+			bool isKeyframe = robust_manager.addNode(frame, 1.0, true, &inliers, &exists);
 
 #ifdef SAVE_TEST_INFOS
 			keyframe_candidates_id.push_back(frame_id);
@@ -387,8 +438,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 					keyframes_inliers_sig.push_back(inliers);
 					keyframes_exists_sig.push_back(exists);
 				}
-#endif
-				
+#endif		
 			}
 			else
 			{
@@ -396,6 +446,65 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				frame_now->relative_tran = relative_tran;
 				frame_now->tran = global_tran;
 				srba_manager.addNode(frame_now, weight, false);
+			}
+		}
+		else if (using_robust_optimizer)
+		{
+			global_tran = robust_manager.getLastTransformation() * relative_tran;
+			Frame *frame_now;
+			if (IsTransformationBigEnough())
+			{
+				step_start = clock();
+				if (feature_type == SIFT)
+				{
+					frame_now = new Frame(imgRGB, imgDepth, "SIFT", global_tran);
+				}
+				else if (feature_type == SURF)
+				{
+					frame_now = new Frame(imgRGB, imgDepth, "SURF", global_tran);
+				}
+				frame_now->relative_tran = relative_tran;
+				frame_now->tran = global_tran;
+				step_time = (clock() - step_start) / 1000.0;
+
+				std::cout << endl;
+				std::cout << "Feature: " << fixed << setprecision(3) << step_time;
+
+				accumulated_frame_count = 0;
+				accumulated_transformation = Eigen::Matrix4f::Identity();
+
+				// test
+				string inliers, exists;
+				bool isKeyframe = robust_manager.addNode(frame_now, weight, true, &inliers, &exists);
+
+				// record all keyframe
+
+#ifdef SAVE_TEST_INFOS
+				keyframe_candidates_id.push_back(frame_id);
+				keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
+#endif
+
+				if (!isKeyframe)
+				{
+					delete frame_now->f;
+				}
+
+#ifdef SAVE_TEST_INFOS
+				else
+				{
+					keyframes_id.push_back(frame_id);
+					keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
+					keyframes_inliers_sig.push_back(inliers);
+					keyframes_exists_sig.push_back(exists);
+				}
+#endif		
+			}
+			else
+			{
+				frame_now = new Frame();
+				frame_now->relative_tran = relative_tran;
+				frame_now->tran = global_tran;
+				robust_manager.addNode(frame_now, weight, false);
 			}
 		}
 		else
@@ -411,6 +520,17 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 	frame_id++;
 }
 
+void SlamEngine::AddNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, double timestamp, Eigen::Matrix4f trajectory)
+{
+	timestamps.push_back(timestamp);
+	PointCloudPtr cloud_new = ConvertToPointCloudWithoutMissingData(imgDepth, imgRGB, timestamp, frame_id);
+	PointCloudPtr cloud_downsampled = DownSamplingByVoxelGrid(cloud_new, downsample_rate, downsample_rate, downsample_rate);
+
+	point_clouds.push_back(cloud_downsampled);
+	transformation_matrix.push_back(trajectory);
+	frame_id++;
+}
+
 PointCloudPtr SlamEngine::GetScene()
 {
 	PointCloudPtr cloud(new PointCloudT);
@@ -421,6 +541,8 @@ PointCloudPtr SlamEngine::GetScene()
 			pcl::transformPointCloud(*point_clouds[i], *tc, hogman_manager.getTransformation(i));
 		else if (using_srba_optimizer)
 			pcl::transformPointCloud(*point_clouds[i], *tc, srba_manager.getTransformation(i));
+		else if (using_robust_optimizer)
+			pcl::transformPointCloud(*point_clouds[i], *tc, robust_manager.getTransformation(i));
 		else
 			pcl::transformPointCloud(*point_clouds[i], *tc, transformation_matrix[i]);
 		
@@ -430,26 +552,6 @@ PointCloudPtr SlamEngine::GetScene()
 			cloud = DownSamplingByVoxelGrid(cloud, downsample_rate, downsample_rate, downsample_rate);
 		}
 	}
-	return cloud;
-}
-
-PointCloudPtr SlamEngine::GetSceneFromFile(string filename)
-{
-	string directory;
-	ifstream input(filename);
-	getline(input, directory);
-
-	stringstream ss;
-	ss << directory << "/read.txt";
-	ifstream fileInput(ss.str());
-
-	string line;
-	while (getline(fileInput, line))
-	{
-
-	}
-
-	PointCloudPtr cloud(new PointCloudT);
 	return cloud;
 }
 
@@ -463,6 +565,8 @@ vector<pair<double, Eigen::Matrix4f>> SlamEngine::GetTransformations()
 			ret.push_back(pair<double, Eigen::Matrix4f>(timestamps[i], hogman_manager.getTransformation(i)));
 		else if (using_srba_optimizer)
 			ret.push_back(pair<double, Eigen::Matrix4f>(timestamps[i], srba_manager.getTransformation(i)));
+		else if (using_robust_optimizer)
+			ret.push_back(pair<double, Eigen::Matrix4f>(timestamps[i], robust_manager.getTransformation(i)));
 		else
 			ret.push_back(pair<double, Eigen::Matrix4f>(timestamps[i], transformation_matrix[i]));
 	}
@@ -500,6 +604,20 @@ void SlamEngine::SaveLogs(ofstream &outfile)
 			outfile << hogman_manager.ransactrans[i] << endl;
 		}
 	}
+	else if (using_robust_optimizer)
+	{
+		//outfile << "base\ttarget\trmse\tmatches\tinliers\ttransformation" << endl;
+		outfile << robust_manager.baseid.size() << endl;
+		for (int i = 0; i < robust_manager.baseid.size(); i++)
+		{
+			outfile << robust_manager.baseid[i] << "\t"
+				<< robust_manager.targetid[i] << "\t"
+				<< robust_manager.rmses[i] << "\t"
+				<< robust_manager.matchescount[i] << "\t"
+				<< robust_manager.inlierscount[i] << endl;
+			outfile << robust_manager.ransactrans[i] << endl;
+		}
+	}
 #endif
 }
 
@@ -509,10 +627,15 @@ void SlamEngine::ShowStatistics()
 	cout << "-------------------------------------------------------------------------------" << endl;
 	cout << "Total runtime         : " << (clock() - total_start) / 1000.0 << endl;
 	cout << "Total frames          : " << frame_id << endl;
+	cout << "Number of keyframes   : ";
 	if (using_hogman_optimizer)
-		cout << "Number of keyframes   : " << hogman_manager.keyframeInQuadTreeCount << endl;
+		cout << hogman_manager.keyframeInQuadTreeCount << endl;
+	else if (using_srba_optimizer)
+		cout << srba_manager.keyframeInQuadTreeCount << endl;
+	else if (using_robust_optimizer)
+		cout << robust_manager.keyframeInQuadTreeCount << endl;
 	else
-		cout << "Number of keyframes   : " << srba_manager.keyframeInQuadTreeCount << endl;
+		cout << 0 << endl;
 	cout << "Min Cloud Size : " << min_pt_count << "\t\t Max Cloud Size: " << max_pt_count << endl;
 	cout << "-------------------------------------------------------------------------------" << endl;
 	cout << "Min Icp Time          : " << min_icp_time << "\t\tMax Gicp Time: " << max_icp_time << endl;
@@ -529,7 +652,7 @@ void SlamEngine::ShowStatistics()
 		cout << "Avg Graph Time        : " << hogman_manager.total_graph_opt_time / frame_id << endl;
 		cout << "Min Edge Weight       : " << hogman_manager.min_edge_weight << "\t\tMax Edge Weight: " << hogman_manager.max_edge_weight << endl;
 	}
-	else
+	else if (using_srba_optimizer)
 	{
 		cout << "Min Closure Time      : " << fixed << setprecision(3) << srba_manager.min_closure_detect_time << ",\t\tMax Closure Time: " << srba_manager.max_closure_detect_time << endl;
 		cout << "Avg Closure Time      : " << srba_manager.total_closure_detect_time / srba_manager.clousureCount << endl;
@@ -538,6 +661,16 @@ void SlamEngine::ShowStatistics()
 		cout << "Min Graph Time        : " << srba_manager.min_graph_opt_time << "\t\tMax Graph Time: " << srba_manager.max_graph_opt_time << endl;
 		cout << "Avg Graph Time        : " << srba_manager.total_graph_opt_time / frame_id << endl;
 		cout << "Min Edge Weight       : " << srba_manager.min_edge_weight << "\t\tMax Edge Weight: " << srba_manager.max_edge_weight << endl;
+	}
+	else if (using_robust_optimizer)
+	{
+		cout << "Min Closure Time      : " << fixed << setprecision(3) << robust_manager.min_closure_detect_time << ",\t\tMax Closure Time: " << robust_manager.max_closure_detect_time << endl;
+		cout << "Avg Closure Time      : " << robust_manager.total_closure_detect_time / robust_manager.clousureCount << endl;
+		cout << "Min Closure Candidate : " << robust_manager.min_closure_candidate << "\t\tMax Closure Candidate: " << robust_manager.max_closure_candidate << endl;
+		cout << "-------------------------------------------------------------------------------" << endl;
+		cout << "Min Graph Time        : " << robust_manager.min_graph_opt_time << "\t\tMax Graph Time: " << robust_manager.max_graph_opt_time << endl;
+		cout << "Avg Graph Time        : " << robust_manager.total_graph_opt_time / frame_id << endl;
+		cout << "Min Edge Weight       : " << robust_manager.min_edge_weight << "\t\tMax Edge Weight: " << robust_manager.max_edge_weight << endl;
 	}
 	cout << endl;
 }

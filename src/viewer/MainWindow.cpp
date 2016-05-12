@@ -92,12 +92,85 @@ void MainWindow::ShowBenchmarkTest(const QString &directory)
 	subWindow->showMaximized();
 }
 
-void MainWindow::ShowBenchmarkResult(const QString &filename)
+void MainWindow::ShowBenchmarkResult(const QString &filename, int fi, int fst, int fed)
 {
 	if (engine != nullptr)
 		delete engine;
 	engine = new SlamEngine();
-	benchmarkViewer->ShowPointCloud(engine->GetSceneFromFile(filename.toStdString()));
+	engine->setUsingSrbaOptimzier(false);
+	engine->setUsingHogmanOptimizer(false);
+	engine->setUsingIcpcuda(false);
+	engine->setUsingGicp(false);
+	engine->setUsingDownsampling(false);
+
+	string directory;
+	ifstream input(filename.toStdString());
+	getline(input, directory);
+
+	stringstream ss;
+	ss << directory << "/read.txt";
+	ifstream fileInput(ss.str());
+
+	int k = 0;
+	string line;
+	getline(input, line);
+	while (getline(fileInput, line))
+	{
+		if (fst > -1 && k < fst)
+		{
+			k++;
+			continue;
+		}
+
+		if (fed > -1 && k > fed)
+			break;
+
+		if ((k - fst > -1 ? fst : 0) % fi != 0)
+		{
+			k++;
+			continue;
+		}
+
+		double timestamp;
+		Eigen::Vector3f t;
+		Eigen::Quaternionf q;
+		input >> timestamp >> t(0) >> t(1) >> t(2) >> q.x() >> q.y() >> q.z() >> q.w();
+		Eigen::Matrix4f tran = transformationFromQuaternionsAndTranslation(q, t);
+
+		QStringList lists = QString(line.data()).split(' ');
+
+		QString timestamp_string = lists[1].mid(6, lists[1].length() - 10);
+		double timestamp_this = timestamp_string.toDouble();
+
+		if (!(fabs(timestamp_this - timestamp) < 1e-4))
+		{
+			if (timestamp_this > timestamp)
+			{
+				continue;
+			}
+			while (!(fabs(timestamp_this - timestamp) < 1e-4) &&
+				timestamp_this < timestamp && getline(fileInput, line))
+			{
+				lists = QString(line.data()).split(' ');
+				timestamp_string = lists[1].mid(6, lists[1].length() - 10);
+				timestamp_this = timestamp_string.toDouble();
+			}
+		}
+
+		ss.str("");
+		ss << directory << "/" << lists[0].toStdString();
+		cv::Mat rgb = cv::imread(ss.str());
+		ss.str("");
+		ss << directory << "/" << lists[1].toStdString();
+		cv::Mat depth = cv::imread(ss.str(), -1);
+
+		engine->AddNext(rgb, depth, timestamp, tran);
+		k++;
+	}
+	fileInput.close();
+	input.close();
+
+	benchmarkViewer->ShowPointCloud(engine->GetScene());
 }
 
 // slots
@@ -147,11 +220,18 @@ void MainWindow::onActionShowResultFromFileTriggered()
 			QMessageBox::warning(this, tr("File not found"), tr("Please check whether selected file exists or not"));
 			return;
 		}
-		QFile f(filename);
-		QTextStream input(&f);
-		QString line = input.readLine();
-		ShowBenchmarkTest(line);
-		ShowBenchmarkResult(filename);
+		ifstream input(filename.toStdString());
+		string directory, line;
+		getline(input, directory);
+		getline(input, line);
+		QStringList lists = QString(line.data()).split(' ');
+		int fit, fst, fed;
+		fit = lists[0].toInt();
+		fst = lists[1].toInt();
+		fed = lists[2].toInt();
+
+		ShowBenchmarkTest(QString(directory.data()));
+		ShowBenchmarkResult(filename, fit, fst, fed);
 	}
 }
 
@@ -179,9 +259,10 @@ void MainWindow::onBenchmarkPushButtonRunClicked(bool checked)
 	engine = new SlamEngine();
 	int method = uiDockBenchmark->comboBoxMethod->currentIndex();
 	bool usingGICP = method == 0 || method == 1;
-	bool usingICPCUDA = method == 2 || method == 3 || method == 4;
+	bool usingICPCUDA = method == 2 || method == 3 || method == 4 || method == 5;
 	bool usingHogmanOptimizer = method == 0 || method == 2;
 	bool usingSrbaOptimizer = method == 4;
+	bool usingRobustOptimizer = method == 5;
 	bool usingDownSampling = usingGICP && uiDockBenchmark->checkBoxDownSampling->isChecked();
 	
 	engine->setUsingDownsampling(usingDownSampling);
@@ -210,6 +291,12 @@ void MainWindow::onBenchmarkPushButtonRunClicked(bool checked)
 
 	engine->setUsingSrbaOptimzier(usingSrbaOptimizer);
 	if (usingSrbaOptimizer)
+	{
+		QString type = uiDockBenchmark->comboBoxGraphFeatureType->currentText();
+		engine->setGraphFeatureType(type == "SIFT" ? SlamEngine::SIFT : SlamEngine::SURF);
+	}
+	engine->setUsingRobustOptimzier(usingRobustOptimizer);
+	if (usingRobustOptimizer)
 	{
 		QString type = uiDockBenchmark->comboBoxGraphFeatureType->currentText();
 		engine->setGraphFeatureType(type == "SIFT" ? SlamEngine::SIFT : SlamEngine::SURF);
@@ -256,9 +343,13 @@ void MainWindow::onBenchmarkPushButtonSaveClicked(bool checked)
 		if (!engine)
 			return;
 
+		int fi = engine->getFrameInterval();
+		int fst = engine->getFrameStart();
+		int fed = engine->getFrameStop();
 		vector<pair<double, Eigen::Matrix4f>> trans = engine->GetTransformations();
 		ofstream outfile(filename.toStdString());
 		outfile << uiDockBenchmark->lineEditDirectory->text().toStdString() << endl;
+		outfile << fi << ' ' << fst << ' ' << fed << endl;
 		for (int i = 0; i < trans.size(); i++)
 		{
 			Eigen::Vector3f t = TranslationFromMatrix4f(trans[i].second);

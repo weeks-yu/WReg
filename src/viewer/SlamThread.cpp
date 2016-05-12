@@ -15,6 +15,9 @@ SlamThread::SlamThread(const QString &dir, SlamEngine *eng, int interval /* = 1 
 	frameInterval = interval;
 	frameStart = start;
 	frameStop = stop;
+	engine->setFrameInterval(frameInterval);
+	engine->setFrameStart(frameStart);
+	engine->setFrameStop(frameStop);
 }
 
 SlamThread::~SlamThread()
@@ -47,9 +50,7 @@ void SlamThread::run()
 		cv::Mat rgb = cv::imread((directory + "/" + lists[0]).toStdString());
 		cv::Mat depth = cv::imread((directory + "/" + lists[1]).toStdString(), -1);
 
-		QFileInfo fi(lists[0]);
-		QString tname = fi.completeBaseName();
-		double ttime = tname.toDouble();
+		QFileInfo fi(lists[1]);
 		engine->RegisterNext(rgb, depth, fi.completeBaseName().toDouble());
 		emit OneIterationDone(rgb, depth);
 		k++;

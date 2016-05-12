@@ -3,6 +3,7 @@
 #include "SrbaManager.h"
 #include <pcl/registration/gicp.h>
 #include <opencv2/core/core.hpp>
+#include "RobustManager.h"
 #include "HogmanManager.h"
 #include "PointCloud.h"
 #include "ICPOdometry.h"
@@ -19,6 +20,13 @@ public:
 public:
 	SlamEngine();
 	~SlamEngine();
+
+	void setFrameInterval(int frameInterval) { frame_interval = frameInterval; }
+	int getFrameInterval() { return frame_interval; }
+	void setFrameStart(int frameStart) { frame_start = frameStart; }
+	int getFrameStart() { return frame_start; }
+	void setFrameStop(int frameStop) { frame_stop = frameStop; }
+	int getFrameStop() { return frame_stop; }
 
 	void setUsingGicp(bool use);
 	bool isUsingGicp() { return using_gicp; }
@@ -43,12 +51,15 @@ public:
 	void setUsingSrbaOptimzier(bool use) { using_srba_optimizer = use; }
 	bool isUsingSrbaOptimizer() { return using_srba_optimizer; }
 
+	void setUsingRobustOptimzier(bool use) { using_robust_optimizer = use; }
+	bool isUsingRobustOptimizer() { return using_robust_optimizer; }
+
 	void setGraphFeatureType(FeatureType type) { feature_type = type; }
 	FeatureType getGraphFeatureType() { return feature_type; }
 
 	void RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, double timestamp);
+	void AddNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, double timestamp, Eigen::Matrix4f trajectory);
 	PointCloudPtr GetScene();
-	PointCloudPtr GetSceneFromFile(string filename);
 	int GetFrameID() { return frame_id; }
 	vector<pair<double, Eigen::Matrix4f>> GetTransformations();
 
@@ -70,6 +81,9 @@ public:
 
 private:
 	int frame_id;
+	int frame_interval;
+	int frame_start;
+	int frame_stop;
 
 	// results
 	Eigen::Matrix4f last_transformation;
@@ -94,6 +108,7 @@ private:
 	cv::Mat last_depth;
 	HogmanManager hogman_manager;
 	SrbaManager srba_manager;
+	RobustManager robust_manager;
 
 	// parameters - downsampling
 	
@@ -116,4 +131,7 @@ private:
 
 	// parameters - srba optimizer
 	bool using_srba_optimizer;
+
+	// parameters - robust optimizer
+	bool using_robust_optimizer;
 };

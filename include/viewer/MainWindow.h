@@ -35,7 +35,7 @@ public:
 private:
 	void ShowPointCloudFiles(const QString &filename);
 	void ShowBenchmarkTest(const QString &directory);
-	void ShowBenchmarkResult(const QString &filename);
+	void ShowBenchmarkResult(const QString &filename, int fi, int fst, int fed);
 
 private slots:
 	void onActionOpenTriggered();

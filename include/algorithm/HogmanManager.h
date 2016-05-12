@@ -3,8 +3,6 @@
 #include "Frame.h"
 #include "ActiveWindow.h"
 #include "graph_optimizer_hogman/graph_optimizer3d_hchol.h"
-#undef min
-#include "ICPOdometry.h"
 
 class HogmanManager
 {
