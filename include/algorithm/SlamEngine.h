@@ -48,6 +48,7 @@ public:
 
 	void RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, double timestamp);
 	PointCloudPtr GetScene();
+	PointCloudPtr GetSceneFromFile(string filename);
 	int GetFrameID() { return frame_id; }
 	vector<pair<double, Eigen::Matrix4f>> GetTransformations();
 

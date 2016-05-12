@@ -44,9 +44,9 @@ Config::Config() {
 // 	config["camera_fy"]				= static_cast<float>  (516.5);
 // 	config["camera_cx"]				= static_cast<float>  (318.6);
 // 	config["camera_cy"]				= static_cast<float>  (255.3);
-	config["camera_fx"]				= static_cast<float>  (525.0);
-	config["camera_fy"]				= static_cast<float>  (525.0);
-	config["camera_cx"]				= static_cast<float>  (315.5);
+	config["camera_fx"]				= static_cast<float>  (525);
+	config["camera_fy"]				= static_cast<float>  (525);
+	config["camera_cx"]				= static_cast<float>  (319.5);
 	config["camera_cy"]				= static_cast<float>  (239.5);
 
 	config["depth_factor"]			= static_cast<float>  (1000.0);

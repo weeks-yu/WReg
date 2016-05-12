@@ -35,6 +35,7 @@
      <string>Benchmark</string>
     </property>
     <addaction name="actionOpen_read_txt"/>
+    <addaction name="actionShow_Result_from_File"/>
    </widget>
    <addaction name="menuOpen"/>
    <addaction name="menuBenchmark"/>
@@ -50,6 +51,7 @@
    <addaction name="actionSave"/>
    <addaction name="separator"/>
    <addaction name="actionOpen_read_txt"/>
+   <addaction name="actionShow_Result_from_File"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
   <action name="actionOpen">
@@ -79,6 +81,11 @@
     <string>Open read.txt</string>
    </property>
   </action>
+  <action name="actionShow_Result_from_File">
+   <property name="text">
+    <string>Show Result from File</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <resources>
@@ -92,8 +99,8 @@
    <slot>onActionOpenTriggered()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>63</x>
-     <y>68</y>
+     <x>-1</x>
+     <y>-1</y>
     </hint>
     <hint type="destinationlabel">
      <x>199</x>
@@ -133,10 +140,27 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>actionShow_Result_from_File</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>onActionShowResultFromFileTriggered()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>199</x>
+     <y>149</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>onActionOpenTriggered()</slot>
   <slot>onActionSaveTriggered()</slot>
   <slot>onActionOpenReadTxtTriggered()</slot>
+  <slot>onActionShowResultFromFileTriggered()</slot>
  </slots>
 </ui>

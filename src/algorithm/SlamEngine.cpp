@@ -433,6 +433,26 @@ PointCloudPtr SlamEngine::GetScene()
 	return cloud;
 }
 
+PointCloudPtr SlamEngine::GetSceneFromFile(string filename)
+{
+	string directory;
+	ifstream input(filename);
+	getline(input, directory);
+
+	stringstream ss;
+	ss << directory << "/read.txt";
+	ifstream fileInput(ss.str());
+
+	string line;
+	while (getline(fileInput, line))
+	{
+
+	}
+
+	PointCloudPtr cloud(new PointCloudT);
+	return cloud;
+}
+
 vector<pair<double, Eigen::Matrix4f>> SlamEngine::GetTransformations()
 {
 	vector<pair<double, Eigen::Matrix4f>> ret;
@@ -521,6 +541,8 @@ void SlamEngine::ShowStatistics()
 	}
 	cout << endl;
 }
+
+
 
 bool SlamEngine::IsTransformationBigEnough()
 {

@@ -92,6 +92,14 @@ void MainWindow::ShowBenchmarkTest(const QString &directory)
 	subWindow->showMaximized();
 }
 
+void MainWindow::ShowBenchmarkResult(const QString &filename)
+{
+	if (engine != nullptr)
+		delete engine;
+	engine = new SlamEngine();
+	benchmarkViewer->ShowPointCloud(engine->GetSceneFromFile(filename.toStdString()));
+}
+
 // slots
 void MainWindow::onActionOpenTriggered()
 {
@@ -125,6 +133,25 @@ void MainWindow::onActionOpenReadTxtTriggered()
 			return;
 		}
 		ShowBenchmarkTest(directory);
+	}
+}
+
+void MainWindow::onActionShowResultFromFileTriggered()
+{
+	QString filename = QFileDialog::getOpenFileName(this, tr("Open Result File"), "", tr("all files(*.*)"));
+	if (!filename.isNull())
+	{
+		QFileInfo fi(filename);
+		if (!fi.isFile())
+		{
+			QMessageBox::warning(this, tr("File not found"), tr("Please check whether selected file exists or not"));
+			return;
+		}
+		QFile f(filename);
+		QTextStream input(&f);
+		QString line = input.readLine();
+		ShowBenchmarkTest(line);
+		ShowBenchmarkResult(filename);
 	}
 }
 
@@ -231,6 +258,7 @@ void MainWindow::onBenchmarkPushButtonSaveClicked(bool checked)
 
 		vector<pair<double, Eigen::Matrix4f>> trans = engine->GetTransformations();
 		ofstream outfile(filename.toStdString());
+		outfile << uiDockBenchmark->lineEditDirectory->text().toStdString() << endl;
 		for (int i = 0; i < trans.size(); i++)
 		{
 			Eigen::Vector3f t = TranslationFromMatrix4f(trans[i].second);

@@ -35,11 +35,13 @@ public:
 private:
 	void ShowPointCloudFiles(const QString &filename);
 	void ShowBenchmarkTest(const QString &directory);
+	void ShowBenchmarkResult(const QString &filename);
 
 private slots:
 	void onActionOpenTriggered();
 	void onActionSaveTriggered();
 	void onActionOpenReadTxtTriggered();
+	void onActionShowResultFromFileTriggered();
 
 	// benchmark
 	void onBenchmarkPushButtonRunClicked(bool checked);
