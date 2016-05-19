@@ -14,6 +14,7 @@ SlamEngine::SlamEngine()
 	using_downsampling = true;
 	downsample_rate = 0.01;
 
+	using_optimizer = true;
 	using_hogman_optimizer = true;
 	using_robust_optimizer = false;
 	using_srba_optimizer = false;
@@ -87,10 +88,24 @@ void SlamEngine::setUsingIcpcuda(bool use)
 		if (icpcuda == nullptr)
 			icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor, distThresh, angleThresh);
 	}
-	else if (icpcuda)
+}
+
+void SlamEngine::setUsingFeature(bool use)
+{
+	using_feature = use;
+	if (using_feature)
 	{
-		delete icpcuda;
-		icpcuda = nullptr;
+		int width = Config::instance()->get<int>("image_width");
+		int height = Config::instance()->get<int>("image_height");
+		float cx = Config::instance()->get<float>("camera_cx");
+		float cy = Config::instance()->get<float>("camera_cy");
+		float fx = Config::instance()->get<float>("camera_fx");
+		float fy = Config::instance()->get<float>("camera_fy");
+		float depthFactor = Config::instance()->get<float>("depth_factor");
+		float distThresh = Config::instance()->get<float>("dist_threshold");
+		float angleThresh = Config::instance()->get<float>("angle_threshold");
+		if (icpcuda == nullptr)
+			icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor, distThresh, angleThresh);
 	}
 }
 
@@ -127,9 +142,9 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			imgDepth.copyTo(last_depth);
 		}
 
-		if (using_hogman_optimizer)
+		Frame *frame;
+		if (using_feature || using_optimizer)
 		{
-			Frame *frame;
 			if (feature_type == SIFT)
 			{
 				frame = new Frame(imgRGB, imgDepth, "SIFT", Eigen::Matrix4f::Identity());
@@ -140,104 +155,47 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			}
 			frame->relative_tran = Eigen::Matrix4f::Identity();
 			frame->tran = frame->relative_tran;
-
-			hogman_manager.active_window.build(0.0, 0.0, Config::instance()->get<float>("quadtree_size"), 4);
-
-			// test
-			string inliers, exists;
-			bool isKeyframe = hogman_manager.addNode(frame, 1.0, true, &inliers, &exists);
-
-#ifdef SAVE_TEST_INFOS
-			keyframe_candidates_id.push_back(frame_id);
-			keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
-#endif
-
-			if (!isKeyframe)
-			{
-				delete frame->f;
-			}
-
-#ifdef SAVE_TEST_INFOS
-			else
-			{
-				keyframes_id.push_back(frame_id);
-				keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
-				keyframes_inliers_sig.push_back(inliers);
-				keyframes_exists_sig.push_back(exists);
-			}
-#endif
-
 		}
-		else if (using_srba_optimizer)
+
+		if (using_feature)
 		{
-			Frame *frame;
-			if (feature_type == SIFT)
-			{
-				frame = new Frame(imgRGB, imgDepth, "SIFT", Eigen::Matrix4f::Identity());
-			}
-			else if (feature_type == SURF)
-			{
-				frame = new Frame(imgRGB, imgDepth, "SURF", Eigen::Matrix4f::Identity());
-			}
-			frame->relative_tran = Eigen::Matrix4f::Identity();
-			frame->tran = frame->relative_tran;
-
-			srba_manager.active_window.build(0.0, 0.0, Config::instance()->get<float>("quadtree_size"), 4);
-
-			string inliers, exists;
-			bool isKeyframe = srba_manager.addNode(frame, 1.0, true, &inliers, &exists);
-
-#ifdef SAVE_TEST_INFOS
-			keyframe_candidates_id.push_back(frame_id);
-			keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
-#endif
-
-			if (!isKeyframe)
-			{
-				delete frame->f;
-			}
-
-#ifdef SAVE_TEST_INFOS
-			else
-			{
-				keyframes_id.push_back(frame_id);
-				keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
-				keyframes_inliers_sig.push_back(inliers);
-				keyframes_exists_sig.push_back(exists);
-			}
-#endif
+			frame->f->buildFlannIndex();
+			last_frame = frame;
+			imgDepth.copyTo(last_depth);
 		}
-		else if (using_robust_optimizer)
+
+		if (using_optimizer)
 		{
-			Frame *frame;
-			if (feature_type == SIFT)
-			{
-				frame = new Frame(imgRGB, imgDepth, "SIFT", Eigen::Matrix4f::Identity());
-			}
-			else if (feature_type == SURF)
-			{
-				frame = new Frame(imgRGB, imgDepth, "SURF", Eigen::Matrix4f::Identity());
-			}
-			frame->relative_tran = Eigen::Matrix4f::Identity();
-			frame->tran = frame->relative_tran;
-
-			robust_manager.active_window.build(0.0, 0.0, Config::instance()->get<float>("quadtree_size"), 4);
-
 			string inliers, exists;
-			bool isKeyframe = robust_manager.addNode(frame, 1.0, true, &inliers, &exists);
+			bool isKeyframe;
 
-#ifdef SAVE_TEST_INFOS
-			keyframe_candidates_id.push_back(frame_id);
-			keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
-#endif
+			if (using_hogman_optimizer)
+			{
+				hogman_manager.active_window.build(0.0, 0.0, Config::instance()->get<float>("quadtree_size"), 4);
+				isKeyframe = hogman_manager.addNode(frame, 1.0, true, &inliers, &exists);
+			}
+			else if (using_srba_optimizer)
+			{
+				srba_manager.active_window.build(0.0, 0.0, Config::instance()->get<float>("quadtree_size"), 4);
+				isKeyframe = srba_manager.addNode(frame, 1.0, true, &inliers, &exists);
+			}
+			else if (using_robust_optimizer)
+			{
+				robust_manager.active_window.build(0.0, 0.0, Config::instance()->get<float>("quadtree_size"), 4);
+				isKeyframe = robust_manager.addNode(frame, 1.0, true, &inliers, &exists);
+			}
 
-			if (!isKeyframe)
+			last_is_keyframe = isKeyframe;
+			if (!isKeyframe && !using_feature)
 			{
 				delete frame->f;
 			}
 
 #ifdef SAVE_TEST_INFOS
-			else
+			keyframe_candidates_id.push_back(frame_id);
+			keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
+
+			if (isKeyframe)
 			{
 				keyframes_id.push_back(frame_id);
 				keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
@@ -327,16 +285,84 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			relative_tran.topLeftCorner(3, 3) = rot;
 			relative_tran.topRightCorner(3, 1) = t;
 		}
+		
+
+		Frame *frame_now;
+		if (using_feature)
+		{
+			if (feature_type == SIFT)
+			{
+				frame_now = new Frame(imgRGB, imgDepth, "SIFT", global_tran);
+			}
+			else if (feature_type == SURF)
+			{
+				frame_now = new Frame(imgRGB, imgDepth, "SURF", global_tran);
+			}
+
+			vector<cv::DMatch> matches, inliers;
+			Eigen::Matrix4f tran;
+			Eigen::Matrix<double, 6, 6> information;
+			float rmse;
+			float coresp;
+
+			last_frame->f->findMatchedPairs(matches, frame_now->f);
+			if (Feature::getTransformationByRANSAC(tran, information, coresp, rmse, &inliers, last_frame->f, frame_now->f, nullptr, matches))
+			{
+				relative_tran = tran;
+			}
+			else
+			{
+				relative_tran = last_transformation;
+				cout << ", RANSAC Failed";
+			}
+
+			// icp
+			Eigen::Matrix4f tran2 = Eigen::Matrix4f::Identity();
+			icpcuda->initICPModel((unsigned short *)last_depth.data, 20.0f, Eigen::Matrix4f::Identity());
+			icpcuda->initICP((unsigned short *)imgDepth.data, 20.0f);
+
+			Eigen::Vector3f t = tran2.topRightCorner(3, 1);
+			Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = tran2.topLeftCorner(3, 3);
+
+			Eigen::Vector3f estimated_t = tran2.topRightCorner(3, 1);
+			Eigen::Matrix<float, 3, 3, Eigen::RowMajor> estimated_rot = tran2.topLeftCorner(3, 3);
+
+			icpcuda->getIncrementalTransformation(t, rot, estimated_t, estimated_rot, threads, blocks);
+
+			tran2.topLeftCorner(3, 3) = rot;
+			tran2.topRightCorner(3, 1) = t;
+
+			vector<cv::DMatch> inliers2;
+			double mean_error;
+			const float max_dist_m = Config::instance()->get<float>("max_dist_for_inliers");
+			const float squared_max_dist_m = max_dist_m * max_dist_m;
+			Feature::computeInliersAndError(inliers2, mean_error, nullptr,
+				matches, tran2,
+				last_frame->f->feature_pts_3d, frame_now->f->feature_pts_3d,
+				squared_max_dist_m);
+
+			if (mean_error < rmse + 0.002)
+			{
+				cout << ", icp is better " << mean_error << ", " << rmse;
+				relative_tran = tran2;
+			}
+
+			if (!last_is_keyframe)
+			{
+				delete last_frame->f;
+			}
+		}
+
 		accumulated_frame_count++;
 		accumulated_transformation = accumulated_transformation * relative_tran;
+		bool isBigEnough = IsTransformationBigEnough();
 
-		if (using_hogman_optimizer)
+		if (!using_feature && using_optimizer)
 		{
-			global_tran = hogman_manager.getLastTransformation() * relative_tran;
-			Frame *frame_now;
-			if (IsTransformationBigEnough())
+/*			step_start = clock();*/
+			
+			if (isBigEnough)
 			{
-				step_start = clock();
 				if (feature_type == SIFT)
 				{
 					frame_now = new Frame(imgRGB, imgDepth, "SIFT", global_tran);
@@ -345,176 +371,117 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				{
 					frame_now = new Frame(imgRGB, imgDepth, "SURF", global_tran);
 				}
-				frame_now->relative_tran = relative_tran;
-				frame_now->tran = global_tran;
-				step_time = (clock() - step_start) / 1000.0;
-				std::cout << endl;
-				std::cout << "Feature: " << fixed << setprecision(3) << step_time;
+			}
+			else
+			{
+				frame_now = new Frame();
+			}
+// 			step_time = (clock() - step_start) / 1000.0;
+// 			std::cout << endl;
+// 			std::cout << "Feature: " << fixed << setprecision(3) << step_time;
+		}
 
-				accumulated_frame_count = 0;
-				accumulated_transformation = Eigen::Matrix4f::Identity();
+		if (using_optimizer)
+		{
+			if (using_hogman_optimizer)
+			{
+				global_tran = hogman_manager.getLastTransformation() * relative_tran;
+			}
+			else if (using_srba_optimizer)
+			{
+				global_tran = srba_manager.getLastTransformation() * relative_tran;
+			}
+			else if (using_robust_optimizer)
+			{
+				global_tran = robust_manager.getLastTransformation() * relative_tran;
+			}
+			frame_now->relative_tran = relative_tran;
+			frame_now->tran = global_tran;
 
-				// test
+			if (isBigEnough)
+			{
+				frame_now->f->updateFeaturePoints3D(global_tran);
+
 				string inliers, exists;
-				bool isKeyframe = hogman_manager.addNode(frame_now, weight, true, &inliers, &exists);
+				bool isKeyframe;
 
-				// record all keyframe
-
-#ifdef SAVE_TEST_INFOS
-				keyframe_candidates_id.push_back(frame_id);
-				keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
-#endif
-
-				if (!isKeyframe)
+				if (using_hogman_optimizer)
 				{
-					delete frame_now->f;
+					isKeyframe = hogman_manager.addNode(frame_now, weight, true, &inliers, &exists);
 				}
-
-#ifdef SAVE_TEST_INFOS
-				else
+				else if (using_srba_optimizer)
 				{
-					keyframes_id.push_back(frame_id);
-					keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
-					keyframes_inliers_sig.push_back(inliers);
-					keyframes_exists_sig.push_back(exists);
+					isKeyframe = srba_manager.addNode(frame_now, weight, true, &inliers, &exists);
 				}
-#endif
+				else if (using_robust_optimizer)
+				{
+					isKeyframe = robust_manager.addNode(frame_now, weight, true, &inliers, &exists);
+				}
 				
-			}
-			else
-			{
-				frame_now = new Frame();
-				frame_now->relative_tran = relative_tran;
-				frame_now->tran = global_tran;
-				hogman_manager.addNode(frame_now, weight, false);
-			}
-		}
-		else if (using_srba_optimizer)
-		{
-			global_tran = srba_manager.getLastTransformation() * relative_tran;
-			Frame *frame_now;
-			if (IsTransformationBigEnough())
-			{
-				step_start = clock();
-				if (feature_type == SIFT)
+				if (using_feature)
 				{
-					frame_now = new Frame(imgRGB, imgDepth, "SIFT", global_tran);
+					last_is_keyframe = isKeyframe;
 				}
-				else if (feature_type == SURF)
-				{
-					frame_now = new Frame(imgRGB, imgDepth, "SURF", global_tran);
-				}
-				frame_now->relative_tran = relative_tran;
-				frame_now->tran = global_tran;
-				step_time = (clock() - step_start) / 1000.0;
-
-				std::cout << endl;
-				std::cout << "Feature: " << fixed << setprecision(3) << step_time;
-
-				accumulated_frame_count = 0;
-				accumulated_transformation = Eigen::Matrix4f::Identity();
-
-				// test
-				string inliers, exists;
-				bool isKeyframe = srba_manager.addNode(frame_now, weight, true, &inliers, &exists);
-
-				// record all keyframe
-
-#ifdef SAVE_TEST_INFOS
-				keyframe_candidates_id.push_back(frame_id);
-				keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
-#endif
-
-				if (!isKeyframe)
+				
+				if (!isKeyframe && !using_feature)
 				{
 					delete frame_now->f;
 				}
 
 #ifdef SAVE_TEST_INFOS
-				else
+				keyframe_candidates_id.push_back(frame_id);
+				keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
+
+				if (isKeyframe)
 				{
 					keyframes_id.push_back(frame_id);
 					keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 					keyframes_inliers_sig.push_back(inliers);
 					keyframes_exists_sig.push_back(exists);
 				}
-#endif		
-			}
-			else
-			{
-				frame_now = new Frame();
-				frame_now->relative_tran = relative_tran;
-				frame_now->tran = global_tran;
-				srba_manager.addNode(frame_now, weight, false);
-			}
-		}
-		else if (using_robust_optimizer)
-		{
-			global_tran = robust_manager.getLastTransformation() * relative_tran;
-			Frame *frame_now;
-			if (IsTransformationBigEnough())
-			{
-				step_start = clock();
-				if (feature_type == SIFT)
-				{
-					frame_now = new Frame(imgRGB, imgDepth, "SIFT", global_tran);
-				}
-				else if (feature_type == SURF)
-				{
-					frame_now = new Frame(imgRGB, imgDepth, "SURF", global_tran);
-				}
-				frame_now->relative_tran = relative_tran;
-				frame_now->tran = global_tran;
-				step_time = (clock() - step_start) / 1000.0;
-
-				std::cout << endl;
-				std::cout << "Feature: " << fixed << setprecision(3) << step_time;
+#endif
 
 				accumulated_frame_count = 0;
 				accumulated_transformation = Eigen::Matrix4f::Identity();
-
-				// test
-				string inliers, exists;
-				bool isKeyframe = robust_manager.addNode(frame_now, weight, true, &inliers, &exists);
-
-				// record all keyframe
-
-#ifdef SAVE_TEST_INFOS
-				keyframe_candidates_id.push_back(frame_id);
-				keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
-#endif
-
-				if (!isKeyframe)
-				{
-					delete frame_now->f;
-				}
-
-#ifdef SAVE_TEST_INFOS
-				else
-				{
-					keyframes_id.push_back(frame_id);
-					keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
-					keyframes_inliers_sig.push_back(inliers);
-					keyframes_exists_sig.push_back(exists);
-				}
-#endif		
 			}
 			else
 			{
-				frame_now = new Frame();
-				frame_now->relative_tran = relative_tran;
-				frame_now->tran = global_tran;
-				robust_manager.addNode(frame_now, weight, false);
+				if (using_hogman_optimizer)
+				{
+					hogman_manager.addNode(frame_now, weight, false);
+				}
+				else if (using_srba_optimizer)
+				{
+					srba_manager.addNode(frame_now, weight, false);
+				}
+				else if (using_robust_optimizer)
+				{
+					robust_manager.addNode(frame_now, weight, false);
+				}
+				if (using_feature)
+				{
+					last_is_keyframe = false;
+				}
 			}
 		}
 		else
 		{
 			transformation_matrix.push_back(transformation_matrix[frame_id - 1] * relative_tran);
+			if (using_feature)
+			{
+				last_is_keyframe = false;
+			}
 		}
 		last_transformation = relative_tran;
 		last_cloud = cloud_for_registration;
 		if (using_icpcuda)
 			imgDepth.copyTo(last_depth);
+		if (using_feature)
+		{
+			frame_now->f->buildFlannIndex();
+			last_frame = frame_now;
+			imgDepth.copyTo(last_depth);
+		}
 	}
 	std::cout << endl;
 	frame_id++;
@@ -690,6 +657,18 @@ void SlamEngine::ShowStatistics()
 		cout << "Min Edge Weight       : " << robust_manager.min_edge_weight << "\t\tMax Edge Weight: " << robust_manager.max_edge_weight << endl;
 	}
 	cout << endl;
+
+	if (using_robust_optimizer)
+	{
+		if (robust_manager.insertion_failure.size() > 0)
+		{
+			cout << endl << "QuadTree is not big enough" << endl;
+			for (int i = 0; i < robust_manager.insertion_failure.size(); i++)
+			{
+				cout << robust_manager.insertion_failure[i].first << ", " << robust_manager.insertion_failure[i].second << endl;
+			}
+		}
+	}
 }
 
 

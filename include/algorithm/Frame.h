@@ -28,4 +28,17 @@ public:
 		imgDepth.copyTo(*this->depth);
 		this->tran = tran;
 	}
+
+	~Frame()
+	{
+		if (f)
+		{
+			delete f;
+		}
+
+		if (depth)
+		{
+			delete depth;
+		}
+	}
 };

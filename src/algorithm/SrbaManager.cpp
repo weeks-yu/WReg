@@ -242,11 +242,11 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 					//continue; // do not run ransac between this and last keyframe
 				}
 				Eigen::Matrix4f tran;
-				float rmse;
+				float rmse, coresp;
 				vector<cv::DMatch> inliers;
 				pcc->initPrev((unsigned short *)this->graph[this->active_window.active_frames[frames[i]]]->depth->data, 20.0f);
 				// find edges
-				if (Feature::getTransformationByRANSAC(tran, information, rmse, &inliers,
+				if (Feature::getTransformationByRANSAC(tran, information, coresp, rmse, &inliers,
 					this->active_window.feature_pool, this->graph[k]->f,
 					pcc, matches[i]))
 				{

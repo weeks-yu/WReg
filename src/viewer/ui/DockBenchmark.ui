@@ -319,6 +319,16 @@
         <string>ICPCUDA with RobustOptimizer</string>
        </property>
       </item>
+	  <item>
+       <property name="text">
+        <string>Feature only</string>
+       </property>
+      </item>
+	  <item>
+       <property name="text">
+        <string>Feature with RobustOptimizer</string>
+       </property>
+      </item>
      </widget>
     </item>
     <item row="10" column="0" colspan="3">

@@ -135,11 +135,11 @@ bool HogmanManager::addNode(Frame* frame, float weight, bool is_keyframe_candida
 				//continue; // do not run ransac between this and last keyframe
 			}
 			Eigen::Matrix4f tran;
-			float rmse;
+			float rmse, coresp;
 			vector<cv::DMatch> inliers;
 			pcc->initPrev((unsigned short *)this->graph[this->active_window.active_frames[frames[i]]]->depth->data, 20.0f);
 			// find edges
-			if (Feature::getTransformationByRANSAC(tran, information, rmse, &inliers,
+			if (Feature::getTransformationByRANSAC(tran, information, coresp, rmse, &inliers,
 				this->active_window.feature_pool, this->graph[k]->f,
 				pcc, matches[i]))
 			{
@@ -261,30 +261,6 @@ bool HogmanManager::addNode(Frame* frame, float weight, bool is_keyframe_candida
 			keyframeInQuadTreeCount++;
 			std::cout << ", Keyframe";
 			isNewKeyframe = true;
-		}
-
-		int ki = 0;
-		for (int i = 0; i < this->graph.size(); i++)
-		{
-			if (this->graph[i]->tran != temp_poses[i])
-			{
-				Eigen::Vector3f old_translation = TranslationFromMatrix4f(this->graph[i]->tran);
-				Eigen::Vector3f new_translation = TranslationFromMatrix4f(temp_poses[i]);
-				this->graph[i]->tran = temp_poses[i];
-
-				if (frame_in_quadtree_indices.find(i) != frame_in_quadtree_indices.end())
-				{
-					// keyframe pose changed
-					// update 3d feature points
-					this->graph[i]->f->updateFeaturePoints3D(temp_poses[i]);
-
-					// update quadtree
-					if (old_translation(0) != new_translation(0) || old_translation(1) != new_translation(1))
-					{
-						this->active_window.key_frames->update(old_translation(0), old_translation(1), i, new_translation(0), new_translation(1));
-					}
-				}
-			}
 		}
 
 		for (int i = 0; i < this->graph.size(); i++)

@@ -46,6 +46,8 @@ public:
 	int min_closure_candidate;
 	int max_closure_candidate;
 
+	vector<pair<float, float>> insertion_failure;
+
 	int keyframeInQuadTreeCount;
 	int clousureCount;
 

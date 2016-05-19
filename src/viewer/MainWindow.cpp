@@ -261,9 +261,10 @@ void MainWindow::onBenchmarkPushButtonRunClicked(bool checked)
 	int method = uiDockBenchmark->comboBoxMethod->currentIndex();
 	bool usingGICP = method == 0 || method == 1;
 	bool usingICPCUDA = method == 2 || method == 3 || method == 4 || method == 5;
+	bool usingFeature = method == 6 || method == 7;
 	bool usingHogmanOptimizer = method == 0 || method == 2;
 	bool usingSrbaOptimizer = method == 4;
-	bool usingRobustOptimizer = method == 5;
+	bool usingRobustOptimizer = method == 5 || method == 7;
 	bool usingDownSampling = usingGICP && uiDockBenchmark->checkBoxDownSampling->isChecked();
 	
 	engine->setUsingDownsampling(usingDownSampling);
@@ -283,13 +284,18 @@ void MainWindow::onBenchmarkPushButtonRunClicked(bool checked)
 	{
 
 	}
+	engine->setUsingFeature(usingFeature);
+	if (usingFeature)
+	{
+		QString type = uiDockBenchmark->comboBoxGraphFeatureType->currentText();
+		engine->setGraphFeatureType(type == "SIFT" ? SlamEngine::SIFT : SlamEngine::SURF);
+	}
 	engine->setUsingHogmanOptimizer(usingHogmanOptimizer);
 	if (usingHogmanOptimizer)
 	{
 		QString type = uiDockBenchmark->comboBoxGraphFeatureType->currentText();
 		engine->setGraphFeatureType(type == "SIFT" ? SlamEngine::SIFT : SlamEngine::SURF);
 	}
-
 	engine->setUsingSrbaOptimzier(usingSrbaOptimizer);
 	if (usingSrbaOptimizer)
 	{

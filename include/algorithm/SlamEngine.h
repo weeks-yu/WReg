@@ -45,13 +45,28 @@ public:
 	void setUsingIcpcuda(bool use);
 	bool isUsingIcpcuda() { return using_icpcuda; }
 
-	void setUsingHogmanOptimizer(bool use) { using_hogman_optimizer = use; }
+	void setUsingFeature(bool use);
+	bool isUsingFeature() { return using_feature; }
+
+	void setUsingHogmanOptimizer(bool use)
+	{
+		using_hogman_optimizer = use;
+		using_optimizer = using_hogman_optimizer || using_srba_optimizer || using_robust_optimizer;
+	}
 	bool isUsingHogmanOptimizer() { return using_hogman_optimizer; }
 
-	void setUsingSrbaOptimzier(bool use) { using_srba_optimizer = use; }
+	void setUsingSrbaOptimzier(bool use)
+	{
+		using_srba_optimizer = use;
+		using_optimizer = using_hogman_optimizer || using_srba_optimizer || using_robust_optimizer;
+	}
 	bool isUsingSrbaOptimizer() { return using_srba_optimizer; }
 
-	void setUsingRobustOptimzier(bool use) { using_robust_optimizer = use; }
+	void setUsingRobustOptimzier(bool use)
+	{
+		using_robust_optimizer = use;
+		using_optimizer = using_hogman_optimizer || using_srba_optimizer || using_robust_optimizer;
+	}
 	bool isUsingRobustOptimizer() { return using_robust_optimizer; }
 
 	void setGraphFeatureType(FeatureType type) { feature_type = type; }
@@ -107,6 +122,10 @@ private:
 	// temporary variables
 	PointCloudPtr last_cloud;
 	cv::Mat last_depth;
+
+	Frame *last_frame;
+	bool last_is_keyframe;
+
 	HogmanManager hogman_manager;
 	SrbaManager srba_manager;
 	RobustManager robust_manager;
@@ -125,6 +144,12 @@ private:
 	ICPOdometry *icpcuda;
 	int threads;
 	int blocks;
+
+	// parameters - feature
+	bool using_feature;
+
+	// parameters - optimizer
+	bool using_optimizer;
 
 	// parameters - hogman optimizer
 	bool using_hogman_optimizer;

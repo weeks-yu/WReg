@@ -100,6 +100,7 @@ void Feature::extract(const cv::Mat &imgRGB, const cv::Mat &imgDepth, string typ
 
 void Feature::buildFlannIndex()
 {
+	releaseFlannIndex();
 	if (feature_pts.size() > 0)
 	{
 		this->flann_index = new cv::flann::Index(feature_descriptors, cv::flann::KDTreeIndexParams(this->trees));
@@ -107,6 +108,15 @@ void Feature::buildFlannIndex()
 	else
 	{
 		this->flann_index = nullptr;
+	}
+}
+
+void Feature::releaseFlannIndex()
+{
+	if (flann_index)
+	{
+		delete flann_index;
+		flann_index = nullptr;
 	}
 }
 
@@ -388,6 +398,7 @@ void Feature::computeInliersAndError(vector<cv::DMatch> &inliers, double &mean_e
 
 bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
 	Eigen::Matrix<double, 6, 6> &result_information,
+	float &result_coresp, 
 	float &rmse, vector<cv::DMatch> *matches, // output vars. if matches == nullptr, do not return inlier match
 	const Feature* earlier, const Feature* now,
 	PointCloudCuda *pcc,
@@ -420,7 +431,8 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
 	int threads = Config::instance()->get<int>("icpcuda_threads");
 	int blocks = Config::instance()->get<int>("icpcuda_blocks");
 	float corr_percent = Config::instance()->get<float>("coresp_percent");
-	Eigen::Matrix<double, 6, 6> information;
+	Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
+	float temp_coresp = 0;
 
 	for (unsigned int n_iter = 0; n_iter < ransac_iterations; n_iter++)
 	{
@@ -445,15 +457,6 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
 			earlier->feature_pts_3d, now->feature_pts_3d,
 			squared_max_dist_m);
 		if (inlier_error > 1000) continue; //most possibly a false match in the samples
-
-		if (pcc != nullptr)
-		{
-			Eigen::Vector3f t = transformation.topRightCorner(3, 1);
-			Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = transformation.topLeftCorner(3, 3);
-			int point_count, point_corr_count;
-			pcc->getCoresp(t, rot, information, point_count, point_corr_count, threads, blocks);
-			if ((float)point_corr_count / point_count < corr_percent) continue;
-		}
 
 		Feature::computeInliersAndError(inlier, inlier_error, nullptr,
 			initial_matches, transformation,
@@ -481,7 +484,18 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
 		///Iterations with more than 80% of the initial_matches inlying, count threefold
 		if (inlier.size() > initial_matches.size() * 0.8) n_iter++;
 
-		if (inlier_error < best_error) { //copy this to the result
+		if (inlier_error < best_error)
+		{ //copy this to the result
+			if (pcc != nullptr)
+			{
+				Eigen::Vector3f t = transformation.topRightCorner(3, 1);
+				Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = transformation.topLeftCorner(3, 3);
+				int point_count, point_corr_count;
+				pcc->getCoresp(t, rot, information, point_count, point_corr_count, threads, blocks);
+				temp_coresp = (float)point_corr_count / point_count;
+				if (temp_coresp < corr_percent) continue;
+			}
+
 			result_transform = transformation;
 			result_information = information;
 			if (matches != nullptr) *matches = inlier;
@@ -522,8 +536,20 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
 
 		if (new_inlier_error < best_error) 
 		{
+			if (pcc != nullptr)
+			{
+				Eigen::Vector3f t = transformation.topRightCorner(3, 1);
+				Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = transformation.topLeftCorner(3, 3);
+				int point_count, point_corr_count;
+				pcc->getCoresp(t, rot, information, point_count, point_corr_count, threads, blocks);
+				temp_coresp = (float)point_corr_count / point_count;
+				if (temp_coresp < corr_percent) continue;
+			}
+
 			result_transform = transformation;
-			result_information = information;
+			if (pcc != nullptr)
+				result_information = information;
+			result_coresp = temp_coresp;
 			if (matches != nullptr) *matches = inlier;
 //			assert(matches->size() >= min_inlier_threshold);
 //			assert(matches.size()>= ((float)initial_matches->size())*min_inlier_ratio);
@@ -536,7 +562,9 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
 // 
 // 		}
 	} //iterations
-
+	
+	if (pcc == nullptr)
+		result_information = Eigen::Matrix<double, 6, 6>::Identity();
 	return best_inlier_cnt >= min_inlier_threshold;
 }
 

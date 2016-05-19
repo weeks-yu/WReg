@@ -59,6 +59,11 @@ public:
 		this->multiple = false;
 	}
 
+	~Feature()
+	{
+		releaseFlannIndex();
+	}
+
 	int size() { return feature_pts.size(); }
 
 	void setMultiple(int frame_index = 0);
@@ -66,6 +71,8 @@ public:
 	void extract(const cv::Mat &imgRGB, const cv::Mat &imgDepth, string type = "SURF");
 
 	void buildFlannIndex();
+
+	void releaseFlannIndex();
 
 	int findMatched(vector<cv::DMatch> &matches, const cv::Mat &descriptor, int max_leafs = 64, int k = 2);
 
@@ -103,6 +110,7 @@ public:
 
 	static bool getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
 		Eigen::Matrix<double, 6, 6> &result_information,
+		float &result_coresp,
 		float &rmse, vector<cv::DMatch> *matches,
 		const Feature* earlier, const Feature* now,
 		PointCloudCuda *pcc,

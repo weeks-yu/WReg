@@ -82,7 +82,9 @@ bool RobustManager::addNode(Frame* frame, float weight, bool is_keyframe_candida
 		keyframeInQuadTreeCount++;
 		frame_in_quadtree_indices.insert(0);
 		Eigen::Vector3f translation = TranslationFromMatrix4f(graph[0]->tran);
-		active_window.insert(translation(0), translation(1), 0);
+		bool insertion = active_window.insert(translation(0), translation(1), 0);
+		if (!insertion)
+			insertion_failure.push_back(pair<float, float>(translation(0), translation(1)));
 		isNewKeyframe = true;
 	}
 	else
@@ -154,11 +156,11 @@ bool RobustManager::addNode(Frame* frame, float weight, bool is_keyframe_candida
 				//continue; // do not run ransac between this and last keyframe
 			}
 			Eigen::Matrix4f tran;
-			float rmse;
+			float rmse, coresp;
 			vector<cv::DMatch> inliers;
 			pcc->initPrev((unsigned short *)this->graph[this->active_window.active_frames[frames[i]]]->depth->data, 20.0f);
 			// find edges
-			if (Feature::getTransformationByRANSAC(tran, information, rmse, &inliers,
+			if (Feature::getTransformationByRANSAC(tran, information, coresp, rmse, &inliers,
 				this->active_window.feature_pool, this->graph[k]->f,
 				pcc, matches[i]))
 			{
@@ -303,34 +305,12 @@ bool RobustManager::addNode(Frame* frame, float weight, bool is_keyframe_candida
 		{
 			frame_in_quadtree_indices.insert(k);
 			Eigen::Vector3f translation = TranslationFromMatrix4f(this->graph[k]->tran);
-			active_window.insert(translation(0), translation(1), k);
+			bool insertion = active_window.insert(translation(0), translation(1), k);
+			if (!insertion)
+				insertion_failure.push_back(pair<float, float>(translation(0), translation(1)));
 			keyframeInQuadTreeCount++;
 			std::cout << ", Keyframe";
 			isNewKeyframe = true;
-		}
-
-		int ki = 0;
-		for (int i = 0; i < this->graph.size(); i++)
-		{
-			if (this->graph[i]->tran != temp_poses[i])
-			{
-				Eigen::Vector3f old_translation = TranslationFromMatrix4f(this->graph[i]->tran);
-				Eigen::Vector3f new_translation = TranslationFromMatrix4f(temp_poses[i]);
-				this->graph[i]->tran = temp_poses[i];
-
-				if (frame_in_quadtree_indices.find(i) != frame_in_quadtree_indices.end())
-				{
-					// keyframe pose changed
-					// update 3d feature points
-					this->graph[i]->f->updateFeaturePoints3D(temp_poses[i]);
-
-					// update quadtree
-					if (old_translation(0) != new_translation(0) || old_translation(1) != new_translation(1))
-					{
-						this->active_window.key_frames->update(old_translation(0), old_translation(1), i, new_translation(0), new_translation(1));
-					}
-				}
-			}
 		}
 
 		for (int i = 0; i < this->graph.size(); i++)
@@ -411,6 +391,8 @@ int RobustManager::size()
 
 void RobustManager::refine()
 {
+	cout << endl << "Refine Start" << endl;
+
 	g2o::SparseOptimizer* opt;
 	opt = new g2o::SparseOptimizer();
 	opt->setVerbose(true);
@@ -459,6 +441,22 @@ void RobustManager::refine()
 
 	opt->initializeOptimization();
 	opt->optimize(iteration_count);
+
+	cout << "optimization finished" << endl;
+
+	for (int i = 0; i < this->graph.size(); i++)
+	{
+		if (keyframe_id.find(i) != keyframe_id.end())
+		{
+			g2o::VertexSE3 *v = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(keyframe_id[i]));
+			graph[i]->tran = G2O2Matrix4f(v->estimateAsSE3Quat());
+		}
+		else
+		{
+			graph[i]->tran = graph[i - 1]->tran  * graph[i]->relative_tran;
+		}
+	}
+	cout << "updated transformations" << endl;
 }
 
 void RobustManager::getLineProcessResult(vector<int> &id0s, vector<int> &id1s, vector<float> &linep)

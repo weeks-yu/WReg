@@ -368,10 +368,11 @@ void Ransac_Test()
 		f[0]->f->findMatchedPairs(matches, f[i]->f, 128, 2);
 
 		Eigen::Matrix4f tran = Eigen::Matrix4f::Identity();
-		float rmse;
+		float rmse, coresp;
 		vector<cv::DMatch> inliers;
-		Feature::getTransformationByRANSAC(tran, rmse, &inliers,
-			&f[0]->f, &f[i]->f, nullptr, matches);
+		Eigen::Matrix<double, 6, 6> information;
+		Feature::getTransformationByRANSAC(tran, information, coresp, rmse, &inliers,
+			f[0]->f, f[i]->f, nullptr, matches);
 		cout << matches.size() << ", " << inliers.size() << endl;
 
 		pcl::transformPointCloud(*cloud[i], *cloud[i], tran);
@@ -487,10 +488,10 @@ void KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void*
 			*cloud_all += *downsampled_combined_clouds[i];
 		}
 
-		Eigen::Matrix4f tran = combined_trans[id_end / 50];
+		Eigen::Matrix4f tran /*= combined_trans[id_end / 50]*/;
 		for (int i = int(id_end / 50) * 50; i <= id_end; i++)
 		{
-			tran = tran * trans[i];
+			tran = trans[i];
 			PointCloudPtr tran_cloud(new PointCloudT);
 			pcl::transformPointCloud(*clouds[i], *tran_cloud, tran);
 			*cloud_all += *tran_cloud;
@@ -543,9 +544,11 @@ void KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void*
 void Ransac_Result_Show()
 {
 	set<int> cloud_needed;
-	ifstream result_infile("G:/ransac.txt");
-	result_infile >> pairs_count;
-	for (int i = 0; i < pairs_count; i++)
+	ifstream result_infile("G:/1.txt");
+	pairs_count = 0;
+	int nnn;
+	result_infile >> nnn;
+	for (int i = 0; i < nnn; i++)
 	{
 		int base_id, target_id;
 		float rmse;
@@ -562,7 +565,7 @@ void Ransac_Result_Show()
 			}
 		}
 
-		if (match_count > 0)
+		//if (match_count > 0)
 		{
 			cloud_needed.insert(base_id);
 			cloud_needed.insert(target_id);
@@ -570,10 +573,11 @@ void Ransac_Result_Show()
 			rmses.push_back(rmse);
 			matches_and_inliers.push_back(pair<int, int>(match_count, inlier_count));
 			trans.push_back(tran);
+			pairs_count++;
 		}
 	}
 
-	string directory = "G:/kinect data/living_room_1";
+	string directory = "G:/kinect data/rgbd_dataset_freiburg1_xyz";
 
 	ifstream cloud_infile(directory + "/read.txt");
 	string line;
@@ -628,7 +632,7 @@ void Ransac_Result_Show()
 
 void Registration_Result_Show()
 {
-	string directory = "E:/lab/pcl/kinect data/living_room_1";
+	string directory = "G:/kinect data/rgbd_dataset_freiburg1_xyz";
 	int id_end = 0;
 	cin >> id_end;
 
@@ -646,6 +650,7 @@ void Registration_Result_Show()
 			rgbs[k] = rgb;
 			depths[k] = depth;
 			PointCloudPtr cloud = ConvertToPointCloudWithoutMissingData(depth, rgb, k, k);
+			cloud = DownSamplingByVoxelGrid(cloud, 0.01, 0.01, 0.01);
 			clouds[k] = cloud;
 		}
 		else
@@ -656,41 +661,15 @@ void Registration_Result_Show()
 	}
 	cloud_infile.close();
 
-	ICPOdometry *icpcuda = nullptr;
-	int threads = Config::instance()->get<int>("icpcuda_threads");
-	int blocks = Config::instance()->get<int>("icpcuda_blocks");
-	int width = Config::instance()->get<int>("image_width");
-	int height = Config::instance()->get<int>("image_height");
-	float cx = Config::instance()->get<float>("camera_cx");
-	float cy = Config::instance()->get<float>("camera_cy");
-	float fx = Config::instance()->get<float>("camera_fx");
-	float fy = Config::instance()->get<float>("camera_fy");
-	float depthFactor = Config::instance()->get<float>("depth_factor");
-	if (icpcuda == nullptr)
-		icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor);
-
-	trans.push_back(Eigen::Matrix4f::Identity());
-	
-	for (int i = 1; i < k; i++)
+	ifstream result_infile("G:/2.txt");
+	while (!result_infile.eof())
 	{
-		cout << i << endl;
-		icpcuda->initICPModel((unsigned short *)depths[i - 1].data, 20.0f, Eigen::Matrix4f::Identity());
-		icpcuda->initICP((unsigned short *)depths[i].data, 20.0f);
-
-		Eigen::Matrix4f ret_tran = Eigen::Matrix4f::Identity();
-		Eigen::Vector3f ret_t = ret_tran.topRightCorner(3, 1);
-		Eigen::Matrix<float, 3, 3, Eigen::RowMajor> ret_rot = ret_tran.topLeftCorner(3, 3);
-
-		Eigen::Matrix4f estimated_tran = Eigen::Matrix4f::Identity();
-		Eigen::Vector3f t = estimated_tran.topRightCorner(3, 1);
-		Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = estimated_tran.topLeftCorner(3, 3);
-
-		icpcuda->getIncrementalTransformation(ret_t, ret_rot, t, rot, threads, blocks);
-
-		ret_tran.topLeftCorner(3, 3) = ret_rot;
-		ret_tran.topRightCorner(3, 1) = ret_t;
-
-		trans.push_back(ret_tran);
+		double timestamp;
+		Eigen::Vector3f t;
+		Eigen::Quaternionf q;
+		result_infile >> timestamp >> t(0) >> t(1) >> t(2) >> q.x() >> q.y() >> q.z() >> q.w();
+		Eigen::Matrix4f tran = transformationFromQuaternionsAndTranslation(q, t);
+		trans.push_back(tran);
 	}
 
 	PointCloudPtr cloud_temp(new PointCloudT);
@@ -698,7 +677,7 @@ void Registration_Result_Show()
 	combined_trans.push_back(tran);
 	for (int i = 0; i < k; i++)
 	{
-		tran = tran * trans[i];
+		tran = trans[i];
 		PointCloudPtr tran_cloud(new PointCloudT);
 		pcl::transformPointCloud(*clouds[i], *tran_cloud, tran);
 		*cloud_temp += *tran_cloud;
@@ -1307,7 +1286,8 @@ void corr_test()
 	pcc->initPrev((unsigned short *)d[0].data, 20.0f);
 	pcc->initCurr((unsigned short *)d[1].data, 20.0f);
 	int point_count, point_corr_count;
-	pcc->getCoresp(ret_t, ret_rot, point_count, point_corr_count, threads, blocks);
+	Eigen::Matrix<double, 6, 6> information;
+	pcc->getCoresp(ret_t, ret_rot, information, point_count, point_corr_count, threads, blocks);
 
 	cout << point_count << endl << point_corr_count << endl;
 
@@ -1321,9 +1301,9 @@ int main()
 	//keyframe_test();
 	//something();
 	//icp_test();
-	Ransac_Test();
+	//Ransac_Test();
 	//Ransac_Result_Show();
-	//Registration_Result_Show();
+	Registration_Result_Show();
 	//read_txt();
 	//feature_test();
 	//PlaneFittingTest();
