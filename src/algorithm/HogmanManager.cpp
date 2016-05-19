@@ -127,7 +127,7 @@ bool HogmanManager::addNode(Frame* frame, float weight, bool is_keyframe_candida
 			eigenToHogman(graph[k]->tran), Matrix6::eye(1.0));
 
 		pcc->initCurr((unsigned short *)this->graph[k]->depth->data, 20.0f);
-		Eigen::Matrix<float, 6, 6, Eigen::RowMajor> information;
+		Eigen::Matrix<double, 6, 6> information;
 		for (int i = 0; i < frames.size(); i++)
 		{
 			if (keyframe_id[this->active_window.active_frames[frames[i]]] == keyframe_indices.size() - 2)

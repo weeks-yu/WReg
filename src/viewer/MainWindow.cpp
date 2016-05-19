@@ -82,6 +82,7 @@ void MainWindow::ShowBenchmarkTest(const QString &directory)
 	connect(uiDockBenchmark->pushButtonSave, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonSaveClicked);
 	connect(uiDockBenchmark->pushButtonSaveKeyframes, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonSaveKeyframesClicked);
 	connect(uiDockBenchmark->pushButtonSaveLogs, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonSaveLogsClicked);
+	connect(uiDockBenchmark->pushButtonRefine, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonRefineClicked);
 
 	// center
 	benchmarkViewer = new BenchmarkViewer(this);
@@ -416,6 +417,18 @@ void MainWindow::onBenchmarkPushButtonSaveLogsClicked(bool checked)
 			engine->SaveLogs(outfile);
 		}
 		outfile.close();
+	}
+}
+
+void MainWindow::onBenchmarkPushButtonRefineClicked(bool checked)
+{
+	if (engine)
+	{
+		if (engine->isUsingRobustOptimizer())
+		{
+			engine->Refine();
+			benchmarkViewer->ShowPointCloud(engine->GetScene());
+		}
 	}
 }
 

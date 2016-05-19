@@ -531,6 +531,14 @@ void SlamEngine::AddNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, double 
 	frame_id++;
 }
 
+void SlamEngine::Refine()
+{
+	if (using_robust_optimizer)
+	{
+		robust_manager.refine();
+	}
+}
+
 PointCloudPtr SlamEngine::GetScene()
 {
 	PointCloudPtr cloud(new PointCloudT);
@@ -616,6 +624,15 @@ void SlamEngine::SaveLogs(ofstream &outfile)
 				<< robust_manager.matchescount[i] << "\t"
 				<< robust_manager.inlierscount[i] << endl;
 			outfile << robust_manager.ransactrans[i] << endl;
+		}
+
+		outfile << endl << "line process" << endl;
+		vector<int> id0s, id1s;
+		vector<float> lineps;
+		robust_manager.getLineProcessResult(id0s, id1s, lineps);
+		for (int i = 0; i < id0s.size(); i++)
+		{
+			outfile << id0s[i] << "\t" << id1s[i] << "\t" << lineps[i] << endl;
 		}
 	}
 #endif

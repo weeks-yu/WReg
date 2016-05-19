@@ -233,7 +233,7 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 
 			//bool has_edge_to_last_keyframe = false;
 			pcc->initCurr((unsigned short *)this->graph[k]->depth->data, 20.0f);
-			Eigen::Matrix<float, 6, 6, Eigen::RowMajor> information;
+			Eigen::Matrix<double, 6, 6> information;
 
 			for (int i = 0; i < frames.size(); i++)
 			{

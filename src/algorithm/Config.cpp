@@ -9,7 +9,7 @@ Config::Config() {
 
 	// RANSAC
 	config["candidate_number"]		= static_cast<int>    (10);
-	config["min_matches"]			= static_cast<int>    (50);
+	config["min_matches"]			= static_cast<int>    (100);
 	config["min_inliers_percent"]	= static_cast<float>  (0.3);
 	config["max_dist_for_inliers"]	= static_cast<float>  (0.03);
 	config["matches_criterion"]		= static_cast<float>  (0.75);
@@ -43,21 +43,21 @@ Config::Config() {
 	// Camera parameters
 	config["image_width"]			= static_cast<int>    (640);
 	config["image_height"]			= static_cast<int>    (480);
-	config["camera_fx"]				= static_cast<float>  (517.3);
-	config["camera_fy"]				= static_cast<float>  (516.5);
-	config["camera_cx"]				= static_cast<float>  (318.6);
-	config["camera_cy"]				= static_cast<float>  (255.3);
+// 	config["camera_fx"]				= static_cast<float>  (517.3);
+// 	config["camera_fy"]				= static_cast<float>  (516.5);
+// 	config["camera_cx"]				= static_cast<float>  (318.6);
+// 	config["camera_cy"]				= static_cast<float>  (255.3);
 // 	config["camera_fx"]				= static_cast<float>  (481.2);
 // 	config["camera_fy"]				= static_cast<float>  (-480.0);
 // 	config["camera_cx"]				= static_cast<float>  (319.5);
 // 	config["camera_cy"]				= static_cast<float>  (239.5);
-// 	config["camera_fx"]				= static_cast<float>  (525.0);
-// 	config["camera_fy"]				= static_cast<float>  (525.0);
-// 	config["camera_cx"]				= static_cast<float>  (319.5);
-// 	config["camera_cy"]				= static_cast<float>  (239.5);
+	config["camera_fx"]				= static_cast<float>  (525.0);
+	config["camera_fy"]				= static_cast<float>  (525.0);
+	config["camera_cx"]				= static_cast<float>  (319.5);
+	config["camera_cy"]				= static_cast<float>  (239.5);
 
-	config["depth_factor"]			= static_cast<float>  (5000.0);
-//	config["depth_factor"]			= static_cast<float>  (1000.0);
+//	config["depth_factor"]			= static_cast<float>  (5000.0);
+	config["depth_factor"]			= static_cast<float>  (1000.0);
 
 	// hogman parameters
 	config["graph_levels"]			= static_cast<int>    (3);

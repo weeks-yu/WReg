@@ -21,6 +21,7 @@ public:
 		VertexSwitchLinear * v_;
 		EdgeSwitchPrior * ep_;
 		EdgeSE3Switchable * e_;
+		int id0, id1;
 	};
 
 public:
@@ -77,6 +78,13 @@ private:
 
 	int switchable_id;
 
+	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> odometry_traj;
+	vector<Eigen::Matrix<double, 6, 6>, Eigen::aligned_allocator<Eigen::Matrix<double, 6, 6>>> odometry_info;
+
+	vector<SwitchableEdge> loop_edges;
+	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> loop_trans;
+	vector<Eigen::Matrix<double, 6, 6>, Eigen::aligned_allocator<Eigen::Matrix<double, 6, 6>>> loop_info;
+
 public:
 
 	RobustManager(bool keyframe_only = false);
@@ -90,6 +98,10 @@ public:
 	Eigen::Matrix4f getLastKeyframeTransformation();
 
 	int size();
+
+	void refine();
+
+	void getLineProcessResult(vector<int> &id0s, vector<int> &id1s, vector<float> &linep);
 
 private:
 	Eigen::Matrix4f G2O2Matrix4f(const g2o::SE3Quat se3) {

@@ -55,7 +55,7 @@ void PointCloudCuda::initCurr(unsigned short * depth, const float depthCutoff)
 }
 
 void PointCloudCuda::getCoresp(const Eigen::Vector3f & trans, const Eigen::Matrix<float, 3, 3, Eigen::RowMajor> & rot,
-	Eigen::Matrix<float, 6, 6, Eigen::RowMajor> &information,
+	Eigen::Matrix<double, 6, 6> &information,
 	int & point_count_curr, int & corr, int threads, int blocks)
 {
 	//test();

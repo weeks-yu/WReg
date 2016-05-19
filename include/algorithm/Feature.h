@@ -102,7 +102,7 @@ public:
 		double squaredMaxInlierDistInM);
 
 	static bool getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
-		Eigen::Matrix<float, 6, 6, Eigen::RowMajor> &result_information,
+		Eigen::Matrix<double, 6, 6> &result_information,
 		float &rmse, vector<cv::DMatch> *matches,
 		const Feature* earlier, const Feature* now,
 		PointCloudCuda *pcc,

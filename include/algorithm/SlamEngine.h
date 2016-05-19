@@ -59,6 +59,7 @@ public:
 
 	void RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, double timestamp);
 	void AddNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, double timestamp, Eigen::Matrix4f trajectory);
+	void Refine();
 	PointCloudPtr GetScene();
 	int GetFrameID() { return frame_id; }
 	vector<pair<double, Eigen::Matrix4f>> GetTransformations();

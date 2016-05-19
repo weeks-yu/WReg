@@ -794,7 +794,7 @@ void calcCorr(const Mat33& Rcurr,
 	float angleThres,
 	DeviceArray<jtj> & sum,
 	DeviceArray<jtj> & out,
-	float * matrixA_host,
+	double * matrixA_host,
 	int * result,
 	int threads, int blocks)
 {

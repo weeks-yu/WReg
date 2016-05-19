@@ -387,7 +387,7 @@ void Feature::computeInliersAndError(vector<cv::DMatch> &inliers, double &mean_e
 }
 
 bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
-	Eigen::Matrix<float, 6, 6, Eigen::RowMajor> &result_information,
+	Eigen::Matrix<double, 6, 6> &result_information,
 	float &rmse, vector<cv::DMatch> *matches, // output vars. if matches == nullptr, do not return inlier match
 	const Feature* earlier, const Feature* now,
 	PointCloudCuda *pcc,
@@ -420,7 +420,7 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
 	int threads = Config::instance()->get<int>("icpcuda_threads");
 	int blocks = Config::instance()->get<int>("icpcuda_blocks");
 	float corr_percent = Config::instance()->get<float>("coresp_percent");
-	Eigen::Matrix<float, 6, 6, Eigen::RowMajor> information;
+	Eigen::Matrix<double, 6, 6> information;
 
 	for (unsigned int n_iter = 0; n_iter < ransac_iterations; n_iter++)
 	{

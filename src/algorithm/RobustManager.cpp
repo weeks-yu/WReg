@@ -72,6 +72,8 @@ bool RobustManager::addNode(Frame* frame, float weight, bool is_keyframe_candida
 		v->setEstimate(Eigen2G2O(graph[0]->tran));
 		v->setFixed(true);
 		optimizer->addVertex(v);
+		odometry_traj.push_back(Eigen::Matrix4f::Identity());
+		odometry_info.push_back(Eigen::Matrix<double, 6, 6>::Identity());
 
 		keyframe_id.insert(pair<int, int>(0, 0));
 
@@ -144,7 +146,7 @@ bool RobustManager::addNode(Frame* frame, float weight, bool is_keyframe_candida
 		optimizer->addVertex(v);
 
 		pcc->initCurr((unsigned short *)this->graph[k]->depth->data, 20.0f);
-		Eigen::Matrix<float, 6, 6, Eigen::RowMajor> information;
+		Eigen::Matrix<double, 6, 6> information;
 		for (int i = 0; i < frames.size(); i++)
 		{
 			if (keyframe_id[this->active_window.active_frames[frames[i]]] == keyframe_indices.size() - 2)
@@ -162,6 +164,8 @@ bool RobustManager::addNode(Frame* frame, float weight, bool is_keyframe_candida
 			{
 				SwitchableEdge edge;
 /*				edge.t_ = &t;*/
+				edge.id0 = keyframe_id[this->active_window.active_frames[frames[i]]];
+				edge.id1 = keyframe_indices.size() - 1;
 
 				edge.v_ = new VertexSwitchLinear();
 				edge.v_->setId(switchable_id++);
@@ -175,13 +179,15 @@ bool RobustManager::addNode(Frame* frame, float weight, bool is_keyframe_candida
 				optimizer->addEdge(edge.ep_);
 
 				edge.e_ = new EdgeSE3Switchable();
-				edge.e_->vertices()[0] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(keyframe_id[this->active_window.active_frames[frames[i]]]));
-				edge.e_->vertices()[1] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(keyframe_indices.size() - 1));
+				edge.e_->vertices()[0] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(edge.id0));
+				edge.e_->vertices()[1] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(edge.id1));
 				edge.e_->vertices()[2] = edge.v_;
 				edge.e_->setMeasurement(g2o::internal::fromSE3Quat(Eigen2G2O(tran)));
-				edge.e_->setInformation(Eigen::Matrix< double, 6, 6 >::Identity());
+				edge.e_->setInformation(information);
 				optimizer->addEdge(edge.e_);
-//				switch_edge.push_back(edge);
+				loop_edges.push_back(edge);
+				loop_trans.push_back(tran);
+				loop_info.push_back(information);
 
 #ifdef SAVE_TEST_INFOS
 				baseid.push_back(k);
@@ -225,6 +231,9 @@ bool RobustManager::addNode(Frame* frame, float weight, bool is_keyframe_candida
 			g2o_edge->setMeasurement(g2o::internal::fromSE3Quat(Eigen2G2O(tran)));
 			g2o_edge->setInformation(Eigen::Matrix< double, 6, 6 >::Identity());
 			optimizer->addEdge(g2o_edge);
+
+			odometry_traj.push_back(tran);
+			odometry_info.push_back(information);
 
 #ifdef SAVE_TEST_INFOS
 			baseid.push_back(k);
@@ -398,4 +407,69 @@ Eigen::Matrix4f RobustManager::getLastKeyframeTransformation()
 int RobustManager::size()
 {
 	return graph.size();
+}
+
+void RobustManager::refine()
+{
+	g2o::SparseOptimizer* opt;
+	opt = new g2o::SparseOptimizer();
+	opt->setVerbose(true);
+	SlamBlockSolver * solver = NULL;
+	SlamLinearCSparseSolver* linearSolver = new SlamLinearCSparseSolver();
+	linearSolver->setBlockOrdering(false);
+	solver = new SlamBlockSolver(linearSolver);
+	g2o::OptimizationAlgorithmLevenberg* algo = new g2o::OptimizationAlgorithmLevenberg(solver);
+	opt->setAlgorithm(algo);
+	//iteration_count = Config::instance()->get<int>("robust_iterations");
+
+	for (int i = 0; i < keyframe_indices.size(); i++)
+	{
+		g2o::VertexSE3 *v = new g2o::VertexSE3();
+		v->setId(i);
+		if (i == 0)
+		{
+			v->setFixed(true);
+		}
+		v->setEstimate(Eigen2G2O(graph[keyframe_indices[i]]->tran));
+		opt->addVertex(v);
+
+		if (i > 0)
+		{
+			g2o::EdgeSE3* g2o_edge = new g2o::EdgeSE3();
+			g2o_edge->vertices()[0] = dynamic_cast<g2o::VertexSE3*>(opt->vertex(i - 1));
+			g2o_edge->vertices()[1] = dynamic_cast<g2o::VertexSE3*>(opt->vertex(i));
+			g2o_edge->setMeasurement(g2o::internal::fromSE3Quat(Eigen2G2O(odometry_traj[i])));
+			g2o_edge->setInformation(odometry_info[i]);
+			opt->addEdge(g2o_edge);
+		}
+	}
+
+	for (int i = 0; i < loop_edges.size(); i++)
+	{
+		if (loop_edges[i].v_->estimate() > 0.25)
+		{
+			g2o::EdgeSE3* g2o_edge = new g2o::EdgeSE3();
+			g2o_edge->vertices()[0] = dynamic_cast<g2o::VertexSE3*>(opt->vertex(loop_edges[i].id0));
+			g2o_edge->vertices()[1] = dynamic_cast<g2o::VertexSE3*>(opt->vertex(loop_edges[i].id1));
+			g2o_edge->setMeasurement(g2o::internal::fromSE3Quat(Eigen2G2O(loop_trans[i])));
+			g2o_edge->setInformation(loop_info[i]);
+			opt->addEdge(g2o_edge);
+		}
+	}
+
+	opt->initializeOptimization();
+	opt->optimize(iteration_count);
+}
+
+void RobustManager::getLineProcessResult(vector<int> &id0s, vector<int> &id1s, vector<float> &linep)
+{
+	id0s.clear();
+	id1s.clear();
+	linep.clear();
+	for (int i = 0; i < loop_edges.size(); i++)
+	{
+		id0s.push_back(keyframe_indices[loop_edges[i].id0]);
+		id1s.push_back(keyframe_indices[loop_edges[i].id1]);
+		linep.push_back(loop_edges[i].v_->estimate());
+	}
 }
