@@ -238,19 +238,24 @@ void MainWindow::onActionShowResultFromFileTriggered()
 
 void MainWindow::onBenchmarkPushButtonRunClicked(bool checked)
 {
-	if (!Parser::isDouble(uiDockBenchmark->lineEditDownsampleRate->text()))
+	if (!Parser::isFloat(uiDockBenchmark->lineEditDownsampleRate->text()))
 	{
-		QMessageBox::warning(this, "Parameter Error", "Downsampling: parameter \"Downsample Rate\" should be double.");
+		QMessageBox::warning(this, "Parameter Error", "Downsampling: parameter \"Downsample Rate\" should be float.");
 		return;
 	}
-	if (!Parser::isDouble(uiDockBenchmark->lineEditGICPCorrDist->text()))
+	if (!Parser::isFloat(uiDockBenchmark->lineEditGICPCorrDist->text()))
 	{
-		QMessageBox::warning(this, "Parameter Error", "GICP: parameter \"Max Correspondence Dist\" should be double.");
+		QMessageBox::warning(this, "Parameter Error", "GICP: parameter \"Max Correspondence Dist\" should be float.");
 		return;
 	}
-	if (!Parser::isDouble(uiDockBenchmark->lineEditGICPEpsilon->text()))
+	if (!Parser::isFloat(uiDockBenchmark->lineEditGICPEpsilon->text()))
 	{
-		QMessageBox::warning(this, "Parameter Error", "GICP: parameter \"Transformation Epsilon\" should be double.");
+		QMessageBox::warning(this, "Parameter Error", "GICP: parameter \"Transformation Epsilon\" should be float.");
+		return;
+	}
+	if (!Parser::isFloat(uiDockBenchmark->lineEditFeatureInlier->text()))
+	{
+		QMessageBox::warning(this, "Parameter Error", "Feature: parameter \"Inlier Percentage\" should be float.");
 		return;
 	}
 
@@ -270,14 +275,14 @@ void MainWindow::onBenchmarkPushButtonRunClicked(bool checked)
 	engine->setUsingDownsampling(usingDownSampling);
 	if (usingDownSampling)
 	{
-		engine->setDownsampleRate(uiDockBenchmark->lineEditDownsampleRate->text().toDouble());
+		engine->setDownsampleRate(uiDockBenchmark->lineEditDownsampleRate->text().toFloat());
 	}
 	engine->setUsingGicp(usingGICP);
 	if (usingGICP)
 	{
-		engine->setGicpMaxIterations(uiDockBenchmark->spinBoxGICPIterations->text().toDouble());
-		engine->setGicpMaxCorrDist(uiDockBenchmark->lineEditGICPCorrDist->text().toDouble());
-		engine->setGicpEpsilon(uiDockBenchmark->lineEditGICPEpsilon->text().toDouble());
+		engine->setGicpMaxIterations(uiDockBenchmark->spinBoxGICPIterations->text().toInt());
+		engine->setGicpMaxCorrDist(uiDockBenchmark->lineEditGICPCorrDist->text().toFloat());
+		engine->setGicpEpsilon(uiDockBenchmark->lineEditGICPEpsilon->text().toFloat());
 	}
 	engine->setUsingIcpcuda(usingICPCUDA);
 	if (usingICPCUDA)
@@ -287,26 +292,29 @@ void MainWindow::onBenchmarkPushButtonRunClicked(bool checked)
 	engine->setUsingFeature(usingFeature);
 	if (usingFeature)
 	{
-		QString type = uiDockBenchmark->comboBoxGraphFeatureType->currentText();
-		engine->setGraphFeatureType(type == "SIFT" ? SlamEngine::SIFT : SlamEngine::SURF);
+		
 	}
 	engine->setUsingHogmanOptimizer(usingHogmanOptimizer);
 	if (usingHogmanOptimizer)
 	{
-		QString type = uiDockBenchmark->comboBoxGraphFeatureType->currentText();
-		engine->setGraphFeatureType(type == "SIFT" ? SlamEngine::SIFT : SlamEngine::SURF);
+		
 	}
 	engine->setUsingSrbaOptimzier(usingSrbaOptimizer);
 	if (usingSrbaOptimizer)
 	{
-		QString type = uiDockBenchmark->comboBoxGraphFeatureType->currentText();
-		engine->setGraphFeatureType(type == "SIFT" ? SlamEngine::SIFT : SlamEngine::SURF);
+		
 	}
 	engine->setUsingRobustOptimzier(usingRobustOptimizer);
 	if (usingRobustOptimizer)
 	{
-		QString type = uiDockBenchmark->comboBoxGraphFeatureType->currentText();
-		engine->setGraphFeatureType(type == "SIFT" ? SlamEngine::SIFT : SlamEngine::SURF);
+		
+	}
+	if (usingFeature || usingHogmanOptimizer || usingRobustOptimizer || usingSrbaOptimizer)
+	{
+		QString type = uiDockBenchmark->comboBoxFeatureType->currentText();
+		engine->setFeatureType(type == "SIFT" ? SlamEngine::SIFT : SlamEngine::SURF);
+		engine->setFeatureMinMatches(uiDockBenchmark->spinBoxFeatureMinMatches->text().toInt());
+		engine->setFeatureInlierPercentage(uiDockBenchmark->lineEditFeatureInlier->text().toFloat());
 	}
 
 	SlamThread *thread = new SlamThread(uiDockBenchmark->lineEditDirectory->text(), engine,

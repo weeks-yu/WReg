@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>394</width>
-    <height>536</height>
+    <height>652</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -163,24 +163,11 @@
     <item row="8" column="0" colspan="3">
      <widget class="QGroupBox" name="groupBoxGraph">
       <property name="title">
-       <string>Graph Optimizer</string>
+       <string>Feature</string>
       </property>
       <layout class="QGridLayout" name="gridLayout_3">
-       <item row="0" column="0">
-        <widget class="QLabel" name="labelGraphFeatureType">
-         <property name="minimumSize">
-          <size>
-           <width>170</width>
-           <height>0</height>
-          </size>
-         </property>
-         <property name="text">
-          <string>Feature Type</string>
-         </property>
-        </widget>
-       </item>
        <item row="0" column="1">
-        <widget class="QComboBox" name="comboBoxGraphFeatureType">
+        <widget class="QComboBox" name="comboBoxFeatureType">
          <property name="minimumSize">
           <size>
            <width>165</width>
@@ -203,6 +190,50 @@
            <string>SIFT</string>
           </property>
          </item>
+        </widget>
+       </item>
+       <item row="0" column="0">
+        <widget class="QLabel" name="labelGraphFeatureType">
+         <property name="minimumSize">
+          <size>
+           <width>170</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>Feature Type</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>Min Matches</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QSpinBox" name="spinBoxFeatureMinMatches">
+         <property name="maximum">
+          <number>1000</number>
+         </property>
+         <property name="value">
+          <number>100</number>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="label_2">
+         <property name="text">
+          <string>Inlier Percentage</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QLineEdit" name="lineEditFeatureInlier">
+         <property name="text">
+          <string>0.3</string>
+         </property>
         </widget>
        </item>
       </layout>
@@ -319,12 +350,12 @@
         <string>ICPCUDA with RobustOptimizer</string>
        </property>
       </item>
-	  <item>
+      <item>
        <property name="text">
         <string>Feature only</string>
        </property>
       </item>
-	  <item>
+      <item>
        <property name="text">
         <string>Feature with RobustOptimizer</string>
        </property>

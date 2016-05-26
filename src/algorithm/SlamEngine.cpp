@@ -219,6 +219,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 		Eigen::Matrix4f relative_tran = Eigen::Matrix4f::Identity();
 		Eigen::Matrix4f global_tran = Eigen::Matrix4f::Identity();
 		float weight = 1.0;
+		bool registration_failed = false;
 
 		clock_t step_start = 0;
 		float step_time;
@@ -286,7 +287,6 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			relative_tran.topRightCorner(3, 1) = t;
 		}
 		
-
 		Frame *frame_now;
 		if (using_feature)
 		{
@@ -312,39 +312,24 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			}
 			else
 			{
-				relative_tran = last_transformation;
 				cout << ", RANSAC Failed";
-			}
+				registration_failed = true;
+				relative_tran = last_transformation;
 
-			// icp
-			Eigen::Matrix4f tran2 = Eigen::Matrix4f::Identity();
-			icpcuda->initICPModel((unsigned short *)last_depth.data, 20.0f, Eigen::Matrix4f::Identity());
-			icpcuda->initICP((unsigned short *)imgDepth.data, 20.0f);
-
-			Eigen::Vector3f t = tran2.topRightCorner(3, 1);
-			Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = tran2.topLeftCorner(3, 3);
-
-			Eigen::Vector3f estimated_t = tran2.topRightCorner(3, 1);
-			Eigen::Matrix<float, 3, 3, Eigen::RowMajor> estimated_rot = tran2.topLeftCorner(3, 3);
-
-			icpcuda->getIncrementalTransformation(t, rot, estimated_t, estimated_rot, threads, blocks);
-
-			tran2.topLeftCorner(3, 3) = rot;
-			tran2.topRightCorner(3, 1) = t;
-
-			vector<cv::DMatch> inliers2;
-			double mean_error;
-			const float max_dist_m = Config::instance()->get<float>("max_dist_for_inliers");
-			const float squared_max_dist_m = max_dist_m * max_dist_m;
-			Feature::computeInliersAndError(inliers2, mean_error, nullptr,
-				matches, tran2,
-				last_frame->f->feature_pts_3d, frame_now->f->feature_pts_3d,
-				squared_max_dist_m);
-
-			if (mean_error < rmse + 0.002)
-			{
-				cout << ", icp is better " << mean_error << ", " << rmse;
-				relative_tran = tran2;
+// 				icpcuda->initICPModel((unsigned short *)last_depth.data, 20.0f, Eigen::Matrix4f::Identity());
+// 				icpcuda->initICP((unsigned short *)imgDepth.data, 20.0f);
+// 
+// 				Eigen::Vector3f t = relative_tran.topRightCorner(3, 1);
+// 				Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = relative_tran.topLeftCorner(3, 3);
+// 
+// 				Eigen::Matrix4f estimated_tran = Eigen::Matrix4f::Identity();
+// 				Eigen::Vector3f estimated_t = estimated_tran.topRightCorner(3, 1);
+// 				Eigen::Matrix<float, 3, 3, Eigen::RowMajor> estimated_rot = estimated_tran.topLeftCorner(3, 3);
+// 
+// 				icpcuda->getIncrementalTransformation(t, rot, estimated_t, estimated_rot, threads, blocks);
+// 
+// 				relative_tran.topLeftCorner(3, 3) = rot;
+// 				relative_tran.topRightCorner(3, 1) = t;
 			}
 
 			if (!last_is_keyframe)
@@ -361,7 +346,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 		{
 /*			step_start = clock();*/
 			
-			if (isBigEnough)
+			if (isBigEnough || registration_failed)
 			{
 				if (feature_type == SIFT)
 				{
@@ -398,12 +383,12 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			frame_now->relative_tran = relative_tran;
 			frame_now->tran = global_tran;
 
-			if (isBigEnough)
+			if (isBigEnough || registration_failed)
 			{
 				frame_now->f->updateFeaturePoints3D(global_tran);
 
 				string inliers, exists;
-				bool isKeyframe;
+				bool isKeyframe = false;
 
 				if (using_hogman_optimizer)
 				{
@@ -675,6 +660,10 @@ void SlamEngine::ShowStatistics()
 
 bool SlamEngine::IsTransformationBigEnough()
 {
+	if (!using_optimizer)
+	{
+		return false;
+	}
 	if (accumulated_frame_count >= Config::instance()->get<int>("max_keyframe_interval"))
 	{
 		return true;

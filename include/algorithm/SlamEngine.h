@@ -32,14 +32,14 @@ public:
 	bool isUsingGicp() { return using_gicp; }
 	void setUsingDownsampling(bool use) { using_downsampling = use; }
 	bool isUsingDownsampling() { return using_downsampling; }
-	void setDownsampleRate(double rate) { downsample_rate = rate; }
+	void setDownsampleRate(float rate) { downsample_rate = rate; }
 	double getDownsampleRate() { return downsample_rate; }
 	void setGicpParameters(int max_iter, double max_corr_dist, double epsilon);
 	void setGicpMaxIterations(int max_iter) { gicp->setMaximumIterations(max_iter); }
 	int getGicpMaxiterations() { return gicp->getMaximumIterations(); }
-	void setGicpMaxCorrDist(double max_corr_dist) { gicp->setMaxCorrespondenceDistance(max_corr_dist); }
+	void setGicpMaxCorrDist(float max_corr_dist) { gicp->setMaxCorrespondenceDistance(max_corr_dist); }
 	double getGicpMaxCorrDist() { return gicp->getMaxCorrespondenceDistance(); }
-	void setGicpEpsilon(double epsilon) { gicp->setTransformationEpsilon(epsilon); }
+	void setGicpEpsilon(float epsilon) { gicp->setTransformationEpsilon(epsilon); }
 	double getGicpEpsilon() { return gicp->getTransformationEpsilon(); }
 	
 	void setUsingIcpcuda(bool use);
@@ -69,8 +69,11 @@ public:
 	}
 	bool isUsingRobustOptimizer() { return using_robust_optimizer; }
 
-	void setGraphFeatureType(FeatureType type) { feature_type = type; }
+	void setFeatureType(FeatureType type) { feature_type = type; }
 	FeatureType getGraphFeatureType() { return feature_type; }
+
+	void setFeatureMinMatches(int min_macthes) { Config::instance()->set<int>("min_matches", min_macthes); }
+	void setFeatureInlierPercentage(float percent) { Config::instance()->set<float>("min_inliers_percent", percent); }
 
 	void RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, double timestamp);
 	void AddNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, double timestamp, Eigen::Matrix4f trajectory);

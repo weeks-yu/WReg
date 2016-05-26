@@ -720,7 +720,34 @@ struct CorrCalculator
 		{
 			ret.b = 1;
 
-			ret.aa = vcurr.y * vcurr.y + vcurr.z * vcurr.z;
+			ret.aa = 1;
+			ret.ab = 0;
+			ret.ac = 0;
+			ret.ad = 0;
+			ret.ae = 2 * vcurr.z;
+			ret.af = -2 * vcurr.y;
+
+			ret.bb = 1;
+			ret.bc = 0;
+			ret.bd = -2 * vcurr.z;
+			ret.be = 0;
+			ret.bf = 2 * vcurr.x;
+
+			ret.cc = 1;
+			ret.cd = 2 * vcurr.y;
+			ret.ce = -2 * vcurr.x;
+			ret.cf = 0;
+
+			ret.dd = 4 * (vcurr.y * vcurr.y + vcurr.z * vcurr.z);
+			ret.de = -4 * vcurr.x * vcurr.y;
+			ret.df = -4 * vcurr.x * vcurr.z;
+
+			ret.ee = 4 * (vcurr.x * vcurr.x + vcurr.z * vcurr.z);
+			ret.ef = -4 * vcurr.y * vcurr.z;
+
+			ret.ff = 4 * (vcurr.x * vcurr.x + vcurr.y * vcurr.y);
+
+/*			ret.aa = vcurr.y * vcurr.y + vcurr.z * vcurr.z;
 			ret.ab = -vcurr.x * vcurr.y;
 			ret.ac = -vcurr.x * vcurr.z;
 			ret.ad = 0;
@@ -745,7 +772,7 @@ struct CorrCalculator
 			ret.ee = 1;
 			ret.ef = 0;
 
-			ret.ff = 1;
+			ret.ff = 1;*/
 		}
 
 		return ret;

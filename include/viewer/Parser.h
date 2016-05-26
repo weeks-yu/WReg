@@ -13,6 +13,10 @@ public:
 	static double toDouble(QString str);
 	static double toDouble(QString str, bool &ok);
 
+	static bool isFloat(QString str);
+	static float toFloat(QString str);
+	static float toFloat(QString str, bool &ok);
+
 	static bool isInt(QString str);
 	static int toInt(QString str);
 	static int toInt(QString str, bool &ok);

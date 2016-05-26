@@ -17,6 +17,23 @@ double Parser::toDouble(QString str, bool &ok)
 	return str.toDouble(&ok);
 }
 
+bool Parser::isFloat(QString str)
+{
+	bool ok;
+	str.toFloat(&ok);
+	return ok;
+}
+
+float Parser::toFloat(QString str)
+{
+	return str.toFloat();
+}
+
+float Parser::toFloat(QString str, bool &ok)
+{
+	return str.toFloat(&ok);
+}
+
 bool Parser::isInt(QString str)
 {
 	bool ok;

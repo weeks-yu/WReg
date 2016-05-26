@@ -245,21 +245,13 @@ void something()
 
 void icp_test()
 {
-	const int icount = 6;
+	const int icount = 2;
 	std::string rname[icount], dname[icount];
-	rname[0] = "G:/kinect data/living_room_1/rgb/00590.jpg";
-	rname[1] = "G:/kinect data/living_room_1/rgb/00591.jpg";
-	rname[2] = "G:/kinect data/living_room_1/rgb/00592.jpg";
-	rname[3] = "G:/kinect data/living_room_1/rgb/00593.jpg";
-	rname[4] = "G:/kinect data/living_room_1/rgb/00594.jpg";
-	rname[5] = "G:/kinect data/living_room_1/rgb/00595.jpg";
+	rname[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/rgb/1305033563.475960.png";
+	rname[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/rgb/1305033564.807990.png";
 
-	dname[0] = "G:/kinect data/living_room_1/depth/00590.png";
-	dname[1] = "G:/kinect data/living_room_1/depth/00591.png";
-	dname[2] = "G:/kinect data/living_room_1/depth/00592.png";
-	dname[3] = "G:/kinect data/living_room_1/depth/00593.png";
-	dname[4] = "G:/kinect data/living_room_1/depth/00594.png";
-	dname[5] = "G:/kinect data/living_room_1/depth/00595.png";
+	dname[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/depth/1305033563.472965.png";
+	dname[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/depth/1305033564.806879.png";
 
 	cv::Mat r[icount], d[icount];
 	PointCloudPtr cloud[icount];
@@ -337,11 +329,11 @@ void Ransac_Test()
 {
 	const int icount = 2;
 	std::string rname[icount], dname[icount];
-	rname[0] = "G:/kinect data/living_room_1/rgb/00554.jpg";
-	rname[1] = "G:/kinect data/living_room_1/rgb/00569.jpg";
+	rname[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/rgb/1305033563.475960.png";
+	rname[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/rgb/1305033564.807990.png";
 
-	dname[0] = "G:/kinect data/living_room_1/depth/00554.png";
-	dname[1] = "G:/kinect data/living_room_1/depth/00569.png";
+	dname[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/depth/1305033563.472965.png";
+	dname[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/depth/1305033564.806879.png";
 
 	cv::Mat r[icount], d[icount];
 	PointCloudPtr cloud[icount];
@@ -354,9 +346,6 @@ void Ransac_Test()
 	f[0] = new Frame(r[0], d[0], "SURF", Eigen::Matrix4f::Identity());
 	f[0]->f->buildFlannIndex();
 
-	int N = 4, M = 4;
-	int keyframeTest[16] = {0};
-
 	for (int i = 1; i < icount; i++)
 	{
 		r[i] = cv::imread(rname[i]);
@@ -365,7 +354,7 @@ void Ransac_Test()
 
 		f[i] = new Frame(r[i], d[i], "SURF", Eigen::Matrix4f::Identity());
 		vector<cv::DMatch> matches;
-		f[0]->f->findMatchedPairs(matches, f[i]->f, 128, 2);
+		f[0]->f->findMatchedPairs(matches, f[i]->f, 64, 2);
 
 		Eigen::Matrix4f tran = Eigen::Matrix4f::Identity();
 		float rmse, coresp;
@@ -544,7 +533,7 @@ void KeyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void*
 void Ransac_Result_Show()
 {
 	set<int> cloud_needed;
-	ifstream result_infile("G:/1.txt");
+	ifstream result_infile("E:/1.txt");
 	pairs_count = 0;
 	int nnn;
 	result_infile >> nnn;
@@ -565,7 +554,7 @@ void Ransac_Result_Show()
 			}
 		}
 
-		//if (match_count > 0)
+		if (match_count > 0)
 		{
 			cloud_needed.insert(base_id);
 			cloud_needed.insert(target_id);
@@ -577,7 +566,7 @@ void Ransac_Result_Show()
 		}
 	}
 
-	string directory = "G:/kinect data/rgbd_dataset_freiburg1_xyz";
+	string directory = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor";
 
 	ifstream cloud_infile(directory + "/read.txt");
 	string line;
@@ -632,16 +621,27 @@ void Ransac_Result_Show()
 
 void Registration_Result_Show()
 {
-	string directory = "G:/kinect data/rgbd_dataset_freiburg1_xyz";
-	int id_end = 0;
-	cin >> id_end;
+	string directory;
+	int id_start, id_end, id_interval;
 
-	ifstream cloud_infile(directory + "/read.txt");
+	ifstream infile("E:/test2.txt");
+	getline(infile, directory);
+	infile >> id_interval >> id_start >> id_end;
+	
+	stringstream ss;
+	ss << directory << "/read.txt";
+	ifstream cloud_infile(ss.str());
 	string line;
-	int k = 0;
+	int k = 0, id = 0;
 	while (getline(cloud_infile, line))
 	{
-		if (k <= id_end)
+		if (id < id_start)
+		{
+			id++;
+			continue;
+		}
+
+		if (id <= id_end)
 		{
 			cout << k << endl;;
 			int pos = line.find(' ');
@@ -657,17 +657,17 @@ void Registration_Result_Show()
 		{
 			break;
 		}
+		id++;
 		k++;
 	}
 	cloud_infile.close();
 
-	ifstream result_infile("G:/2.txt");
-	while (!result_infile.eof())
+	while (!infile.eof())
 	{
 		double timestamp;
 		Eigen::Vector3f t;
 		Eigen::Quaternionf q;
-		result_infile >> timestamp >> t(0) >> t(1) >> t(2) >> q.x() >> q.y() >> q.z() >> q.w();
+		infile >> timestamp >> t(0) >> t(1) >> t(2) >> q.x() >> q.y() >> q.z() >> q.w();
 		Eigen::Matrix4f tran = transformationFromQuaternionsAndTranslation(q, t);
 		trans.push_back(tran);
 	}
@@ -1300,10 +1300,10 @@ int main()
 {
 	//keyframe_test();
 	//something();
-	//icp_test();
+	icp_test();
 	//Ransac_Test();
 	//Ransac_Result_Show();
-	Registration_Result_Show();
+	//Registration_Result_Show();
 	//read_txt();
 	//feature_test();
 	//PlaneFittingTest();

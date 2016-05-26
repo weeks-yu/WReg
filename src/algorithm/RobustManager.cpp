@@ -201,6 +201,10 @@ bool RobustManager::addNode(Frame* frame, float weight, bool is_keyframe_candida
 #endif
 
 				count++;
+				if (k - this->active_window.active_frames[frames[i]] > 200)
+				{
+					continue;
+				}
 				for (int j = 0; j < inliers.size(); j++)
 				{
 					cv::KeyPoint keypoint = this->graph[k]->f->feature_pts[inliers[j].queryIdx];
