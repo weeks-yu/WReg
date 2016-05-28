@@ -14,7 +14,8 @@ public:
 	enum FeatureType
 	{
 		SIFT = 0,
-		SURF
+		SURF,
+		ORB
 	};
 
 public:

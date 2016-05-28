@@ -153,6 +153,10 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			{
 				frame = new Frame(imgRGB, imgDepth, "SURF", Eigen::Matrix4f::Identity());
 			}
+			else if (feature_type == ORB)
+			{
+				frame = new Frame(imgRGB, imgDepth, "ORB", Eigen::Matrix4f::Identity());
+			}
 			frame->relative_tran = Eigen::Matrix4f::Identity();
 			frame->tran = frame->relative_tran;
 		}
@@ -298,6 +302,10 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			{
 				frame_now = new Frame(imgRGB, imgDepth, "SURF", global_tran);
 			}
+			else if (feature_type == ORB)
+			{
+				frame_now = new Frame(imgRGB, imgDepth, "ORB", global_tran);
+			}
 
 			vector<cv::DMatch> matches, inliers;
 			Eigen::Matrix4f tran;
@@ -309,10 +317,11 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			if (Feature::getTransformationByRANSAC(tran, information, coresp, rmse, &inliers, last_frame->f, frame_now->f, nullptr, matches))
 			{
 				relative_tran = tran;
+				cout << ", " << matches.size() << ", " << inliers.size();
 			}
 			else
 			{
-				cout << ", RANSAC Failed";
+				cout << ", " << matches.size() << ", " << inliers.size() << ", RANSAC Failed";
 				registration_failed = true;
 				relative_tran = last_transformation;
 
@@ -355,6 +364,10 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				else if (feature_type == SURF)
 				{
 					frame_now = new Frame(imgRGB, imgDepth, "SURF", global_tran);
+				}
+				else if (feature_type == ORB)
+				{
+					frame_now = new Frame(imgRGB, imgDepth, "ORB", global_tran);
 				}
 			}
 			else

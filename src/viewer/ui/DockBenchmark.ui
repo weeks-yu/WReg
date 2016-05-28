@@ -182,6 +182,11 @@
          </property>
          <item>
           <property name="text">
+           <string>ORB</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
            <string>SURF</string>
           </property>
          </item>

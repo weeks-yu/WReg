@@ -16,7 +16,9 @@ bool sizeCompare(const pair<int, vector<cv::DMatch>> &a, const pair<int, vector<
 	return a.second.size() > b.second.size();
 }
 
-void Feature::SIFTExtrator(vector<cv::KeyPoint> &feature_pts, vector_eigen_vector3f &feature_pts_3d, cv::Mat &feature_descriptors,
+void Feature::SIFTExtractor(vector<cv::KeyPoint> &feature_pts,
+	vector_eigen_vector3f &feature_pts_3d,
+	cv::Mat &feature_descriptors,
 	const cv::Mat &imgRGB, const cv::Mat &imgDepth)
 {
 	cv::SIFT sift_detector;
@@ -48,7 +50,9 @@ void Feature::SIFTExtrator(vector<cv::KeyPoint> &feature_pts, vector_eigen_vecto
 	}
 }
 
-void Feature::SURFExtrator(vector<cv::KeyPoint> &feature_pts, vector_eigen_vector3f &feature_pts_3d, cv::Mat &feature_descriptors,
+void Feature::SURFExtractor(vector<cv::KeyPoint> &feature_pts,
+	vector_eigen_vector3f &feature_pts_3d,
+	cv::Mat &feature_descriptors,
 	const cv::Mat &imgRGB, const cv::Mat &imgDepth)
 {
 	cv::SURF surf_detector;
@@ -56,6 +60,29 @@ void Feature::SURFExtrator(vector<cv::KeyPoint> &feature_pts, vector_eigen_vecto
 	vector<cv::KeyPoint> fpts;
 
 	surf_detector(imgRGB, mask, fpts, descriptors);
+
+	for (int i = 0; i < fpts.size(); i++)
+	{
+		if (imgDepth.at<ushort>(cvRound(fpts[i].pt.y), cvRound(fpts[i].pt.x)) == 0)
+			continue;
+		feature_pts.push_back(fpts[i]);
+		Eigen::Vector3f pt = ConvertPointTo3D(fpts[i].pt.x, fpts[i].pt.y, imgDepth);
+		feature_pts_3d.push_back(pt);
+		feature_descriptors.push_back(descriptors.row(i));
+	}
+}
+
+void Feature::ORBExtractor(vector<cv::KeyPoint> &feature_pts,
+	vector_eigen_vector3f &feature_pts_3d,
+	cv::Mat &feature_descriptors,
+	const cv::Mat &imgRGB, const cv::Mat &imgDepth)
+{
+	cv::ORB orb_detector;
+	cv::Mat mask, descriptors;
+	vector<cv::KeyPoint> fpts;
+
+	orb_detector(imgRGB, mask, fpts, descriptors);
+	descriptors.convertTo(descriptors, CV_32F);
 
 	for (int i = 0; i < fpts.size(); i++)
 	{
@@ -81,13 +108,18 @@ void Feature::setMultiple(int frame_index)
 
 void Feature::extract(const cv::Mat &imgRGB, const cv::Mat &imgDepth, string type)
 {
+	this->type = type;
 	if (type == "SIFT")
 	{
-		Feature::SIFTExtrator(feature_pts, feature_pts_3d, feature_descriptors, imgRGB, imgDepth);
+		Feature::SIFTExtractor(feature_pts, feature_pts_3d, feature_descriptors, imgRGB, imgDepth);
 	}
 	else if (type == "SURF")
 	{
-		Feature::SURFExtrator(feature_pts, feature_pts_3d, feature_descriptors, imgRGB, imgDepth);
+		Feature::SURFExtractor(feature_pts, feature_pts_3d, feature_descriptors, imgRGB, imgDepth);
+	}
+	else if (type == "ORB")
+	{
+		Feature::ORBExtractor(feature_pts, feature_pts_3d, feature_descriptors, imgRGB, imgDepth);
 	}
 	for (int i = 0; i < feature_pts.size(); i++)
 	{

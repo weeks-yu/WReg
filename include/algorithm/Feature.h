@@ -38,6 +38,7 @@ public:
 	cv::Mat depth_image;
 	vector<int> feature_frame_index;
 	bool multiple;
+	string type;
 
 private:
 
@@ -86,12 +87,17 @@ public:
 
 public:
 
-	static void SIFTExtrator(vector<cv::KeyPoint> &feature_pts,
+	static void SIFTExtractor(vector<cv::KeyPoint> &feature_pts,
 		vector_eigen_vector3f &feature_pts_3d,
 		cv::Mat &feature_descriptors,
 		const cv::Mat &imgRGB, const cv::Mat &imgDepth);
 
-	static void SURFExtrator(vector<cv::KeyPoint> &feature_pts,
+	static void SURFExtractor(vector<cv::KeyPoint> &feature_pts,
+		vector_eigen_vector3f &feature_pts_3d,
+		cv::Mat &feature_descriptors,
+		const cv::Mat &imgRGB, const cv::Mat &imgDepth);
+
+	static void ORBExtractor(vector<cv::KeyPoint> &feature_pts,
 		vector_eigen_vector3f &feature_pts_3d,
 		cv::Mat &feature_descriptors,
 		const cv::Mat &imgRGB, const cv::Mat &imgDepth);

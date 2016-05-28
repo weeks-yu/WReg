@@ -10,6 +10,7 @@
 #include <pcl/sample_consensus/model_types.h>
 #include <pcl/sample_consensus/sac_model_plane.h>
 #include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/search/kdtree.h>
 
 #include <pcl/cuda/point_types.h>
 #include <pcl/cuda/point_cloud.h>
@@ -1296,11 +1297,330 @@ void corr_test()
 	cin >> tehrjwlkt;
 }
 
+void FeatureTest()
+{
+	const int dcount = 4;
+	std::string directories[dcount], names[dcount];
+	directories[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_xyz/";
+	directories[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk/";
+	directories[2] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_room/";
+	directories[3] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/";
+	names[0] = "xyz";
+	names[1] = "desk";
+	names[2] = "room";
+	names[3] = "floor";
+
+	const int fcount = 3;
+	std::string types[fcount];
+	types[0] = "SURF";
+	types[1] = "SIFT";
+	types[2] = "ORB";
+
+	const int sdcount = 6;
+	float dists[sdcount];
+	dists[0] = 0.01;
+	dists[1] = 0.02;
+	dists[2] = 0.03;
+	dists[3] = 0.05;
+	dists[4] = 0.1;
+	dists[5] = 0.2;
+
+	vector<double> timestamps;
+	vector<cv::DMatch> matches, inliers;
+	stringstream ss;
+
+	for (int d = 1; d < dcount; d++)
+	{
+		rgbs.clear();
+		depths.clear();
+		timestamps.clear();
+
+		cout << "Comnputing " << directories[d] << endl;
+		ss.clear();
+		ss.str("");
+		ss << directories[d] << "read.txt";
+		ifstream c_in(ss.str());
+		string line;
+		int k = 0;
+		while (getline(c_in, line))
+		{
+			int pos = line.find(" depth/");
+			if (pos != string::npos)
+			{
+				cv::Mat rgb = cv::imread(directories[d] + "/" + line.substr(0, pos));
+				cv::Mat depth = cv::imread(directories[d] + "/" + line.substr(pos + 1, line.length() - pos - 1), -1);
+				
+				rgbs[k] = rgb;
+				depths[k] = depth;
+
+				string ts_string = line.substr(pos + 7, line.length() - pos - 11);
+				ss.clear();
+				ss.str("");
+				ss << ts_string;
+				double ts;
+				ss >> ts;
+				timestamps.push_back(ts);
+
+				k++;
+			}
+		}
+		c_in.close();
+
+		for (int f = 0; f < fcount; f++)
+		{
+			for (int sd = 0; sd < sdcount; sd++)
+			{
+				cout << "\t" << types[f] << "\t" << dists[sd] << endl;
+				Config::instance()->set<float>("max_dist_for_inliers", dists[sd]);
+
+				cout << "\t\t\t0" << endl;
+				Frame *last = new Frame(rgbs[0], depths[0], types[f], Eigen::Matrix4f::Identity());
+				last->f->buildFlannIndex();
+
+				ss.clear();
+				ss.str("");
+				ss << "E:/" << names[d] << "_" << types[f] << "_" << dists[sd] << ".txt";
+				ofstream r_out(ss.str());
+
+				for (int i = 1; i < k; i++)
+				{
+					if (i % 100 == 0)
+					{
+						cout << "\t\t\t" << i << endl;
+					}
+					Frame *now = new Frame(rgbs[i], depths[i], types[f], Eigen::Matrix4f::Identity());
+
+					matches.clear();
+					inliers.clear();
+					Eigen::Matrix4f tran;
+					Eigen::Matrix<double, 6, 6> information;
+					float rmse;
+					float coresp;
+
+					last->f->findMatchedPairs(matches, now->f);
+					if (Feature::getTransformationByRANSAC(tran, information, coresp, rmse, &inliers, last->f, now->f, nullptr, matches))
+					{
+						Eigen::Vector3f t = TranslationFromMatrix4f(tran);
+						Eigen::Quaternionf q = QuaternionFromMatrix4f(tran);
+
+						r_out << fixed << setprecision(6) << timestamps[i]
+							<< ' ' << t(0) << ' ' << t(1) << ' ' << t(2)
+							<< ' ' << q.x() << ' ' << q.y() << ' ' << q.z() << ' ' << q.w() << endl;
+					}
+					else
+					{
+						r_out << fixed << setprecision(6) << timestamps[i]
+							<< " 0 0 0 0 0 0 1" << endl;
+					}
+					delete last;
+					last = now;
+					last->f->buildFlannIndex();
+				}
+				r_out.close();
+			}
+		}
+	}
+}
+
+void Statistics()
+{
+	const int dcount = 4;
+	std::string directories[dcount], names[dcount];
+	directories[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_xyz/";
+	directories[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk/";
+	directories[2] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_room/";
+	directories[3] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/";
+	names[0] = "xyz";
+	names[1] = "desk";
+	names[2] = "room";
+	names[3] = "floor";
+
+	const int fcount = 3;
+	std::string types[fcount];
+	types[0] = "SURF";
+	types[1] = "SIFT";
+	types[2] = "ORB";
+
+	const int sdcount = 6;
+	float dists[sdcount];
+	dists[0] = 0.01;
+	dists[1] = 0.02;
+	dists[2] = 0.03;
+	dists[3] = 0.05;
+	dists[4] = 0.1;
+	dists[5] = 0.2;
+
+	vector<double> timestamps;
+	stringstream ss;
+	vector<pair<int, int>> last_indices;
+	vector<pair<int, int>> now_indices;
+	vector<pair<int, int>> gt_corresp;
+
+	std::vector<int> pointIdxNKNSearch(1);
+	std::vector<float> pointNKNSquaredDistance(1);
+
+	float fx = Config::instance()->get<float>("camera_fx");  // focal length x
+	float fy = Config::instance()->get<float>("camera_fy");  // focal length y
+	float cx = Config::instance()->get<float>("camera_cx");  // optical center x
+	float cy = Config::instance()->get<float>("camera_cy");  // optical center y
+
+	float factor = Config::instance()->get<float>("depth_factor");	// for the 16-bit PNG files
+	// OR: factor = 1 # for the 32-bit float images in the ROS bag files
+
+	for (int d = 0; d < dcount; d++)
+	{
+		rgbs.clear();
+		depths.clear();
+		timestamps.clear();
+
+		cout << "Comparing " << directories[d] << endl;
+		ss.clear();
+		ss.str("");
+		ss << directories[d] << "read.txt";
+		ifstream c_in(ss.str());
+		string line;
+		int k = 0;
+		while (getline(c_in, line))
+		{
+			int pos = line.find(" depth/");
+			if (pos != string::npos)
+			{
+				cv::Mat rgb = cv::imread(directories[d] + "/" + line.substr(0, pos));
+				cv::Mat depth = cv::imread(directories[d] + "/" + line.substr(pos + 1, line.length() - pos - 1), -1);
+
+				rgbs[k] = rgb;
+				depths[k] = depth;
+
+				string ts_string = line.substr(pos + 7, line.length() - pos - 11);
+				ss.clear();
+				ss.str("");
+				ss << ts_string;
+				double ts;
+				ss >> ts;
+				timestamps.push_back(ts);
+
+				k++;
+			}
+		}
+		c_in.close();
+
+		ss.clear();
+		ss.str("");
+		ss << directories[d] << "groundtruth.txt";
+		ifstream g_in(ss.str());
+
+		PointCloudPtr last_cloud = nullptr;
+		for (int i = 0; i < k; i++)
+		{
+			PointCloudPtr cloud(new PointCloudT());
+			now_indices.clear();
+			for (int v = 0; v < rgbs[i].size().height; v++)
+			{
+				for (int u = 0; u < rgbs[i].size().width; u++)
+				{
+					ushort temp = depths[i].at<ushort>(v, u);
+					if (temp > 0)
+					{
+						PointT pt;
+						pt.z = ((double)temp) / factor;
+						pt.x = (u - cx) * pt.z / fx;
+						pt.y = (v - cy) * pt.z / fy;
+						pt.b = rgbs[i].at<cv::Vec3b>(v, u)[0];
+						pt.g = rgbs[i].at<cv::Vec3b>(v, u)[1];
+						pt.r = rgbs[i].at<cv::Vec3b>(v, u)[2];
+						cloud->push_back(pt);
+						now_indices.push_back(pair<int, int>(u, v));
+					}
+				}
+			}
+
+			if (i > 0)
+			{
+				// ground-truth
+				bool gt_found = false;
+				Eigen::Matrix4f tran = Eigen::Matrix4f::Identity();
+
+				while (getline(g_in, line))
+				{
+					if (line[0] == '#')
+						continue;
+					ss.clear();
+					ss.str("");
+					ss << line;
+					double ts;
+					Eigen::Vector3f t;
+					Eigen::Quaternionf q;
+					ss >> ts >> t(0) >> t(1) >> t(2) >> q.x() >> q.y() >> q.z() >> q.w();
+					if (fabs(ts - timestamps[i]) < 1e-2)
+					{
+						// ground-truth found
+						gt_found = true;
+						tran = transformationFromQuaternionsAndTranslation(q, t);
+						break;
+					}
+					else if (ts > timestamps[i])
+					{
+						// ground-truth not found
+						break;
+					}
+				}
+
+				if (!gt_found)
+				{
+					continue;
+				}
+				
+				// compare
+				for (int sd = 0; sd < sdcount; sd++)
+				{
+					// ground-truth correspondence
+					PointCloudPtr cloud_gt(new PointCloudT);
+					pcl::transformPointCloud(*cloud, *cloud_gt, tran);
+					gt_corresp.clear();
+
+					pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZRGB>);
+					tree->setInputCloud(last_cloud);
+
+					for (int j = 0; j < cloud->size(); j++)
+					{
+						tree->nearestKSearch(cloud->at(j), 1, pointIdxNKNSearch, pointNKNSquaredDistance);
+						if (pointIdxNKNSearch.size() > 0 &&
+							pointNKNSquaredDistance[0] < dists[sd])
+						{
+							gt_corresp.push_back(last_indices[pointIdxNKNSearch[0]]);
+						}
+						else
+						{
+							gt_corresp.push_back(pair<int, int>(-1, -1));
+						}
+					}
+
+					// compare
+					for (int f = 0; f < fcount; f++)
+					{
+
+						cout << "\t" << types[f] << "\t" << dists[sd] << endl;
+
+						ss.clear();
+						ss.str("");
+						ss << "E:/" << names[d] << "_" << types[f] << "_" << dists[sd] << ".txt";
+
+						ifstream r_in(ss.str());
+					}
+				}
+			}
+
+			last_cloud = cloud;
+			last_indices = now_indices;
+		}
+	}
+}
+
 int main()
 {
 	//keyframe_test();
 	//something();
-	icp_test();
+	//icp_test();
 	//Ransac_Test();
 	//Ransac_Result_Show();
 	//Registration_Result_Show();
@@ -1311,6 +1631,7 @@ int main()
 	//cudaTest();
 	//plane_icp_test();
 	//corr_test();
+	FeatureTest();
 }  
 
 bool getPlanesByRANSACCuda(
