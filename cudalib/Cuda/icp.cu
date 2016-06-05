@@ -778,6 +778,135 @@ struct CorrCalculator
 		return ret;
 	}
 
+	__device__ __forceinline__ jtj
+		search(int & x, int & y, PtrStep<int> pairs) const
+	{
+			jtj ret = { 0, 0, 0, 0, 0, 0,
+				0, 0, 0, 0, 0,
+				0, 0, 0, 0,
+				0, 0, 0,
+				0, 0,
+				0,
+				0, 0 };
+
+			float3 vcurr;
+			vcurr.x = vmap_curr.ptr(y)[x];
+			if (isnan(vcurr.x))
+			{
+				pairs.ptr(y)[x * 2] = -1;
+				pairs.ptr(y)[x * 2 + 1] = -1;
+				return ret;
+			}
+				
+			ret.a = 1;
+
+			vcurr.y = vmap_curr.ptr(y + rows)[x];
+			vcurr.z = vmap_curr.ptr(y + 2 * rows)[x];
+
+			float3 vcurr_g = Rcurr * vcurr + tcurr;
+
+			int2 ukr;         //projection
+			ukr.x = __float2int_rn(vcurr_g.x * intr.fx / vcurr_g.z + intr.cx);      //4
+			ukr.y = __float2int_rn(vcurr_g.y * intr.fy / vcurr_g.z + intr.cy);                      //4
+
+			if (ukr.x < 0 || ukr.y < 0 || ukr.x >= cols || ukr.y >= rows || vcurr_g.z < 0)
+			{
+				pairs.ptr(y)[x * 2] = -1;
+				pairs.ptr(y)[x * 2 + 1] = -1;
+				return ret;
+			}
+				
+
+			float3 vprev_g;
+			vprev_g.x = __ldg(&vmap_g_prev.ptr(ukr.y)[ukr.x]);
+			vprev_g.y = __ldg(&vmap_g_prev.ptr(ukr.y + rows)[ukr.x]);
+			vprev_g.z = __ldg(&vmap_g_prev.ptr(ukr.y + 2 * rows)[ukr.x]);
+
+			float3 ncurr;
+			ncurr.x = nmap_curr.ptr(y)[x];
+			ncurr.y = nmap_curr.ptr(y + rows)[x];
+			ncurr.z = nmap_curr.ptr(y + 2 * rows)[x];
+
+			float3 ncurr_g = Rcurr * ncurr;
+
+			float3 nprev_g;
+			nprev_g.x = __ldg(&nmap_g_prev.ptr(ukr.y)[ukr.x]);
+			nprev_g.y = __ldg(&nmap_g_prev.ptr(ukr.y + rows)[ukr.x]);
+			nprev_g.z = __ldg(&nmap_g_prev.ptr(ukr.y + 2 * rows)[ukr.x]);
+
+			float dist = norm(vprev_g - vcurr_g);
+			float sine = norm(cross(ncurr_g, nprev_g));
+
+			if (sine < angleThres && dist <= distThres && !isnan(ncurr.x) && !isnan(nprev_g.x))
+			{
+				ret.b = 1;
+
+				ret.aa = 1;
+				ret.ab = 0;
+				ret.ac = 0;
+				ret.ad = 0;
+				ret.ae = 2 * vcurr.z;
+				ret.af = -2 * vcurr.y;
+
+				ret.bb = 1;
+				ret.bc = 0;
+				ret.bd = -2 * vcurr.z;
+				ret.be = 0;
+				ret.bf = 2 * vcurr.x;
+
+				ret.cc = 1;
+				ret.cd = 2 * vcurr.y;
+				ret.ce = -2 * vcurr.x;
+				ret.cf = 0;
+
+				ret.dd = 4 * (vcurr.y * vcurr.y + vcurr.z * vcurr.z);
+				ret.de = -4 * vcurr.x * vcurr.y;
+				ret.df = -4 * vcurr.x * vcurr.z;
+
+				ret.ee = 4 * (vcurr.x * vcurr.x + vcurr.z * vcurr.z);
+				ret.ef = -4 * vcurr.y * vcurr.z;
+
+				ret.ff = 4 * (vcurr.x * vcurr.x + vcurr.y * vcurr.y);
+
+				/*			ret.aa = vcurr.y * vcurr.y + vcurr.z * vcurr.z;
+				ret.ab = -vcurr.x * vcurr.y;
+				ret.ac = -vcurr.x * vcurr.z;
+				ret.ad = 0;
+				ret.ae = -vcurr.z;
+				ret.af = vcurr.y;
+
+				ret.bb = vcurr.x * vcurr.x + vcurr.z * vcurr.z;
+				ret.bc = vcurr.y * vcurr.z;
+				ret.bd = vcurr.z;
+				ret.be = 0;
+				ret.bf = -vcurr.x;
+
+				ret.cc = vcurr.x * vcurr.x + vcurr.y * vcurr.y;
+				ret.cd = vcurr.y;
+				ret.ce = vcurr.x;
+				ret.cf = 0;
+
+				ret.dd = 1;
+				ret.de = 0;
+				ret.df = 0;
+
+				ret.ee = 1;
+				ret.ef = 0;
+
+				ret.ff = 1;*/
+
+				pairs.ptr(y)[x * 2] = ukr.y;
+				pairs.ptr(y)[x * 2 + 1] = ukr.x;
+			}
+			else
+			{
+				pairs.ptr(y)[x * 2] = -1;
+				pairs.ptr(y)[x * 2 + 1] = -1;
+			}
+
+			return ret;
+		}
+
 	__device__ __forceinline__ void
 		operator () () const
 	{
@@ -803,11 +932,42 @@ struct CorrCalculator
 			out[blockIdx.x] = sum;
 		}
 	}
+
+	__device__ __forceinline__ void
+		operator () (PtrStep<int> pairs) const
+	{
+		jtj sum = { 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0,
+			0, 0, 0, 0,
+			0, 0, 0,
+			0, 0,
+			0,
+			0, 0 };
+
+		for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N; i += blockDim.x * gridDim.x)
+		{
+			int y = i / cols;
+			int x = i - (y * cols);
+			sum.add(search(x, y, pairs));
+		}
+
+		sum = blockReduceSum(sum);
+
+		if (threadIdx.x == 0)
+		{
+			out[blockIdx.x] = sum;
+		}
+	}
 };
 
 __global__ void calcCorrKernel(CorrCalculator cor)
 {
 	cor();
+}
+
+__global__ void calcCorrKernel2(CorrCalculator cor, PtrStep<int> pairs)
+{
+	cor(pairs);
 }
 
 void calcCorr(const Mat33& Rcurr,
@@ -851,6 +1011,70 @@ void calcCorr(const Mat33& Rcurr,
 	cor.out = sum;
 
 	calcCorrKernel <<<blocks, threads >>>(cor);
+
+	reduceSum <<<1, MAX_THREADS >>>(sum, out, blocks);
+
+	cudaSafeCall(cudaGetLastError());
+	cudaSafeCall(cudaDeviceSynchronize());
+
+	float host_data[23];
+	out.download((jtj *)&host_data[0]);
+
+	int shift = 0;
+	for (int i = 0; i < 6; i++)
+	{
+		for (int j = i; j < 6; j++)
+		{
+			matrixA_host[j * 6 + i] = matrixA_host[i * 6 + j] = host_data[shift++];
+		}
+	}
+
+	result[0] = host_data[21];
+	result[1] = host_data[22];
+}
+
+void calcCorrWithPairs(const Mat33& Rcurr,
+	const float3& tcurr,
+	const DeviceArray2D<float>& vmap_curr,
+	const DeviceArray2D<float>& nmap_curr,
+	const Intr& intr,
+	const DeviceArray2D<float>& vmap_g_prev,
+	const DeviceArray2D<float>& nmap_g_prev,
+	float distThres,
+	float angleThres,
+	DeviceArray<jtj> & sum,
+	DeviceArray<jtj> & out,
+	double * matrixA_host,
+	int * result,
+	DeviceArray2D<int> pairs,
+	int threads, int blocks)
+{
+	int cols = vmap_curr.cols();
+	int rows = vmap_curr.rows() / 3;
+
+	CorrCalculator cor;
+
+	cor.Rcurr = Rcurr;
+	cor.tcurr = tcurr;
+
+	cor.vmap_curr = vmap_curr;
+	cor.nmap_curr = nmap_curr;
+
+	cor.intr = intr;
+
+	cor.vmap_g_prev = vmap_g_prev;
+	cor.nmap_g_prev = nmap_g_prev;
+
+	cor.distThres = distThres;
+	cor.angleThres = angleThres;
+
+	cor.cols = cols;
+	cor.rows = rows;
+
+	cor.N = cols * rows;
+	cor.out = sum;
+
+	calcCorrKernel2 <<<blocks, threads >>>(cor, pairs);
 
 	reduceSum <<<1, MAX_THREADS >>>(sum, out, blocks);
 

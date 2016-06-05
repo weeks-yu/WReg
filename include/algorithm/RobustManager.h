@@ -91,7 +91,7 @@ public:
 
 	RobustManager(bool keyframe_only = false);
 
-	bool addNode(Frame* frame, float weight, bool keyframe = false, string *inliers = nullptr, string *exists = nullptr);
+	bool addNode(Frame* frame, bool keyframe = false);
 
 	Eigen::Matrix4f getTransformation(int k);
 

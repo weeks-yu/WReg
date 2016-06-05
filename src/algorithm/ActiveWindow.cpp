@@ -29,6 +29,7 @@ void ActiveWindow::move(const vector<Frame*> &graph, const RectangularRegion &r)
 		delete this->feature_pool;
 	}
 	feature_pool = new Feature(true);
+	feature_pool->type = graph[0]->f->type;
 	for (int i = 0; i < active_frames.size(); i++)
 	{
 		Frame *now_f = graph[active_frames[i]];

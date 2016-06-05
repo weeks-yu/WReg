@@ -11,14 +11,6 @@
 class SlamEngine
 {
 public:
-	enum FeatureType
-	{
-		SIFT = 0,
-		SURF,
-		ORB
-	};
-
-public:
 	SlamEngine();
 	~SlamEngine();
 
@@ -70,18 +62,24 @@ public:
 	}
 	bool isUsingRobustOptimizer() { return using_robust_optimizer; }
 
-	void setFeatureType(FeatureType type) { feature_type = type; }
-	FeatureType getGraphFeatureType() { return feature_type; }
+	void setGraphFeatureType(string type) { graph_feature_type = type; }
+	string getGraphFeatureType() { return graph_feature_type; }
+
+	void setFeatureType(string type) { feature_type = type; }
+	string getFeatureType() { return feature_type; }
 
 	void setFeatureMinMatches(int min_macthes) { Config::instance()->set<int>("min_matches", min_macthes); }
 	void setFeatureInlierPercentage(float percent) { Config::instance()->set<float>("min_inliers_percent", percent); }
 
 	void RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, double timestamp);
+	void AddGraph(Frame *frame, PointCloudPtr cloud, bool keyframe, double timestamp);
+	void AddGraph(Frame *frame, PointCloudPtr cloud, bool keyframe, bool quad, vector<int> &loop, double timestamp);
 	void AddNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, double timestamp, Eigen::Matrix4f trajectory);
 	void Refine();
 	PointCloudPtr GetScene();
 	int GetFrameID() { return frame_id; }
 	vector<pair<double, Eigen::Matrix4f>> GetTransformations();
+	vector<pair<int, int>> GetLoop();
 
 	void SaveLogs(ofstream &outfile);
 	void ShowStatistics();
@@ -107,6 +105,7 @@ private:
 
 	// results
 	Eigen::Matrix4f last_transformation;
+	Eigen::Matrix4f last_keyframe_transformation;
 	Eigen::Matrix4f accumulated_transformation;
 	int accumulated_frame_count;
 	vector<Eigen::Matrix4f> transformation_matrix;
@@ -127,8 +126,11 @@ private:
 	PointCloudPtr last_cloud;
 	cv::Mat last_depth;
 
-	Frame *last_frame;
-	bool last_is_keyframe;
+	Frame *last_feature_keyframe;
+	Frame *last_feature_frame;
+	bool last_keyframe_in_quadtree;
+	bool last_feature_frame_is_keyframe;
+	float last_rational;
 
 	HogmanManager hogman_manager;
 	SrbaManager srba_manager;
@@ -151,17 +153,18 @@ private:
 
 	// parameters - feature
 	bool using_feature;
+	string feature_type;
 
 	// parameters - optimizer
 	bool using_optimizer;
 
 	// parameters - hogman optimizer
 	bool using_hogman_optimizer;
-	FeatureType feature_type;
 
 	// parameters - srba optimizer
 	bool using_srba_optimizer;
 
 	// parameters - robust optimizer
 	bool using_robust_optimizer;
+	string graph_feature_type;
 };

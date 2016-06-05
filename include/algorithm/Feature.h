@@ -79,11 +79,13 @@ public:
 
 	int findMatchedPairs(vector<cv::DMatch> &matches, const Feature *other, int max_leafs = 64, int k = 2);
 
+	int findMatchedPairsBruteForce(vector<cv::DMatch> &matches, const Feature *other);
+
 	bool findMatchedPairsMultiple(vector<int> &frames, vector<vector<cv::DMatch>> &matches, const Feature *other, int k = 30, int max_leafs = 128);
 
 	int getFrameCount();
 
-	void updateFeaturePoints3D(const Eigen::Matrix4f &tran);
+	void updateFeaturePoints3DReal(const Eigen::Matrix4f &tran);
 
 public:
 
@@ -104,17 +106,26 @@ public:
 
 	template <class InputVector>
 	static Eigen::Matrix4f getTransformFromMatches(bool &valid,
-		const Feature* earlier, const Feature* now,
+		const vector_eigen_vector3f &earlier, const vector_eigen_vector3f &now,
 		const InputVector &matches,
 		float max_dist = -1.0);
 
-	static void computeInliersAndError(vector<cv::DMatch> &inliers, double &mean_error, vector<double> *errors,
+	static void computeInliersAndError(vector<cv::DMatch> &inliers, float &mean_error, vector<double> *errors,
 		const vector<cv::DMatch> &matches,
 		const Eigen::Matrix4f &transformation,
 		const vector_eigen_vector3f &earlier, const vector_eigen_vector3f &now,
-		double squaredMaxInlierDistInM);
+		float squaredMaxInlierDistInM);
 
 	static bool getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
+		Eigen::Matrix<double, 6, 6> &result_information,
+		float &result_coresp,
+		float &rmse, vector<cv::DMatch> *matches,
+		const Feature* earlier, const Feature* now,
+		PointCloudCuda *pcc,
+		const vector<cv::DMatch> &initial_matches,
+		unsigned int ransac_iterations = 1000);
+
+	static bool getTransformationByRANSAC_real(Eigen::Matrix4f &result_transform,
 		Eigen::Matrix<double, 6, 6> &result_information,
 		float &result_coresp,
 		float &rmse, vector<cv::DMatch> *matches,

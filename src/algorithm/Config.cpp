@@ -5,24 +5,22 @@ using namespace std;
 Config* Config::_instance = nullptr;
 
 Config::Config() {
-	config["feature_type"]			= std::string("SURF");
+	config["feature_type"]			= std::string("ORB");
+	config["graph_feature_type"]    = std::string("SIFT");
 
 	// RANSAC
 	config["candidate_number"]		= static_cast<int>    (10);
 	config["min_matches"]			= static_cast<int>    (40);
 	config["min_inliers_percent"]	= static_cast<float>  (0.3);
 	config["max_dist_for_inliers"]	= static_cast<float>  (0.03);
-	config["matches_criterion"]		= static_cast<float>  (0.75);
+	config["matches_criterion"]		= static_cast<float>  (0.8);
 	config["coresp_percent"]		= static_cast<float>  (0.3);
 
 	// Keyframe
 	config["max_keyframe_interval"] = static_cast<int>    (15);
+	config["keyframe_rational"]		= static_cast<float>  (0.5);
 	config["min_translation_meter"] = static_cast<float>  (0.25);
 	config["min_rotation_degree"]	= static_cast<float>  (15.0);
-	config["keyframe_check_N"]		= static_cast<int>    (4);
-	config["keyframe_check_M"]		= static_cast<int>    (4);
-	config["keyframe_check_F"]		= static_cast<int>    (1);
-	config["keyframe_check_P"]		= static_cast<float>  (0.75);
 
 	// KDTree
 	config["kdtree_trees"]			= static_cast<int>    (4);
@@ -33,6 +31,10 @@ Config::Config() {
 	// Quad Tree
 	config["quadtree_size"]			= static_cast<float>  (20.0);
 	config["active_window_size"]	= static_cast<float>  (2.5);
+	config["keyframe_check_N"] = static_cast<int>    (4);
+	config["keyframe_check_M"] = static_cast<int>    (4);
+	config["keyframe_check_F"] = static_cast<int>    (1);
+	config["keyframe_check_P"] = static_cast<float>  (0.75);
 
 	// HOG-man
 	config["hogman_iterations"]		= static_cast<int>    (10);
@@ -66,7 +68,7 @@ Config::Config() {
 	// cuda parameters
 	config["icpcuda_threads"]		= static_cast<int>    (256);		// warpSize(32)的倍数
 	config["icpcuda_blocks"]		= static_cast<int>    (80);			// 480 * 640 / 80 / 256 = 15 整数
-	config["dist_threshold"]		= static_cast<float>  (0.1);
+	config["dist_threshold"]		= static_cast<float>  (0.03);
 	config["angle_threshold"]		= static_cast<float>  (0.34202);
 
 	// plane fitting

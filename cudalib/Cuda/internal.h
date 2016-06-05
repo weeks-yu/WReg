@@ -229,6 +229,22 @@ void calcCorr(const Mat33& Rcurr,
 	int * result,
 	int threads, int blocks);
 
+void calcCorrWithPairs(const Mat33& Rcurr,
+	const float3& tcurr,
+	const DeviceArray2D<float>& vmap_curr,
+	const DeviceArray2D<float>& nmap_curr,
+	const Intr& intr,
+	const DeviceArray2D<float>& vmap_g_prev,
+	const DeviceArray2D<float>& nmap_g_prev,
+	float distThres,
+	float angleThres,
+	DeviceArray<jtj> & sum,
+	DeviceArray<jtj> & out,
+	double * matrixA_host,
+	int * result,
+	DeviceArray2D<int> pairs,
+	int threads, int blocks);
+
 void pyrDown(const DeviceArray2D<unsigned short> & src, DeviceArray2D<unsigned short> & dst);
 void createVMap(const Intr& intr, const DeviceArray2D<unsigned short> & depth, DeviceArray2D<float> & vmap, const float depthCutoff, const float depthFactor);
 void createNMap(const DeviceArray2D<float>& vmap, DeviceArray2D<float>& nmap);

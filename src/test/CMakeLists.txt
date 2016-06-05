@@ -4,6 +4,7 @@ include_directories(../../include/algorithm)
 include_directories(../../include/test)
 include_directories(../../aislib)
 include_directories(../../cudalib)
+include_directories(../../robustoptimizer)
 link_directories(${PROJECT_BINARY_DIR}/lib)
 
 #Find PCL
@@ -22,6 +23,10 @@ set(SRBA_DIR ${PROJECT_SOURCE_DIR})
 find_package(SRBA REQUIRED)
 include_directories(${SRBA_INCLUDE_DIRS})
 find_package(MRPT REQUIRED ${SRBA_REQUIRED_MRPT_MODULES})
+
+#Find G2O
+find_package(G2O REQUIRED)
+include_directories(${G2O_INCLUDE_DIR})
 
 #Find CUDA
 find_package(CUDA REQUIRED)
@@ -46,6 +51,7 @@ target_link_libraries(Test
 	${MRPT_LIBS}
 	${PCL_LIBRARIES}
 	${CUDA_LIBRARIES}
+	${G2O_LIBRARIES}
 	aislib
 	icpcuda
 	algorithm)

@@ -49,7 +49,7 @@ RobustManager::RobustManager(bool keyframe_only)
 	pcc = new PointCloudCuda(width, height, cx, cy, fx, fy, depthFactor, distThresh, angleThresh);
 }
 
-bool RobustManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate/* = false*/, string *inliers_sig, string *exists_sig)
+bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/)
 {
 	graph.push_back(frame);
 	temp_poses.push_back(frame->tran);
@@ -82,9 +82,11 @@ bool RobustManager::addNode(Frame* frame, float weight, bool is_keyframe_candida
 		keyframeInQuadTreeCount++;
 		frame_in_quadtree_indices.insert(0);
 		Eigen::Vector3f translation = TranslationFromMatrix4f(graph[0]->tran);
-		bool insertion = active_window.insert(translation(0), translation(1), 0);
-		if (!insertion)
+		active_window.build(0.0, 0.0, Config::instance()->get<float>("quadtree_size"), 4);
+		if (!active_window.insert(translation(0), translation(1), 0))
 			insertion_failure.push_back(pair<float, float>(translation(0), translation(1)));
+		float active_window_size = Config::instance()->get<float>("active_window_size");
+		active_window.move(graph, RectangularRegion(translation(0), translation(1), active_window_size, active_window_size));
 		isNewKeyframe = true;
 	}
 	else
@@ -95,8 +97,8 @@ bool RobustManager::addNode(Frame* frame, float weight, bool is_keyframe_candida
 		// get translation of current tran
 		// move active window
 		Eigen::Vector3f translation = TranslationFromMatrix4f(this->graph[k]->tran);
-		float active_window_size = Config::instance()->get<float>("active_window_size");
-		active_window.move(this->graph, RectangularRegion(translation.x(), translation.y(), active_window_size, active_window_size));
+// 		float active_window_size = Config::instance()->get<float>("active_window_size");
+// 		active_window.move(this->graph, RectangularRegion(translation.x(), translation.y(), active_window_size, active_window_size));
 
 		int N = Config::instance()->get<int>("keyframe_check_N");
 		int M = Config::instance()->get<int>("keyframe_check_M");
@@ -279,29 +281,6 @@ bool RobustManager::addNode(Frame* frame, float weight, bool is_keyframe_candida
 		}
 		cout << endl;
 
-		// for test
-		if (inliers_sig != nullptr)
-		{
-			*inliers_sig = "";
-			for (int i = 0; i < M; i++)
-			{
-				for (int j = 0; j < N; j++)
-				{
-					*inliers_sig += keyframeTest[i * N + j] >= F ? "1" : "0";
-				}
-			}
-		}
-		if (exists_sig != nullptr)
-		{
-			*exists_sig = "";
-			for (int i = 0; i < M; i++)
-			{
-				for (int j = 0; j < N; j++)
-				{
-					*exists_sig += keyframeExists[i * N + j] ? "1" : "0";
-				}
-			}
-		}
 		delete keyframeTest;
 		delete keyframeExists;
 
@@ -342,7 +321,7 @@ bool RobustManager::addNode(Frame* frame, float weight, bool is_keyframe_candida
 				{
 					// keyframe pose changed
 					// update 3d feature points
-					this->graph[i]->f->updateFeaturePoints3D(temp_poses[i]);
+					this->graph[i]->f->updateFeaturePoints3DReal(temp_poses[i]);
 
 					// update quadtree
 					if (old_translation(0) != new_translation(0) || old_translation(1) != new_translation(1))

@@ -25,6 +25,11 @@ public:
 		Eigen::Matrix<double, 6, 6> &information,
 		int & point_count_curr, int & corr, int threads, int blocks);
 
+	void getCorespPairs(const Eigen::Vector3f & trans, const Eigen::Matrix<float, 3, 3, Eigen::RowMajor> & rot,
+		Eigen::Matrix<double, 6, 6> &information,
+		cv::Mat &pairs,
+		int & point_count_curr, int & corr, int threads, int blocks);
+
 private:
 	DeviceArray2D<unsigned short> depth_tmp;
 	DeviceArray2D<float> vmaps_g_prev_;

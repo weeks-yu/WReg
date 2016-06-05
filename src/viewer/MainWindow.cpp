@@ -76,6 +76,7 @@ void MainWindow::ShowBenchmarkTest(const QString &directory)
 	uiDockBenchmark->lineEditDirectory->setText(directory);
 	uiDockBenchmark->pushButtonSave->setDisabled(true);
 	this->addDockWidget(Qt::LeftDockWidgetArea, dockBenchmark);
+	dockBenchmark->show();
 
 	connect(uiDockBenchmark->pushButtonRun, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonRunClicked);
 	connect(uiDockBenchmark->pushButtonDirectory, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonDirectoryClicked);
@@ -309,10 +310,17 @@ void MainWindow::onBenchmarkPushButtonRunClicked(bool checked)
 	{
 		
 	}
-	if (usingFeature || usingHogmanOptimizer || usingRobustOptimizer || usingSrbaOptimizer)
+	if (usingFeature)
 	{
 		QString type = uiDockBenchmark->comboBoxFeatureType->currentText();
-		engine->setFeatureType(type == "SIFT" ? SlamEngine::SIFT : SlamEngine::SURF);
+		engine->setFeatureType(type.toStdString());
+		engine->setFeatureMinMatches(uiDockBenchmark->spinBoxFeatureMinMatches->text().toInt());
+		engine->setFeatureInlierPercentage(uiDockBenchmark->lineEditFeatureInlier->text().toFloat());
+	}
+	if (usingHogmanOptimizer || usingRobustOptimizer || usingSrbaOptimizer)
+	{
+		QString type = uiDockBenchmark->comboBoxGraphFeatureType->currentText();
+		engine->setGraphFeatureType(type.toStdString());
 		engine->setFeatureMinMatches(uiDockBenchmark->spinBoxFeatureMinMatches->text().toInt());
 		engine->setFeatureInlierPercentage(uiDockBenchmark->lineEditFeatureInlier->text().toFloat());
 	}

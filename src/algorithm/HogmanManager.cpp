@@ -288,7 +288,7 @@ bool HogmanManager::addNode(Frame* frame, float weight, bool is_keyframe_candida
 				{
 					// keyframe pose changed
 					// update 3d feature points
-					this->graph[i]->f->updateFeaturePoints3D(temp_poses[i]);
+					this->graph[i]->f->updateFeaturePoints3DReal(temp_poses[i]);
 
 					// update quadtree
 					if (old_translation(0) != new_translation(0) || old_translation(1) != new_translation(1))

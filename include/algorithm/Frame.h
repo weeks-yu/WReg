@@ -2,6 +2,8 @@
 
 #include "Feature.h"
 
+typedef Eigen::Matrix<double, 6, 6> InfomationMatrix;
+
 class Frame
 {
 public:
@@ -10,6 +12,7 @@ public:
 	cv::Mat *depth;
 	Eigen::Matrix4f tran;
 	Eigen::Matrix4f relative_tran;
+	bool ransac_failed;
 
 public:
 
@@ -23,7 +26,7 @@ public:
 	{
 		this->f = new Feature();
 		this->f->extract(imgRGB, imgDepth, type);
-		this->f->updateFeaturePoints3D(tran);
+		this->f->updateFeaturePoints3DReal(tran);
 		this->depth = new cv::Mat();
 		imgDepth.copyTo(*this->depth);
 		this->tran = tran;

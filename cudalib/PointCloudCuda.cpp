@@ -87,3 +87,43 @@ void PointCloudCuda::getCoresp(const Eigen::Vector3f & trans, const Eigen::Matri
 	point_count_curr = result[0];
 	corr = result[1];
 }
+
+void PointCloudCuda::getCorespPairs(const Eigen::Vector3f & trans, const Eigen::Matrix<float, 3, 3, Eigen::RowMajor> & rot,
+	Eigen::Matrix<double, 6, 6> &information,
+	cv::Mat &pairs,
+	int & point_count_curr, int & corr, int threads, int blocks)
+{
+	//test();
+
+	Eigen::Matrix<float, 3, 3, Eigen::RowMajor> Rcurr = rot;
+	Eigen::Vector3f tcurr = trans;
+
+	Mat33&  device_Rcurr = device_cast<Mat33> (Rcurr);
+	float3& device_tcurr = device_cast<float3>(tcurr);
+
+	int result[2];
+	DeviceArray2D<int> ps;
+	ps.create(height, width * 2);
+
+	calcCorrWithPairs(device_Rcurr,
+		device_tcurr,
+		vmaps_curr_,
+		nmaps_curr_,
+		intr,
+		vmaps_g_prev_,
+		nmaps_g_prev_,
+		distThres_,
+		angleThres_,
+		sumData,
+		outData,
+		information.data(),
+		&result[0],
+		ps,
+		threads,
+		blocks);
+
+	point_count_curr = result[0];
+	corr = result[1];
+	pairs = cv::Mat(height, width, CV_32SC2);
+	ps.download(pairs.data, pairs.step[0]);
+}

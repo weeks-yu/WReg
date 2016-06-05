@@ -166,6 +166,30 @@
        <string>Feature</string>
       </property>
       <layout class="QGridLayout" name="gridLayout_3">
+       <item row="3" column="1">
+        <widget class="QLineEdit" name="lineEditFeatureInlier">
+         <property name="text">
+          <string>0.3</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>Min Matches</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QSpinBox" name="spinBoxFeatureMinMatches">
+         <property name="maximum">
+          <number>1000</number>
+         </property>
+         <property name="value">
+          <number>100</number>
+         </property>
+        </widget>
+       </item>
        <item row="0" column="1">
         <widget class="QComboBox" name="comboBoxFeatureType">
          <property name="minimumSize">
@@ -210,35 +234,37 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="label">
-         <property name="text">
-          <string>Min Matches</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QSpinBox" name="spinBoxFeatureMinMatches">
-         <property name="maximum">
-          <number>1000</number>
-         </property>
-         <property name="value">
-          <number>100</number>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
+       <item row="3" column="0">
         <widget class="QLabel" name="label_2">
          <property name="text">
           <string>Inlier Percentage</string>
          </property>
         </widget>
        </item>
-       <item row="2" column="1">
-        <widget class="QLineEdit" name="lineEditFeatureInlier">
+       <item row="1" column="0">
+        <widget class="QLabel" name="label_4">
          <property name="text">
-          <string>0.3</string>
+          <string>Graph Feature Type</string>
          </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QComboBox" name="comboBoxGraphFeatureType">
+         <item>
+          <property name="text">
+           <string>SIFT</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>SURF</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>ORB</string>
+          </property>
+         </item>
         </widget>
        </item>
       </layout>
