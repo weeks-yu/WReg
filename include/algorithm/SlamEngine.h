@@ -98,6 +98,11 @@ public:
 	vector<string> keyframes_exists_sig;
 #endif
 
+public:
+	vector<pair<int, int>> gt_loop;
+	vector<int> id_in_quadtree;
+	vector<vector<pair<float, float>>> dist_2d;
+
 private:
 	int frame_id;
 	int frame_interval;

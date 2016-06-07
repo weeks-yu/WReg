@@ -116,14 +116,18 @@ public:
 		const vector_eigen_vector3f &earlier, const vector_eigen_vector3f &now,
 		float squaredMaxInlierDistInM);
 
+	static void computeInliersAndError(vector<cv::DMatch> &inliers, float &rmse, vector<double> *errors,
+		const vector<cv::DMatch> &matches,
+		const Eigen::Matrix4f &transformation,
+		const Feature* earlier, const Feature* now);
+
 	static bool getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
 		Eigen::Matrix<double, 6, 6> &result_information,
 		float &result_coresp,
 		float &rmse, vector<cv::DMatch> *matches,
 		const Feature* earlier, const Feature* now,
 		PointCloudCuda *pcc,
-		const vector<cv::DMatch> &initial_matches,
-		unsigned int ransac_iterations = 1000);
+		const vector<cv::DMatch> &initial_matches);
 
 	static bool getTransformationByRANSAC_real(Eigen::Matrix4f &result_transform,
 		Eigen::Matrix<double, 6, 6> &result_information,
@@ -131,8 +135,7 @@ public:
 		float &rmse, vector<cv::DMatch> *matches,
 		const Feature* earlier, const Feature* now,
 		PointCloudCuda *pcc,
-		const vector<cv::DMatch> &initial_matches,
-		unsigned int ransac_iterations = 1000);
+		const vector<cv::DMatch> &initial_matches);
 
 	static bool getPlanesByRANSAC(Eigen::Vector4f &result_plane, vector<pair<int, int>> *matches,
 		const cv::Mat &depth, const vector<pair<int, int>> &initial_point_indices);

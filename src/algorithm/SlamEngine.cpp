@@ -167,7 +167,10 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				is_in_quadtree = robust_manager.addNode(frame, true);
 			}
 			if (!is_in_quadtree)
+			{
 				delete frame->f;
+				frame->f = nullptr;
+			}
 
 #ifdef SAVE_TEST_INFOS
 			keyframe_candidates_id.push_back(frame_id);
@@ -266,6 +269,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 		}
 
 		bool isKeyframe = false;
+		bool ransac_failed = false;
 
 		Frame *f_frame;
 		if (using_feature)
@@ -295,9 +299,13 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				else
 					last_feature_keyframe->f->findMatchedPairs(matches, f_frame->f);
 
-				if (Feature::getTransformationByRANSAC(tran, information, coresp, rmse, &inliers,
-					last_feature_keyframe->f, f_frame->f, nullptr, matches))
-				{
+				Feature::computeInliersAndError(inliers, rmse, nullptr, matches,
+					accumulated_transformation * relative_tran,
+					last_feature_keyframe->f, f_frame->f);
+
+// 				if (Feature::getTransformationByRANSAC(tran, information, coresp, rmse, &inliers,
+// 					last_feature_keyframe->f, f_frame->f, nullptr, matches))
+// 				{
 					float rrr = (float)inliers.size() / matches.size();
 					if (last_feature_frame_is_keyframe)
 					{
@@ -309,15 +317,16 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 						isKeyframe = true;
 					}
 					cout << ", " << rrr;
-				}
-				else
-				{
-					cout << ", failed";
-					isKeyframe = true;
-				}
+// 				}
+// 				else
+// 				{
+// 					cout << ", failed";
+// 					isKeyframe = true;
+// 				}
 			}
 			else
 			{
+				ransac_failed = true;
 				isKeyframe = true;
 				relative_tran = last_transformation;
 
@@ -374,6 +383,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				g_frame = new Frame(imgRGB, imgDepth, graph_feature_type, global_tran);
 				g_frame->relative_tran = relative_tran;
 				g_frame->tran = global_tran;
+				g_frame->ransac_failed = ransac_failed;
 
 				string inliers, exists;
 				bool is_in_quadtree = false;
@@ -391,7 +401,11 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				}
 
 				if (!is_in_quadtree)
+				{
 					delete g_frame->f;
+					g_frame->f = nullptr;
+				}
+					
 
 // #ifdef SAVE_TEST_INFOS
 // 				keyframe_candidates_id.push_back(frame_id);
@@ -443,7 +457,11 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 		if (using_feature)
 		{
 			if (!last_feature_frame_is_keyframe)
+			{
 				delete last_feature_frame->f;
+				last_feature_frame->f = nullptr;
+			}
+				
 			if (feature_type != "ORB")
 				f_frame->f->buildFlannIndex();
 			last_feature_frame = f_frame;
@@ -451,6 +469,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			if (isKeyframe)
 			{
 				delete last_feature_keyframe->f;
+				last_feature_keyframe->f = nullptr;
 				last_feature_keyframe = f_frame;
 				last_feature_frame_is_keyframe = true;
 			}
@@ -471,13 +490,19 @@ void SlamEngine::AddGraph(Frame *frame, PointCloudPtr cloud, bool keyframe, doub
 	cout << "Frame " << frame_id;
 	if (frame_id == 0)
 	{
-		robust_manager.active_window.build(0.0, 0.0, Config::instance()->get<float>("quadtree_size"), 4);
 		frame->tran = frame->relative_tran;
+
+		// test
+		vector<pair<float, float>> d;
+		dist_2d.push_back(d);
+		id_in_quadtree.push_back(0);
+		// test end
 		last_keyframe_in_quadtree = robust_manager.addNode(frame, true);
 
 		if (!last_keyframe_in_quadtree)
 		{
 			delete frame->f;
+			frame->f = nullptr;
 		}
 	}
 	else
@@ -486,11 +511,31 @@ void SlamEngine::AddGraph(Frame *frame, PointCloudPtr cloud, bool keyframe, doub
 		if (keyframe)
 		{
 			frame->f->updateFeaturePoints3DReal(frame->tran);
+
+			// test
+			vector<Frame *> graph = robust_manager.getGraph();
+			vector<pair<float, float>> d;
+			for (int i = 0; i < robust_manager.keyframe_indices.size(); i++)
+			{
+				Eigen::Vector3f translation = TranslationFromMatrix4f(graph[robust_manager.keyframe_indices[i]]->tran);
+				d.push_back(pair<float, float>(translation(0), translation(1)));
+			}
+			dist_2d.push_back(d);
+
+			// test-end
+
 			last_keyframe_in_quadtree = robust_manager.addNode(frame, true);
 			if (!last_keyframe_in_quadtree)
 			{
 				delete frame->f;
+				frame->f = nullptr;
 			}
+			// test
+			else
+			{
+				id_in_quadtree.push_back(frame_id);
+			}
+			// test end
 		}
 		else
 		{
@@ -516,6 +561,7 @@ void SlamEngine::AddGraph(Frame *frame, PointCloudPtr cloud, bool keyframe, bool
 		if (!last_keyframe_in_quadtree)
 		{
 			delete frame->f;
+			frame->f = nullptr;
 		}
 
 		// #ifdef SAVE_TEST_INFOS
@@ -541,6 +587,7 @@ void SlamEngine::AddGraph(Frame *frame, PointCloudPtr cloud, bool keyframe, bool
 			if (!last_keyframe_in_quadtree)
 			{
 				delete frame->f;
+				frame->f = nullptr;
 			}
 		}
 		else

@@ -110,6 +110,8 @@ public:
 
 	void getLineProcessResult(vector<int> &id0s, vector<int> &id1s, vector<float> &linep);
 
+	vector<Frame*> getGraph() { return graph; }
+
 private:
 	Eigen::Matrix4f G2O2Matrix4f(const g2o::SE3Quat se3) {
 		Eigen::Matrix4d m = se3.to_homogeneous_matrix(); //_Matrix< 4, 4, double >

@@ -460,14 +460,58 @@ void Feature::computeInliersAndError(vector<cv::DMatch> &inliers, float &mean_er
 	}
 }
 
+void Feature::computeInliersAndError(vector<cv::DMatch> &inliers, float &rmse, vector<double> *errors,
+	const vector<cv::DMatch> &matches,
+	const Eigen::Matrix4f &transformation,
+	const Feature* earlier, const Feature* now)
+{
+	Eigen::Affine3f a(transformation);
+	inliers.clear();
+	if (errors != nullptr) errors->clear();
+
+	float max_dist_m = Config::instance()->get<float>("max_dist_for_inliers");
+	float squared_max_dist_m = max_dist_m * max_dist_m;
+
+	rmse = 0.0;
+	for (unsigned int j = 0; j < matches.size(); j++)
+	{
+		//compute new error and inliers
+		unsigned int this_id = matches[j].queryIdx;
+		unsigned int earlier_id = matches[j].trainIdx;
+
+		Eigen::Vector3f vec = (a * now->feature_pts_3d[this_id]) - earlier->feature_pts_3d[earlier_id];
+
+		double error = vec.dot(vec);
+
+		if (error > squared_max_dist_m)
+			continue; //ignore outliers
+
+		error = sqrt(error);
+		inliers.push_back(matches[j]);
+
+		rmse += error;
+		if (errors != nullptr) errors->push_back(error);
+	}
+
+	if (inliers.size() < 3)
+	{
+		//at least the samples should be inliers
+		inliers.clear();
+		rmse = 1e9;
+	}
+	else
+	{
+		rmse /= inliers.size();
+	}
+}
+
 bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
 	Eigen::Matrix<double, 6, 6> &result_information,
 	float &result_coresp, 
 	float &rmse, vector<cv::DMatch> *matches, // output vars. if matches == nullptr, do not return inlier match
 	const Feature* earlier, const Feature* now,
 	PointCloudCuda *pcc,
-	const vector<cv::DMatch> &initial_matches,
-	unsigned int ransac_iterations)
+	const vector<cv::DMatch> &initial_matches)
 {
 	if (matches != nullptr)	matches->clear();
 
@@ -492,6 +536,7 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
 
 	const unsigned int sample_size = 3;// chose this many randomly from the correspondences:
 
+	unsigned int ransac_iterations = Config::instance()->get<int>("ransac_max_iteration");
 	int threads = Config::instance()->get<int>("icpcuda_threads");
 	int blocks = Config::instance()->get<int>("icpcuda_blocks");
 	float corr_percent = Config::instance()->get<float>("coresp_percent");
@@ -575,12 +620,7 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
 			rmse = inlier_error;
 			best_error = inlier_error;
 		}
-// 		else
-// 		{
-// 			
-// 		}
 
-		//int max_ndx = min((int) min_inlier_threshold,30); //? What is this 30?
 		float new_inlier_error;
 
 		transformation = Feature::getTransformFromMatches(valid,
@@ -591,19 +631,10 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
 			earlier->feature_pts_3d, now->feature_pts_3d,
 			squared_max_dist_m);
 
-		// check also invalid iterations
-		if (inlier.size() > best_inlier_invalid)
-		{
-			best_inlier_invalid = inlier.size();
-			best_error_invalid = inlier_error;
-		}
-
 		if(inlier.size() < min_inlier_threshold || new_inlier_error > max_dist_m)
 		{
 			continue;
 		}
-
-//		assert(new_inlier_error > 0);
 
 		if (new_inlier_error < best_error) 
 		{
@@ -622,16 +653,10 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
 				result_information = information;
 			result_coresp = temp_coresp;
 			if (matches != nullptr) *matches = inlier;
-//			assert(matches->size() >= min_inlier_threshold);
-//			assert(matches.size()>= ((float)initial_matches->size())*min_inlier_ratio);
 			best_inlier_cnt = inlier.size();
 			rmse = new_inlier_error;
 			best_error = new_inlier_error;
 		}
-// 		else
-// 		{
-// 
-// 		}
 	} //iterations
 	
 	if (pcc == nullptr)
@@ -645,8 +670,7 @@ bool Feature::getTransformationByRANSAC_real(Eigen::Matrix4f &result_transform,
 	float &rmse, vector<cv::DMatch> *matches, // output vars. if matches == nullptr, do not return inlier match
 	const Feature* earlier, const Feature* now,
 	PointCloudCuda *pcc,
-	const vector<cv::DMatch> &initial_matches,
-	unsigned int ransac_iterations)
+	const vector<cv::DMatch> &initial_matches)
 {
 	if (matches != nullptr)	matches->clear();
 
@@ -671,6 +695,7 @@ bool Feature::getTransformationByRANSAC_real(Eigen::Matrix4f &result_transform,
 
 	const unsigned int sample_size = 3;// chose this many randomly from the correspondences:
 
+	unsigned int ransac_iterations = Config::instance()->get<int>("ransac_max_iteration");
 	int threads = Config::instance()->get<int>("icpcuda_threads");
 	int blocks = Config::instance()->get<int>("icpcuda_blocks");
 	float corr_percent = Config::instance()->get<float>("coresp_percent");

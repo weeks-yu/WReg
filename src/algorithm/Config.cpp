@@ -15,6 +15,7 @@ Config::Config() {
 	config["max_dist_for_inliers"]	= static_cast<float>  (0.05);
 	config["matches_criterion"]		= static_cast<float>  (0.8);
 	config["coresp_percent"]		= static_cast<float>  (0.3);
+	config["ransac_max_iteration"]	= static_cast<int>    (1000);
 
 	// Keyframe
 	config["max_keyframe_interval"] = static_cast<int>    (15);

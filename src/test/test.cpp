@@ -1989,11 +1989,11 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, ofstr
 	bool save = out != nullptr;
 	
 	Frame *last_keyframe, *last_frame;
-	bool last_frame_is_keyframe = false, new_keyframe = false;
+	bool last_frame_is_keyframe = false;
 	float rational_reference = 1.0;
 	vector<cv::DMatch> matches, inliers;
 	float coresp, rmse;
-	Eigen::Matrix4f tran, last_tran, ac_tran;
+	Eigen::Matrix4f relative_tran, last_tran, ac_tran, last_keyframe_transformation;
 	Eigen::Matrix<double, 6, 6> information;
 	int ac_count = 0;
 	int mki = Config::instance()->get<int>("max_keyframe_interval");
@@ -2009,15 +2009,22 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, ofstr
 	float depthFactor = Config::instance()->get<float>("depth_factor");
 	float distThresh = Config::instance()->get<float>("dist_threshold");
 	float angleThresh = Config::instance()->get<float>("angle_threshold");
-	PointCloudCuda *pcc = new PointCloudCuda(width, height, cx, cy, fx, fy, depthFactor, distThresh, angleThresh);
+//	PointCloudCuda *pcc = new PointCloudCuda(width, height, cx, cy, fx, fy, depthFactor, distThresh, angleThresh);
 	ICPOdometry *icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor, distThresh, angleThresh);
-//	PointCloudCuda *pcc = nullptr;
+	PointCloudCuda *pcc = nullptr;
 	const float max_dist_m = Config::instance()->get<float>("max_dist_for_inliers");
 	const float squared_max_dist_m = max_dist_m * max_dist_m;
 	const float min_inlier_percent = Config::instance()->get<float>("min_inliers_percent");
 
 	keyframe_indices.clear();
 	keyframe_id.clear();
+	for (int i = 0; i < graph.size(); i++)
+	{
+		if (graph[i])
+		{
+			delete graph[i];
+		}
+	}
 	graph.clear();
 
 	clock_t start, total_start = clock();
@@ -2032,19 +2039,22 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, ofstr
 		if (i == 0)
 		{
 			frame->relative_tran = Eigen::Matrix4f::Identity();
-//			frame->tran = Eigen::Matrix4f::Identity();
 			if (feature_type != "ORB")
 				frame->f->buildFlannIndex();
+
+			last_frame = frame;
+			last_keyframe = frame;
+			last_frame_is_keyframe = true;
+
+			ac_count = 0;
+			ac_tran = Eigen::Matrix4f::Identity();
+			last_tran = Eigen::Matrix4f::Identity();
+			last_keyframe_transformation = Eigen::Matrix4f::Identity();
 
 			graph.push_back(frame);
 			keyframe_indices.push_back(i);
 			keyframe_id[i] = 0;
-			last_frame = frame;
-			last_tran = frame->relative_tran;
-			ac_count = 0;
-			ac_tran = Eigen::Matrix4f::Identity();
-			last_keyframe = frame;
-			last_frame_is_keyframe = true;
+			
 			cout << ", KF";
 			if (save)
 			{
@@ -2054,41 +2064,49 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, ofstr
 		}
 		else
 		{
-			pcc->initCurr((unsigned short *)depths[i].data, 20.0f);
+//			pcc->initCurr((unsigned short *)depths[i].data, 20.0f);
 			matches.clear();
 			inliers.clear();
 
-			bool ransac = false;
-			
+			bool isKeyframe = false;
+			Eigen::Matrix4f tran;
+
 			// f to f ransac
 			start = clock();
-			pcc->initPrev((unsigned short *)depths[i - 1].data, 20.0f);
+//			pcc->initPrev((unsigned short *)depths[i - 1].data, 20.0f);
 			if (feature_type == "ORB")
 				last_frame->f->findMatchedPairsBruteForce(matches, frame->f);
 			else
 				last_frame->f->findMatchedPairs(matches, frame->f, 64, 2);
 			cout << ", M: " << clock() - start << "ms";
+
 			start = clock();
-			ransac = Feature::getTransformationByRANSAC(tran, information,
+			bool ransac = Feature::getTransformationByRANSAC(tran, information,
 				coresp, rmse, &inliers, last_frame->f, frame->f, pcc, matches);
 			cout << ", R: " << clock() - start << "ms";
 
 			// is new keyframe?
 			start = clock();
-			new_keyframe = false;
 			if (ransac)
 			{
-				tran = ac_tran * tran;
+				relative_tran = tran;
+				cout << ", " << matches.size() << ", " << inliers.size();
+
 				matches.clear();
 				inliers.clear();
 				if (feature_type == "ORB")
 					last_keyframe->f->findMatchedPairsBruteForce(matches, frame->f);
 				else
 					last_keyframe->f->findMatchedPairs(matches, frame->f, 64, 2);
-				Eigen::Matrix4f tran2;
-				pcc->initPrev((unsigned short *)depths[keyframe_indices[keyframe_indices.size() - 1]].data, 20.0f);
-				ransac = Feature::getTransformationByRANSAC(tran2, information,
-					coresp, rmse, &inliers, last_keyframe->f, frame->f, pcc, matches);
+
+				Feature::computeInliersAndError(inliers, rmse, nullptr, matches,
+					ac_tran * relative_tran,
+					last_keyframe->f, frame->f);
+
+//				Eigen::Matrix4f tran2;
+//				pcc->initPrev((unsigned short *)depths[keyframe_indices[keyframe_indices.size() - 1]].data, 20.0f);
+//				ransac = Feature::getTransformationByRANSAC(tran2, information,
+//					coresp, rmse, &inliers, last_keyframe->f, frame->f, pcc, matches);
 
 				float rrr = (float)inliers.size() / matches.size();
 				if (last_frame_is_keyframe)
@@ -2096,16 +2114,20 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, ofstr
 					rational_reference = rrr;
 				}
 				rrr /= rational_reference;
-				cout << ", " << matches.size() << ", " << inliers.size() << ", " << rrr;
+				cout << ", " << rrr;
 				if (rrr < 0.5)
 				{
-					new_keyframe = true;
+					isKeyframe = true;
 				}
 			}
 			else
 			{
 				cout << ", failed";
 				failed_pairwise.push_back(i);
+
+				isKeyframe = true;
+				relative_tran = last_tran;
+				frame->ransac_failed = true;
 
 // 				icpcuda->initICPModel((unsigned short *)depths[i - 1].data, 20.0, Eigen::Matrix4f::Identity());
 // 				icpcuda->initICP((unsigned short *)depths[i].data, 20.0);
@@ -2121,43 +2143,52 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, ofstr
 // 				tran.topLeftCorner(3, 3) = rot;
 // 				tran.topRightCorner(3, 1) = t;
 // 				tran = last_tran * tran;
-				tran = last_tran;
-				frame->ransac_failed = true;
-				new_keyframe = true;
 			}
+
+			last_tran = relative_tran;
+			ac_count++;
+			ac_tran = ac_tran * relative_tran;
+			relative_tran = ac_tran;
+
 			if (ac_count > mki)
 			{
-				new_keyframe = true;
+				isKeyframe = true;
 			}
 			cout << ", KF: " << clock() - start << "ms";
-			frame->relative_tran = tran;
-//			frame->tran = graph[keyframe_indices[keyframe_indices.size() - 1]]->tran * tran;
+
+			if (isKeyframe)
+			{
+				ac_count = 0;
+				ac_tran = Eigen::Matrix4f::Identity();
+			}
+
+			frame->relative_tran = relative_tran;
 
 			if (!last_frame_is_keyframe)
 			{
 				delete last_frame->f;
 				last_frame->f = nullptr;
 			}
-			last_frame = frame;
 			if (feature_type != "ORB")
 				frame->f->buildFlannIndex();
+			last_frame = frame;
 
-			if (new_keyframe)
+			if (isKeyframe)
 			{
 				cout << ", is Keyframe";
-				keyframe_indices.push_back(i);
-				keyframe_id[i] = keyframe_indices.size() - 1;
 				delete last_keyframe->f;
 				last_keyframe->f = nullptr;
 				last_keyframe = frame;
 				last_frame_is_keyframe = true;
+
+				keyframe_indices.push_back(i);
+				keyframe_id[i] = keyframe_indices.size() - 1;
+
 				if (save)
 				{
 					*out << i << " true" << endl;
 					*out << frame->relative_tran << endl;
 				}
-				ac_tran = Eigen::Matrix4f::Identity();
-				ac_count = 0;
 			}
 			else
 			{
@@ -2167,11 +2198,8 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, ofstr
 					*out << i << " false" << endl;
 					*out << frame->relative_tran << endl;
 				}
-				ac_tran = tran;
-				ac_count++;
 			}
 			graph.push_back(frame);
-			last_tran = tran;
 		}
 		cout << endl;
 	}
@@ -2328,6 +2356,8 @@ void GlobalRegistration(string graph_ftype = "SIFT", ofstream *result_out = null
 		}
 		engine.AddGraph(graph[i], clouds[i], keyframe, timestamps[i]);
 	}
+
+	// analyze keyframe
 	
 	if (save_result)
 	{
@@ -2751,8 +2781,8 @@ int main()
 	//cudaTest();
 	//plane_icp_test();
 	//corr_test();
-	FeatureTest();
-	return 0;
+	//FeatureTest();
+	//return 0;
 	//Statistics();
 	const int dcount = 4;
 	std::string directories[dcount], names[dcount];
@@ -2765,18 +2795,78 @@ int main()
 	directories[2] = "G:/kinect data/rgbd_dataset_freiburg1_room/";
 	directories[3] = "G:/kinect data/rgbd_dataset_freiburg1_floor/";
 
+	int dd, st, ed;
+	float dist;
+	string fname;
+
+	// test
+	dd = 1;
+	st = -1;
+	ed = -1;
+	dist = 0.2;
+	string test_type = "ORB";
+	int repeat_time = 20;
+
+	readData(directories[dd], st, ed);
+	Config::instance()->set<float>("max_dist_for_inliers", dist);
+	Config::instance()->set<int>("ransac_max_iteration", 2000);
+
+	stringstream ss;
+
+	for (int i = 0; i < repeat_time; i++)
+	{
+		ss.clear();
+		ss.str("");
+		ss << "G:/desk_ftof_ORB_" << i << ".txt";
+		ofstream out1(ss.str());
+		PairwiseRegistration(test_type, false, &out1);
+
+		ss.clear();
+		ss.str("");
+		ss << "G:/desk_ORB_" << i << ".txt";
+		ofstream out2(ss.str());
+		Eigen::Matrix4f last_tran = Eigen::Matrix4f::Identity();
+		int k = 0;
+		for (int j = 0; j < frame_count; j++)
+		{
+			graph[j]->tran = last_tran * graph[j]->relative_tran;
+
+			Eigen::Vector3f t = TranslationFromMatrix4f(graph[j]->tran);
+			Eigen::Quaternionf q = QuaternionFromMatrix4f(graph[j]->tran);
+
+			out2 << fixed << setprecision(6) << timestamps[j]
+				<< ' ' << t(0) << ' ' << t(1) << ' ' << t(2)
+				<< ' ' << q.x() << ' ' << q.y() << ' ' << q.z() << ' ' << q.w() << endl;
+
+			if (k < keyframe_indices.size() && keyframe_indices[k] == j)
+			{
+				last_tran = graph[j]->tran;
+				k++;
+			}
+		}
+		out2.close();
+	}
+
+	return 0;
+	// test end
+
 	cout << "0: " << directories[0] << endl;
 	cout << "1: " << directories[1] << endl;
 	cout << "2: " << directories[2] << endl;
 	cout << "3: " << directories[3] << endl;
-	int dd;
+
 	cout << "directory: ";
 	cin >> dd;
 
-	int st, ed;
+	
 	cout << "st ed: ";
 	cin >> st >> ed;
 	readData(directories[dd], st, ed);
+
+	
+	cout << "max dist for inliers: ";
+	cin >> dist;
+	Config::instance()->set<float>("max_dist_for_inliers", dist);
 
 	int method;
 	cout << "choose method:" << endl;
@@ -2815,11 +2905,11 @@ int main()
 	
 	if (method == 0 || method == 1)
 	{
-		string pname;
-		cout << "pairwise result filename: ";
-		cin >> pname;
-		ofstream out(pname);
-		ShowPairwiseResults(&out);
+// 		string pname;
+// 		cout << "pairwise result filename: ";
+// 		cin >> pname;
+// 		ofstream out(pname);
+		ShowPairwiseResults(/*&out*/);
 //		ShowPairwiseResultsEachKeyframe();
 	}
 
