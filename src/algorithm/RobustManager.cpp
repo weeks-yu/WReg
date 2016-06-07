@@ -37,8 +37,8 @@ RobustManager::RobustManager(bool keyframe_only)
 
 	threads = Config::instance()->get<int>("icpcuda_threads");
 	blocks = Config::instance()->get<int>("icpcuda_blocks");
-	int width = Config::instance()->get<int>("image_width");
-	int height = Config::instance()->get<int>("image_height");
+	width = Config::instance()->get<int>("image_width");
+	height = Config::instance()->get<int>("image_height");
 	float cx = Config::instance()->get<float>("camera_cx");
 	float cy = Config::instance()->get<float>("camera_cy");
 	float fx = Config::instance()->get<float>("camera_fx");
@@ -47,6 +47,14 @@ RobustManager::RobustManager(bool keyframe_only)
 	float distThresh = Config::instance()->get<float>("dist_threshold");
 	float angleThresh = Config::instance()->get<float>("angle_threshold");
 	pcc = new PointCloudCuda(width, height, cx, cy, fx, fy, depthFactor, distThresh, angleThresh);
+
+	aw_N = Config::instance()->get<int>("keyframe_check_N");
+	aw_M = Config::instance()->get<int>("keyframe_check_M");
+	aw_F = Config::instance()->get<int>("keyframe_check_F");
+	aw_P = Config::instance()->get<float>("keyframe_check_P");
+	aw_Size = Config::instance()->get<float>("active_window_size");
+
+	using_line_process = true;
 }
 
 bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/)
@@ -85,8 +93,7 @@ bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/
 		active_window.build(0.0, 0.0, Config::instance()->get<float>("quadtree_size"), 4);
 		if (!active_window.insert(translation(0), translation(1), 0))
 			insertion_failure.push_back(pair<float, float>(translation(0), translation(1)));
-		float active_window_size = Config::instance()->get<float>("active_window_size");
-		active_window.move(graph, RectangularRegion(translation(0), translation(1), active_window_size, active_window_size));
+		active_window.move(graph, RectangularRegion(translation(0), translation(1), aw_Size, aw_Size));
 		isNewKeyframe = true;
 	}
 	else
@@ -100,36 +107,31 @@ bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/
 // 		float active_window_size = Config::instance()->get<float>("active_window_size");
 // 		active_window.move(this->graph, RectangularRegion(translation.x(), translation.y(), active_window_size, active_window_size));
 
-		int N = Config::instance()->get<int>("keyframe_check_N");
-		int M = Config::instance()->get<int>("keyframe_check_M");
-		int F = Config::instance()->get<int>("keyframe_check_F");
-		int width = Config::instance()->get<int>("image_width");
-		int height = Config::instance()->get<int>("image_height");
-		int *keyframeTest = new int[N * M];
-		bool *keyframeExists = new bool[N * M];
+		int *keyframeTest = new int[aw_N * aw_M];
+		bool *keyframeExists = new bool[aw_N * aw_M];
 		int keyframeTestCount = 0;
 		int keyframeExistsCount = 0;
 
-		for (int i = 0; i < M; i++)
+		for (int i = 0; i < aw_M; i++)
 		{
-			for (int j = 0; j < N; j++)
+			for (int j = 0; j < aw_N; j++)
 			{
-				keyframeTest[i * N + j] = 0;
-				keyframeExists[i * N + j] = false;
+				keyframeTest[i * aw_N + j] = 0;
+				keyframeExists[i * aw_N + j] = false;
 			}
 		}
 
 		for (int i = 0; i < this->graph[k]->f->size(); i++)
 		{
 			cv::KeyPoint keypoint = this->graph[k]->f->feature_pts[i];
-			int tN = N * keypoint.pt.x / width;
-			int tM = M * keypoint.pt.y / height;
-			tN = tN < 0 ? 0 : (tN >= N ? N - 1 : tN);
-			tM = tM < 0 ? 0 : (tM >= M ? M - 1 : tM);
-			if (!keyframeExists[tM * N + tN])
+			int tN = aw_N * keypoint.pt.x / width;
+			int tM = aw_M * keypoint.pt.y / height;
+			tN = tN < 0 ? 0 : (tN >= aw_N ? aw_N - 1 : tN);
+			tM = tM < 0 ? 0 : (tM >= aw_M ? aw_M - 1 : tM);
+			if (!keyframeExists[tM * aw_N + tN])
 			{
 				keyframeExistsCount++;
-				keyframeExists[tM * N + tN] = true;
+				keyframeExists[tM * aw_N + tN] = true;
 			}
 		}
 		std::cout << ", aw: " << active_window.active_frames.size();
@@ -155,7 +157,7 @@ bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/
 		{
 			if (keyframe_id[this->active_window.active_frames[frames[i]]] == keyframe_indices.size() - 2)
 			{
-				//continue; // do not run ransac between this and last keyframe
+				continue; // do not run ransac between this and last keyframe
 			}
 			Eigen::Matrix4f tran;
 			float rmse, coresp;
@@ -210,12 +212,12 @@ bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/
 				for (int j = 0; j < inliers.size(); j++)
 				{
 					cv::KeyPoint keypoint = this->graph[k]->f->feature_pts[inliers[j].queryIdx];
-					int tN = N * keypoint.pt.x / width;
-					int tM = M * keypoint.pt.y / height;
-					tN = tN < 0 ? 0 : (tN >= N ? N - 1 : tN);
-					tM = tM < 0 ? 0 : (tM >= M ? M - 1 : tM);
+					int tN = aw_N * keypoint.pt.x / width;
+					int tM = aw_M * keypoint.pt.y / height;
+					tN = tN < 0 ? 0 : (tN >= aw_N ? aw_N - 1 : tN);
+					tM = tM < 0 ? 0 : (tM >= aw_M ? aw_M - 1 : tM);
 
-					keyframeTest[tM * N + tN]++;
+					keyframeTest[tM * aw_N + tN]++;
 				}
 			}
 		}
@@ -223,11 +225,7 @@ bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/
 		if (keyframe_indices.size() > 1)
 		{
 			pcc->initPrev((unsigned short *)this->graph[keyframe_indices[keyframe_indices.size() - 2]]->depth->data, 20.0f);
-			Eigen::Matrix4f tran = Eigen::Matrix4f::Identity();
-			for (int i = keyframe_indices[keyframe_indices.size() - 2] + 1; i < k; i++)
-			{
-				tran = tran * graph[i]->relative_tran;
-			}
+			Eigen::Matrix4f tran = graph[k]->relative_tran;
 			Eigen::Vector3f t = tran.topRightCorner(3, 1);
 			Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = tran.topLeftCorner(3, 3);
 			int point_count, point_corr_count;
@@ -270,12 +268,12 @@ bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/
 		std::cout << ", Graph: " << fixed << setprecision(3) << time;
 
 		cout << endl;
-		for (int i = 0; i < M; i++)
+		for (int i = 0; i < aw_M; i++)
 		{
-			for (int j = 0; j < N; j++)
+			for (int j = 0; j < aw_N; j++)
 			{
-				cout << keyframeTest[i * N + j] << " ";
-				if (keyframeTest[i * N + j] >= F)
+				cout << keyframeTest[i * aw_N + j] << " ";
+				if (keyframeTest[i * aw_N + j] >= aw_F)
 					keyframeTestCount++;
 			}
 		}
@@ -284,28 +282,30 @@ bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/
 		delete keyframeTest;
 		delete keyframeExists;
 
-		if (keyframeTestCount + N * M - keyframeExistsCount < N * M * Config::instance()->get<float>("keyframe_check_P"))
+		if (keyframeTestCount + aw_N * aw_M - keyframeExistsCount < aw_N * aw_M * aw_P)
 		{
 			frame_in_quadtree_indices.insert(k);
 			Eigen::Vector3f translation = TranslationFromMatrix4f(this->graph[k]->tran);
-			bool insertion = active_window.insert(translation(0), translation(1), k);
-			if (!insertion)
+			if (!active_window.insert(translation(0), translation(1), k))
 				insertion_failure.push_back(pair<float, float>(translation(0), translation(1)));
+			active_window.move(graph, RectangularRegion(translation(0), translation(1), aw_Size, aw_Size));
 			keyframeInQuadTreeCount++;
 			std::cout << ", Keyframe";
 			isNewKeyframe = true;
 		}
 
+		Eigen::Matrix4f last_kf_tran;
 		for (int i = 0; i < this->graph.size(); i++)
 		{
 			if (keyframe_id.find(i) != keyframe_id.end())
 			{
 				g2o::VertexSE3 *v = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(keyframe_id[i]));
 				temp_poses[i] = G2O2Matrix4f(v->estimateAsSE3Quat());
+				last_kf_tran = temp_poses[i];
 			}
 			else
 			{
-				temp_poses[i] = temp_poses[i - 1] * graph[i]->relative_tran;
+				temp_poses[i] = last_kf_tran * graph[i]->relative_tran;
 			}
 		}
 

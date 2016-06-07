@@ -87,6 +87,11 @@ private:
 	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> loop_trans;
 	vector<Eigen::Matrix<double, 6, 6>, Eigen::aligned_allocator<Eigen::Matrix<double, 6, 6>>> loop_info;
 
+	int aw_N, aw_M, aw_F, width, height;
+	float aw_P, aw_Size;
+
+	bool using_line_process;
+
 public:
 
 	RobustManager(bool keyframe_only = false);

@@ -543,20 +543,12 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
 			earlier->feature_pts_3d, now->feature_pts_3d,
 			squared_max_dist_m);
 
-		// check also invalid iterations
-		if (inlier.size() > best_inlier_invalid)
-		{
-			best_inlier_invalid = inlier.size();
-			best_error_invalid = inlier_error;
-		}
-
 		if (inlier.size() < min_inlier_threshold || inlier_error > max_dist_m)
 		{
 			continue;
 		}
 
 		valid_iterations++;
-//		assert(inlier_error>0);
 
 		//Performance hacks:
 		///Iterations with more than half of the initial_matches inlying, count twice
@@ -579,8 +571,6 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
 			result_transform = transformation;
 			result_information = information;
 			if (matches != nullptr) *matches = inlier;
-//			assert(matches.size() >= min_inlier_threshold);
-//			assert(matches.size()>= ((float)initial_matches.size()) * min_inlier_ratio);
 			best_inlier_cnt = inlier.size();
 			rmse = inlier_error;
 			best_error = inlier_error;

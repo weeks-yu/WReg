@@ -70,6 +70,7 @@ public:
 
 	void setFeatureMinMatches(int min_macthes) { Config::instance()->set<int>("min_matches", min_macthes); }
 	void setFeatureInlierPercentage(float percent) { Config::instance()->set<float>("min_inliers_percent", percent); }
+	void setFeatureInlierDist(float dist) { Config::instance()->set<float>("max_dist_for_inliers", dist); }
 
 	void RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, double timestamp);
 	void AddGraph(Frame *frame, PointCloudPtr cloud, bool keyframe, double timestamp);

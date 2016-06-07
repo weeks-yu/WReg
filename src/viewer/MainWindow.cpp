@@ -293,7 +293,11 @@ void MainWindow::onBenchmarkPushButtonRunClicked(bool checked)
 	engine->setUsingFeature(usingFeature);
 	if (usingFeature)
 	{
-		
+		QString type = uiDockBenchmark->comboBoxFeatureType->currentText();
+		engine->setFeatureType(type.toStdString());
+		engine->setFeatureMinMatches(uiDockBenchmark->spinBoxFeatureMinMatches->text().toInt());
+		engine->setFeatureInlierPercentage(uiDockBenchmark->lineEditFeatureInlier->text().toFloat());
+		engine->setFeatureInlierDist(uiDockBenchmark->lineEditFeatureDist->text().toFloat());
 	}
 	engine->setUsingHogmanOptimizer(usingHogmanOptimizer);
 	if (usingHogmanOptimizer)
@@ -309,13 +313,6 @@ void MainWindow::onBenchmarkPushButtonRunClicked(bool checked)
 	if (usingRobustOptimizer)
 	{
 		
-	}
-	if (usingFeature)
-	{
-		QString type = uiDockBenchmark->comboBoxFeatureType->currentText();
-		engine->setFeatureType(type.toStdString());
-		engine->setFeatureMinMatches(uiDockBenchmark->spinBoxFeatureMinMatches->text().toInt());
-		engine->setFeatureInlierPercentage(uiDockBenchmark->lineEditFeatureInlier->text().toFloat());
 	}
 	if (usingHogmanOptimizer || usingRobustOptimizer || usingSrbaOptimizer)
 	{

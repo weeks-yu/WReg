@@ -414,15 +414,15 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 
 				if (using_hogman_optimizer)
 				{
-					hogman_manager.addNode(f_frame, weight, false);
+					hogman_manager.addNode(g_frame, weight, false);
 				}
 				else if (using_srba_optimizer)
 				{
-					srba_manager.addNode(f_frame, weight, false);
+					srba_manager.addNode(g_frame, weight, false);
 				}
 				else if (using_robust_optimizer)
 				{
-					robust_manager.addNode(f_frame, false);
+					robust_manager.addNode(g_frame, false);
 				}
 			}
 			
