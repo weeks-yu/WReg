@@ -26,11 +26,12 @@ public:
 
 public:
 
-	ActiveWindow active_window;
+//	ActiveWindow active_window;
+	vector<int> keyframe_for_lc;
 
 	vector<int> keyframe_indices;
 	map<int, int> keyframe_id;
-	set<int> frame_in_quadtree_indices;
+//	set<int> frame_in_quadtree_indices;
 
 	double min_graph_opt_time;
 	double max_graph_opt_time;
@@ -48,7 +49,7 @@ public:
 
 	vector<pair<float, float>> insertion_failure;
 
-	int keyframeInQuadTreeCount;
+//	int keyframeLoopCandidateCount;
 	int clousureCount;
 
 #ifdef SAVE_TEST_INFOS
@@ -80,6 +81,13 @@ private:
 
 	int switchable_id;
 
+	int aw_N, aw_M, aw_F, width, height;
+	float aw_P, aw_Size;
+
+	bool using_line_process;
+
+public:
+
 	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> odometry_traj;
 	vector<Eigen::Matrix<double, 6, 6>, Eigen::aligned_allocator<Eigen::Matrix<double, 6, 6>>> odometry_info;
 
@@ -87,10 +95,8 @@ private:
 	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> loop_trans;
 	vector<Eigen::Matrix<double, 6, 6>, Eigen::aligned_allocator<Eigen::Matrix<double, 6, 6>>> loop_info;
 
-	int aw_N, aw_M, aw_F, width, height;
-	float aw_P, aw_Size;
-
-	bool using_line_process;
+	double weight;
+	float squared_dist_threshold;
 
 public:
 

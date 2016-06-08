@@ -125,8 +125,7 @@ void Feature::extract(const cv::Mat &imgRGB, const cv::Mat &imgDepth, string typ
 		feature_ids.push_back(0);
 	}
 	depth_image = imgDepth;
-	flann_index = nullptr;
-	this->trees = Config::instance()->get<int>("kdtree_trees");
+	flann_matcher = nullptr;
 }
 
 void Feature::buildFlannIndex()
@@ -138,59 +137,69 @@ void Feature::buildFlannIndex()
 	releaseFlannIndex();
 	if (feature_pts.size() > 0)
 	{
-		this->flann_index = new cv::flann::Index(feature_descriptors, cv::flann::KDTreeIndexParams(this->trees));
+		int trees = Config::instance()->get<int>("kdtree_trees");
+		int max_leaf;
+		if (multiple)
+			max_leaf = Config::instance()->get<int>("kdtree_max_leaf_mult");
+		else
+			max_leaf = Config::instance()->get<int>("kdtree_max_leaf");
+		this->flann_matcher = new cv::FlannBasedMatcher(new cv::flann::KDTreeIndexParams(trees),
+			new cv::flann::SearchParams(max_leaf));
+			//new cv::flann::Index(feature_descriptors, cv::flann::KDTreeIndexParams(this->trees));
+		vector<cv::Mat> ds;
+		ds.push_back(feature_descriptors);
+		this->flann_matcher->add(ds);
 	}
 	else
 	{
-		this->flann_index = nullptr;
+		this->flann_matcher = nullptr;
 	}
 }
 
 void Feature::releaseFlannIndex()
 {
-	if (flann_index)
+	if (flann_matcher)
 	{
-		delete flann_index;
-		flann_index = nullptr;
+		delete flann_matcher;
+		flann_matcher = nullptr;
 	}
 }
 
-int Feature::findMatched(vector<cv::DMatch> &matches, const cv::Mat &descriptor, int max_leafs /* = 64 */, int k /* = 2 */)
+int Feature::findMatched(vector<cv::DMatch> &matches, const cv::Mat &descriptor)
 {
-	if (this->flann_index == nullptr || k != 1 && k != 2)
+	if (this->flann_matcher == nullptr)
 	{
 		return -1;
 	}
 
-	cv::Mat indices(descriptor.rows, k, CV_32S);
-	cv::Mat dists(descriptor.rows, k, CV_32F);
+// 	cv::Mat indices(descriptor.rows, k, CV_32S);
+// 	cv::Mat dists(descriptor.rows, k, CV_32F);
 
+	vector<vector<cv::DMatch>> matches_;
 	// get the best two neighbours
-	this->flann_index->knnSearch(descriptor, indices, dists, k, cv::flann::SearchParams(max_leafs));
+	this->flann_matcher->knnMatch(descriptor, matches_, 2);
+//	this->flann_matcher->knnSearch(descriptor, indices, dists, k);
 
-	int* indices_ptr = indices.ptr<int>(0);
-	float* dists_ptr = dists.ptr<float>(0);
+// 	int* indices_ptr = indices.ptr<int>(0);
+// 	float* dists_ptr = dists.ptr<float>(0);
 
 	float ratio = Config::instance()->get<float>("matches_criterion");
 
 	cv::DMatch match;
-	for (int i = 0; i < indices.rows; i++)
+	for (int i = 0; i < matches_.size(); i++)
 	{
-		if (k == 1 || dists_ptr[k * i] < ratio * dists_ptr[k * i + 1])
+		if (matches_[i][0].distance < ratio * matches_[i][1].distance)
 		{
-			match.queryIdx = i;
-			match.trainIdx = indices_ptr[k * i];
-			match.distance = dists_ptr[k * i];
-			matches.push_back(match);
+			matches.push_back(matches_[i][0]);
 		}
 	}
 
 	return matches.size();
 }
 
-int Feature::findMatchedPairs(vector<cv::DMatch> &matches, const Feature *other, int max_leafs, int k)
+int Feature::findMatchedPairs(vector<cv::DMatch> &matches, const Feature *other)
 {
-	return findMatched(matches, other->feature_descriptors, max_leafs, k);
+	return findMatched(matches, other->feature_descriptors);
 }
 
 int Feature::findMatchedPairsBruteForce(vector<cv::DMatch> &matches, const Feature *other)
@@ -237,9 +246,9 @@ int Feature::findMatchedPairsBruteForce(vector<cv::DMatch> &matches, const Featu
 	return matches.size();
 }
 
-bool Feature::findMatchedPairsMultiple(vector<int> &frames, vector<vector<cv::DMatch>> &matches, const Feature *other, int k, int max_leafs)
+bool Feature::findMatchedPairsMultiple(vector<int> &frames, vector<vector<cv::DMatch>> &matches, const Feature *other, int k)
 {
-	if (this->flann_index == nullptr || !this->multiple)
+	if (this->flann_matcher == nullptr || !this->multiple)
 	{
 		return false;
 	}
@@ -251,14 +260,16 @@ bool Feature::findMatchedPairsMultiple(vector<int> &frames, vector<vector<cv::DM
 		k = frame_count * 4;
 	}
 
-	cv::Mat indices(other->feature_descriptors.rows, k, CV_32S);
-	cv::Mat dists(other->feature_descriptors.rows, k, CV_32F);
+// 	cv::Mat indices(other->feature_descriptors.rows, k, CV_32S);
+// 	cv::Mat dists(other->feature_descriptors.rows, k, CV_32F);
+	vector<vector<cv::DMatch>> matches_;
 
 	// get the best two neighbours
-	this->flann_index->knnSearch(other->feature_descriptors, indices, dists, k, cv::flann::SearchParams(max_leafs));
+	this->flann_matcher->knnMatch(other->feature_descriptors, matches_, k);
+//	this->flann_matcher->knnSearch(other->feature_descriptors, indices, dists, k, cv::flann::SearchParams(max_leafs));
 
-	int* indices_ptr = indices.ptr<int> (0);
-	float* dists_ptr = dists.ptr<float> (0);
+// 	int* indices_ptr = indices.ptr<int> (0);
+// 	float* dists_ptr = dists.ptr<float> (0);
 
 	float ratio = Config::instance()->get<float>("matches_criterion");
 	int* frame_match_count = new int[this->getFrameCount()];
@@ -266,26 +277,23 @@ bool Feature::findMatchedPairsMultiple(vector<int> &frames, vector<vector<cv::DM
 	std::map<int, vector<cv::DMatch>> matches_map;
 
 	cv::DMatch match;
-	for (int i = 0; i < indices.rows; i++)
+	for (int i = 0; i < matches_.size(); i++)
 	{
 		memset(frame_match_count, 0, frame_count * sizeof(int));
 		for (int j = 0; j < k; j++)
 		{
-			int u = this->feature_frame_index[indices_ptr[k * i + j]];
+			int u = this->feature_frame_index[matches_[i][j].trainIdx];
 			if (frame_match_count[u] == 1)
 			{
-				if (dists_ptr[result_index[u]] < ratio * dists_ptr[k * i + j])
+				if (matches_[i][result_index[u]].distance < ratio * matches_[i][j].distance)
 				{
-					match.queryIdx = i;
-					match.trainIdx = indices_ptr[result_index[u]];
-					match.distance = dists_ptr[result_index[u]];
-					matches_map[u].push_back(match);
+					matches_map[u].push_back(matches_[i][result_index[u]]);
 				}
 				frame_match_count[u]++;
 			}
 			else if (frame_match_count[u] == 0)
 			{
-				result_index[u] = k * i + j;
+				result_index[u] = j;
 				frame_match_count[u]++;
 			}
 		}
@@ -507,7 +515,7 @@ void Feature::computeInliersAndError(vector<cv::DMatch> &inliers, float &rmse, v
 
 bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
 	Eigen::Matrix<double, 6, 6> &result_information,
-	float &result_coresp, 
+	int &point_count, int &point_corr_count,
 	float &rmse, vector<cv::DMatch> *matches, // output vars. if matches == nullptr, do not return inlier match
 	const Feature* earlier, const Feature* now,
 	PointCloudCuda *pcc,
@@ -541,7 +549,7 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
 	int blocks = Config::instance()->get<int>("icpcuda_blocks");
 	float corr_percent = Config::instance()->get<float>("coresp_percent");
 	Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
-	float temp_coresp = 0;
+	int pc, pcorrc;
 
 	bool *used = new bool[initial_matches.size()];
 	memset(used, 0, initial_matches.size() * sizeof(bool));
@@ -607,14 +615,13 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
 			{
 				Eigen::Vector3f t = transformation.topRightCorner(3, 1);
 				Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = transformation.topLeftCorner(3, 3);
-				int point_count, point_corr_count;
-				pcc->getCoresp(t, rot, information, point_count, point_corr_count, threads, blocks);
-				temp_coresp = (float)point_corr_count / point_count;
-				if (temp_coresp < corr_percent) continue;
+				pcc->getCoresp(t, rot, information, pc, pcorrc, threads, blocks);
 			}
 
 			result_transform = transformation;
 			result_information = information;
+			point_count = pc;
+			point_corr_count = pcorrc;
 			if (matches != nullptr) *matches = inlier;
 			best_inlier_cnt = inlier.size();
 			rmse = inlier_error;
@@ -642,16 +649,14 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
 			{
 				Eigen::Vector3f t = transformation.topRightCorner(3, 1);
 				Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = transformation.topLeftCorner(3, 3);
-				int point_count, point_corr_count;
-				pcc->getCoresp(t, rot, information, point_count, point_corr_count, threads, blocks);
-				temp_coresp = (float)point_corr_count / point_count;
-				if (temp_coresp < corr_percent) continue;
+				pcc->getCoresp(t, rot, information, pc, pcorrc, threads, blocks);
 			}
 
 			result_transform = transformation;
 			if (pcc != nullptr)
 				result_information = information;
-			result_coresp = temp_coresp;
+			point_count = pc;
+			point_corr_count = pcorrc;
 			if (matches != nullptr) *matches = inlier;
 			best_inlier_cnt = inlier.size();
 			rmse = new_inlier_error;
@@ -666,7 +671,7 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
 
 bool Feature::getTransformationByRANSAC_real(Eigen::Matrix4f &result_transform,
 	Eigen::Matrix<double, 6, 6> &result_information,
-	float &result_coresp,
+	int &point_count, int &point_corr_count,
 	float &rmse, vector<cv::DMatch> *matches, // output vars. if matches == nullptr, do not return inlier match
 	const Feature* earlier, const Feature* now,
 	PointCloudCuda *pcc,
@@ -700,7 +705,7 @@ bool Feature::getTransformationByRANSAC_real(Eigen::Matrix4f &result_transform,
 	int blocks = Config::instance()->get<int>("icpcuda_blocks");
 	float corr_percent = Config::instance()->get<float>("coresp_percent");
 	Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
-	float temp_coresp = 0;
+	int pc, pcorrc;
 
 	for (unsigned int n_iter = 0; n_iter < ransac_iterations; n_iter++)
 	{
@@ -761,14 +766,13 @@ bool Feature::getTransformationByRANSAC_real(Eigen::Matrix4f &result_transform,
 			{
 				Eigen::Vector3f t = transformation.topRightCorner(3, 1);
 				Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = transformation.topLeftCorner(3, 3);
-				int point_count, point_corr_count;
-				pcc->getCoresp(t, rot, information, point_count, point_corr_count, threads, blocks);
-				temp_coresp = (float)point_corr_count / point_count;
-				if (temp_coresp < corr_percent) continue;
+				pcc->getCoresp(t, rot, information, pc, pcorrc, threads, blocks);
 			}
 
 			result_transform = transformation;
 			result_information = information;
+			point_count = pc;
+			point_corr_count = pcorrc;
 			if (matches != nullptr) *matches = inlier;
 			//			assert(matches.size() >= min_inlier_threshold);
 			//			assert(matches.size()>= ((float)initial_matches.size()) * min_inlier_ratio);
@@ -812,16 +816,14 @@ bool Feature::getTransformationByRANSAC_real(Eigen::Matrix4f &result_transform,
 			{
 				Eigen::Vector3f t = transformation.topRightCorner(3, 1);
 				Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = transformation.topLeftCorner(3, 3);
-				int point_count, point_corr_count;
-				pcc->getCoresp(t, rot, information, point_count, point_corr_count, threads, blocks);
-				temp_coresp = (float)point_corr_count / point_count;
-				if (temp_coresp < corr_percent) continue;
+				pcc->getCoresp(t, rot, information, pc, pcorrc, threads, blocks);
 			}
 
 			result_transform = transformation;
 			if (pcc != nullptr)
 				result_information = information;
-			result_coresp = temp_coresp;
+			point_count = pc;
+			point_corr_count = pcorrc;
 			if (matches != nullptr) *matches = inlier;
 			//			assert(matches->size() >= min_inlier_threshold);
 			//			assert(matches.size()>= ((float)initial_matches->size())*min_inlier_ratio);

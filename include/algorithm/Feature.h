@@ -42,15 +42,14 @@ public:
 
 private:
 
-	cv::flann::Index* flann_index;
-	int trees;
+	cv::FlannBasedMatcher *flann_matcher;
+//	cv::flann::Index* flann_index;
 
 public:
 
 	Feature(bool multiple = false)
 	{
-		this->flann_index = nullptr;
-		this->trees = Config::instance()->get<int>("kdtree_trees");
+		this->flann_matcher = nullptr;
 		this->multiple = multiple;
 	}
 
@@ -75,13 +74,13 @@ public:
 
 	void releaseFlannIndex();
 
-	int findMatched(vector<cv::DMatch> &matches, const cv::Mat &descriptor, int max_leafs = 64, int k = 2);
+	int findMatched(vector<cv::DMatch> &matches, const cv::Mat &descriptor);
 
-	int findMatchedPairs(vector<cv::DMatch> &matches, const Feature *other, int max_leafs = 64, int k = 2);
+	int findMatchedPairs(vector<cv::DMatch> &matches, const Feature *other);
 
 	int findMatchedPairsBruteForce(vector<cv::DMatch> &matches, const Feature *other);
 
-	bool findMatchedPairsMultiple(vector<int> &frames, vector<vector<cv::DMatch>> &matches, const Feature *other, int k = 30, int max_leafs = 128);
+	bool findMatchedPairsMultiple(vector<int> &frames, vector<vector<cv::DMatch>> &matches, const Feature *other, int k = 30);
 
 	int getFrameCount();
 
@@ -123,7 +122,7 @@ public:
 
 	static bool getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
 		Eigen::Matrix<double, 6, 6> &result_information,
-		float &result_coresp,
+		int &point_count, int &point_corr_count,
 		float &rmse, vector<cv::DMatch> *matches,
 		const Feature* earlier, const Feature* now,
 		PointCloudCuda *pcc,
@@ -131,7 +130,7 @@ public:
 
 	static bool getTransformationByRANSAC_real(Eigen::Matrix4f &result_transform,
 		Eigen::Matrix<double, 6, 6> &result_information,
-		float &result_coresp,
+		int &point_count, int &point_corr_count,
 		float &rmse, vector<cv::DMatch> *matches,
 		const Feature* earlier, const Feature* now,
 		PointCloudCuda *pcc,

@@ -12,7 +12,7 @@ Config::Config() {
 	config["candidate_number"]		= static_cast<int>    (10);
 	config["min_matches"]			= static_cast<int>    (40);
 	config["min_inliers_percent"]	= static_cast<float>  (0.3);
-	config["max_dist_for_inliers"]	= static_cast<float>  (0.05);
+	config["max_dist_for_inliers"]	= static_cast<float>  (0.03);
 	config["matches_criterion"]		= static_cast<float>  (0.8);
 	config["coresp_percent"]		= static_cast<float>  (0.3);
 	config["ransac_max_iteration"]	= static_cast<int>    (1000);
@@ -32,10 +32,11 @@ Config::Config() {
 	// Quad Tree
 	config["quadtree_size"]			= static_cast<float>  (20.0);
 	config["active_window_size"]	= static_cast<float>  (2.5);
-	config["keyframe_check_N"] = static_cast<int>    (4);
-	config["keyframe_check_M"] = static_cast<int>    (4);
-	config["keyframe_check_F"] = static_cast<int>    (1);
-	config["keyframe_check_P"] = static_cast<float>  (0.75);
+	config["candidate_radius"]		= static_cast<float>  (1.0);
+	config["keyframe_check_N"]		= static_cast<int>    (4);
+	config["keyframe_check_M"]		= static_cast<int>    (4);
+	config["keyframe_check_F"]		= static_cast<int>    (1);
+	config["keyframe_check_P"]		= static_cast<float>  (0.75);
 
 	// HOG-man
 	config["hogman_iterations"]		= static_cast<int>    (10);

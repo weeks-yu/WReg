@@ -210,8 +210,7 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 			std::cout << ", aw: " << active_window.active_frames.size();
 			vector<int> frames;
 			vector<vector<cv::DMatch>> matches;
-			this->active_window.feature_pool->findMatchedPairsMultiple(frames, matches, this->graph[k]->f,
-				Config::instance()->get<int>("kdtree_k_mult"), Config::instance()->get<int>("kdtree_max_leaf_mult"));
+			this->active_window.feature_pool->findMatchedPairsMultiple(frames, matches, this->graph[k]->f);
 
 			count = matches.size();
 			if (count < min_closure_candidate) min_closure_candidate = count;
@@ -242,11 +241,12 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 					//continue; // do not run ransac between this and last keyframe
 				}
 				Eigen::Matrix4f tran;
-				float rmse, coresp;
+				float rmse;
+				int pc, pcorrc;
 				vector<cv::DMatch> inliers;
 				pcc->initPrev((unsigned short *)this->graph[this->active_window.active_frames[frames[i]]]->depth->data, 20.0f);
 				// find edges
-				if (Feature::getTransformationByRANSAC(tran, information, coresp, rmse, &inliers,
+				if (Feature::getTransformationByRANSAC(tran, information, pc, pcorrc, rmse, &inliers,
 					this->active_window.feature_pool, this->graph[k]->f,
 					pcc, matches[i]))
 				{
@@ -504,7 +504,7 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 			Eigen::Vector3f translation = TranslationFromMatrix4f(graph[k]->tran);
 			float active_window_size = Config::instance()->get<float>("active_window_size");
 			active_window.move(graph, RectangularRegion(translation.x(), translation.y(), active_window_size, active_window_size));
-			active_window.feature_pool->findMatchedPairs(temp_matches, graph[k]->f, maxleaf, 1);
+			active_window.feature_pool->findMatchedPairs(temp_matches, graph[k]->f);
 
 			for (int i = 0; i < temp_matches.size(); i++)
 			{
@@ -513,7 +513,7 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 				int trainid = temp_matches[i].trainIdx;
 				int frame_index = active_window.feature_pool->feature_frame_index[trainid];
 				int c = graph[active_window.active_frames[frame_index]]->f->findMatched(tm,
-					graph[k]->f->feature_descriptors.row(queryid), maxleaf);
+					graph[k]->f->feature_descriptors.row(queryid));
 
 				for (int j = 0; j < tm.size(); j++)
 				{

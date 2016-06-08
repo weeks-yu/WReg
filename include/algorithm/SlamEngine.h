@@ -99,9 +99,9 @@ public:
 #endif
 
 public:
-	vector<pair<int, int>> gt_loop;
-	vector<int> id_in_quadtree;
-	vector<vector<pair<float, float>>> dist_2d;
+	vector<int> id_detect_lc;
+	vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f>> current_positions;
+	vector<vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f>>> positions;
 
 private:
 	int frame_id;
@@ -134,7 +134,7 @@ private:
 
 	Frame *last_feature_keyframe;
 	Frame *last_feature_frame;
-	bool last_keyframe_in_quadtree;
+	bool last_keyframe_detect_lc;
 	bool last_feature_frame_is_keyframe;
 	float last_rational;
 

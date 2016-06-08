@@ -114,8 +114,7 @@ bool HogmanManager::addNode(Frame* frame, float weight, bool is_keyframe_candida
 		std::cout << ", aw: " << active_window.active_frames.size();
 		vector<int> frames;
 		vector<vector<cv::DMatch>> matches;
-		this->active_window.feature_pool->findMatchedPairsMultiple(frames, matches, this->graph[k]->f,
-			Config::instance()->get<int>("kdtree_k_mult"), Config::instance()->get<int>("kdtree_max_leaf_mult"));
+		this->active_window.feature_pool->findMatchedPairsMultiple(frames, matches, this->graph[k]->f);
 
 		count = matches.size();
 		if (count < min_closure_candidate) min_closure_candidate = count;
@@ -135,11 +134,12 @@ bool HogmanManager::addNode(Frame* frame, float weight, bool is_keyframe_candida
 				//continue; // do not run ransac between this and last keyframe
 			}
 			Eigen::Matrix4f tran;
-			float rmse, coresp;
+			float rmse;
+			int pc, pcorrc;
 			vector<cv::DMatch> inliers;
 			pcc->initPrev((unsigned short *)this->graph[this->active_window.active_frames[frames[i]]]->depth->data, 20.0f);
 			// find edges
-			if (Feature::getTransformationByRANSAC(tran, information, coresp, rmse, &inliers,
+			if (Feature::getTransformationByRANSAC(tran, information, pc, pcorrc, rmse, &inliers,
 				this->active_window.feature_pool, this->graph[k]->f,
 				pcc, matches[i]))
 			{

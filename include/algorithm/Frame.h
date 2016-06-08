@@ -2,7 +2,7 @@
 
 #include "Feature.h"
 
-typedef Eigen::Matrix<double, 6, 6> InfomationMatrix;
+typedef Eigen::Matrix<double, 6, 6> InformationMatrix;
 
 class Frame
 {
@@ -20,6 +20,8 @@ public:
 	{
 		tran = Eigen::Matrix4f::Identity();
 		f = nullptr;
+		depth = nullptr;
+		ransac_failed = false;
 	}
 
 	Frame(const cv::Mat &imgRGB, const cv::Mat &imgDepth, string type = "SURF", const Eigen::Matrix4f &tran = Eigen::Matrix4f::Identity())
