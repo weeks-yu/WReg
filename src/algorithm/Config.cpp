@@ -19,7 +19,7 @@ Config::Config() {
 
 	// Keyframe
 	config["max_keyframe_interval"] = static_cast<int>    (15);
-	config["keyframe_rational"]		= static_cast<float>  (0.5);
+	config["keyframe_rational"]		= static_cast<float>  (0.4);
 	config["min_translation_meter"] = static_cast<float>  (0.25);
 	config["min_rotation_degree"]	= static_cast<float>  (15.0);
 

@@ -1991,15 +1991,24 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 					else
 						last_keyframe->f->findMatchedPairs(matches, frame->f);
 
+// 					Feature::getTransformationByRANSAC(tran, information, pc, pcorrc, rmse,
+// 						&inliers, last_keyframe->f, frame->f, nullptr, matches);
 					Feature::computeInliersAndError(inliers, rmse, nullptr, matches,
 						ac_tran * relative_tran,
 						last_keyframe->f, frame->f);
 				}
 
-				float rrr = (float)inliers.size() / matches.size();
+				float rrr;
+				if (matches.size() > 0)
+					rrr = (float)inliers.size() / matches.size();
+				else
+					rrr = 0;
 				if (last_frame_is_keyframe)
 				{
-					rational_reference = rrr;
+					if (rrr > 0)
+						rational_reference = rrr;
+					else
+						rational_reference = 10000;
 				}
 				rrr /= rational_reference;
 				if (verbose)
@@ -2029,24 +2038,20 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 						pc, pcorrc, rmse, &inliers, last_frame->f, frame->f, nullptr, matches);
 				}
 
-				isKeyframe = true;
+				
 				if (FtoKF && last_frame_success)
 				{
+					isKeyframe = true;
 					relative_tran = ac_tran * tran2;
 				}
 				else
 				{
-					if (verbose)
-						cout << ", failed";
-					failed_pairwise.push_back(i);
-
-					frame->ransac_failed = true;
-
 					if (useICP)
 					{
 						icpcuda->initICPModel((unsigned short *)depths[i - 1].data, 20.0f, Eigen::Matrix4f::Identity());
 						icpcuda->initICP((unsigned short *)depths[i].data, 20.0f);
 
+						tran2 = Eigen::Matrix4f::Identity();
 						Eigen::Vector3f t = tran2.topRightCorner(3, 1);
 						Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = tran2.topLeftCorner(3, 3);
 
@@ -2060,13 +2065,56 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 						tran2.topRightCorner(3, 1) = t;
 
 						if (FtoKF)
+						{
+							isKeyframe = true;
 							relative_tran = ac_tran * tran2;
+						}
 						else
+						{
 							relative_tran = tran2;
+
+							matches.clear();
+							inliers.clear();
+							if (feature_type == "ORB")
+								last_keyframe->f->findMatchedPairsBruteForce(matches, frame->f);
+							else
+								last_keyframe->f->findMatchedPairs(matches, frame->f);
+
+// 							Feature::getTransformationByRANSAC(tran, information, pc, pcorrc, rmse,
+// 								&inliers, last_keyframe->f, frame->f, nullptr, matches);
+							Feature::computeInliersAndError(inliers, rmse, nullptr, matches,
+								ac_tran * relative_tran,
+								last_keyframe->f, frame->f);
+
+							float rrr;
+							if (matches.size() > 0)
+								rrr = (float)inliers.size() / matches.size();
+							else
+								rrr = 0;
+							if (last_frame_is_keyframe)
+							{
+								if (rrr > 0)
+									rational_reference = rrr;
+								else
+									rational_reference = 10000;
+							}
+							rrr /= rational_reference;
+							if (verbose)
+								cout << ", " << rrr;
+							if (rrr < Config::instance()->get<float>("keyframe_rational"))
+							{
+								isKeyframe = true;
+							}
+						}
 					}
 					else
 					{
 						relative_tran = last_tran;
+						if (verbose)
+							cout << ", failed";
+						failed_pairwise.push_back(i);
+						frame->ransac_failed = true;
+						isKeyframe = true;
 					}
 				}
 			}
@@ -2162,6 +2210,7 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 			cout << failed_pairwise[i] << endl;
 		}
 	}
+	delete icpcuda;
 }
 
 void readPairwiseResult(string filename, string feature_type = "SURF")
@@ -2403,21 +2452,21 @@ void GlobalRegistration(string graph_ftype = "SIFT",
 		cout << loops[i].first << " " << loops[i].second << endl;
 	}
 
-// 	cout << "Getting scene" << endl;
-// 	PointCloudPtr cloud = engine.GetScene();
-// 	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("3D Viewer"));
-// 	viewer->setBackgroundColor(0, 0, 0);
-// 	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
-// 	//viewer->registerKeyboardCallback(KeyboardEventOccurred, (void*)&viewer);
-// 	viewer->addPointCloud<pcl::PointXYZRGB>(cloud, rgb, "cloud");
-// 	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
-// 	viewer->addCoordinateSystem(1.0);
-// 	viewer->initCameraParameters();
-// 
-// 	while (!viewer->wasStopped())
-// 	{
-// 		viewer->spinOnce(100);
-// 	}
+	cout << "Getting scene" << endl;
+	PointCloudPtr cloud = engine.GetScene();
+	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("3D Viewer"));
+	viewer->setBackgroundColor(0, 0, 0);
+	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
+	//viewer->registerKeyboardCallback(KeyboardEventOccurred, (void*)&viewer);
+	viewer->addPointCloud<pcl::PointXYZRGB>(cloud, rgb, "cloud");
+	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
+	viewer->addCoordinateSystem(1.0);
+	viewer->initCameraParameters();
+
+	while (!viewer->wasStopped())
+	{
+		viewer->spinOnce(100);
+	}
 }
 
 void FindGroundTruthLoop(string directory, string feature_type = "SURF", ofstream *gt_out = nullptr)
@@ -2782,35 +2831,35 @@ void GlobalWithAll(ofstream *result_out = nullptr, ofstream *log_out = nullptr)
 
 void pairwise_results()
 {
-	const int dcount = 3;
+	const int dcount = 9;
 	std::string directories[dcount], names[dcount];
-// 	directories[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_xyz/";
-// 	directories[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy";
-// 	directories[2] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk/";
-// 	directories[3] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk2/";
-// 	directories[4] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_360/";
-// 	directories[5] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_room/";
-// 	directories[6] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/";
-// 	directories[7] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_teddy/";
-// 	directories[8] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_plant/";
+	directories[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_xyz/";
+	directories[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk/";
+	directories[2] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk2/";
+	directories[3] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_360/";
+	directories[4] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_room/";
+	directories[5] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/";
+	directories[6] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy";
+	directories[7] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_teddy/";
+	directories[8] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_plant/";
 
-	directories[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy";
-	directories[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_teddy/";
-	directories[2] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_plant/";
+// 	directories[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy";
+// 	directories[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_teddy/";
+// 	directories[2] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_plant/";
 
-// 	names[0] = "xyz";
-// 	names[1] = "rpy";
-// 	names[2] = "desk";
-// 	names[3] = "desk2";
-// 	names[4] = "360";
-// 	names[5] = "room";
-// 	names[6] = "floor";
-// 	names[7] = "teddy";
-// 	names[8] = "plant";
+	names[0] = "xyz";
+	names[1] = "desk";
+	names[2] = "desk2";
+	names[3] = "360";
+	names[4] = "room";
+	names[5] = "floor";
+	names[6] = "rpy";
+	names[7] = "teddy";
+	names[8] = "plant";
 
-	names[0] = "rpy";
-	names[1] = "teddy";
-	names[2] = "plant";
+// 	names[0] = "rpy";
+// 	names[1] = "teddy";
+// 	names[2] = "plant";
 
 	const int fcount = 3;
 	std::string ftypes[fcount];
@@ -2818,26 +2867,39 @@ void pairwise_results()
 	ftypes[1] = "SIFT";
 	ftypes[2] = "SURF";
 
-	const int sdcount = 18;
+	const int sdcount = 10;
 	float dists[sdcount];
 	dists[0] = 0.01;
 	dists[1] = 0.02;
 	dists[2] = 0.03;
-	dists[3] = 0.04;
-	dists[4] = 0.05;
-	dists[5] = 0.06;
-	dists[6] = 0.07;
-	dists[7] = 0.08;
-	dists[8] = 0.09;
-	dists[9] = 0.1;
-	dists[10] = 0.15;
-	dists[11] = 0.2;
-	dists[12] = 0.25;
-	dists[13] = 0.30;
-	dists[14] = 0.35;
-	dists[15] = 0.4;
-	dists[16] = 0.45;
-	dists[17] = 0.5;
+	dists[3] = 0.05;
+	dists[4] = 0.08;
+	dists[5] = 0.1;
+	dists[6] = 0.15;
+	dists[7] = 0.2;
+	dists[8] = 0.25;
+	dists[9] = 0.30;
+
+	float siftdists[dcount] = { 
+		0.1,
+		0.03,
+		0.02,
+		0.3,
+		0.1,
+		0.25,
+		0.1,
+		0.25,
+		0.3 };
+	float surfdists[dcount] = {
+		0.03,
+		0.03,
+		0.1,
+		0.25,
+		0.03,
+		0.3,
+		0.3,
+		0.25,
+		0.2	};
 
 	int st = -1, ed = -1;
 	stringstream ss;
@@ -2853,13 +2915,18 @@ void pairwise_results()
 
 			for (int f = 0; f < fcount; f++)
 			{
+				if (ftypes[f] == "SIFT" && dists[sd] != siftdists[dd] ||
+					ftypes[f] == "SURF" && dists[sd] != surfdists[dd])
+				{
+					continue;
+				}
 				cout << "\t" << ftypes[f];
 				ss.clear();
 				ss.str("");
 				ss << "E:/tempresults/" << names[dd] << "/"
 					<< names[dd] << "_ftof_" << ftypes[f] << "_" << dists[sd] << ".txt";
 				ofstream out1(ss.str());
-				PairwiseRegistration(ftypes[f], false, &out1, false);
+				PairwiseRegistration(ftypes[f], false, true, &out1, false);
 
 				ss.clear();
 				ss.str("");
@@ -2932,7 +2999,7 @@ void repeat_pairwise_results()
 
 	const int sdcount = 1;
 	float dists[dcount][sdcount] = {0};
-	dists[0][0] = 0.25;	// xyz
+	dists[0][0] = 0.05;	// xyz
 	dists[1][0] = 0.2;	// desk
 	dists[2][0] = 0.3;  // desk2
 	dists[3][0] = 0.01; // 360
@@ -2946,7 +3013,7 @@ void repeat_pairwise_results()
 	int st = -1, ed = -1;
 	stringstream ss;
 
-	for (int dd = 0; dd < dcount; dd++)
+	for (int dd = 4; dd < dcount; dd++)
 	{
 		readData(directories[dd], st, ed, false);
 
@@ -3115,17 +3182,18 @@ int main()
 	//return 0;
 	//Statistics();
 
-// 	pairwise_results();
-	repeat_pairwise_results();
+ 	pairwise_results();
+//	repeat_pairwise_results();
  	return 0;
 
-	const int dcount = 5;
+	const int dcount = 6;
 	std::string directories[dcount], names[dcount];
 	directories[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_xyz/";
 	directories[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk/";
 	directories[2] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_room/";
 	directories[3] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/";
 	directories[4] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy/";
+	directories[5] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_360/";
 // 	directories[0] = "G:/kinect data/rgbd_dataset_freiburg1_xyz/";
 // 	directories[1] = "G:/kinect data/rgbd_dataset_freiburg1_desk/";
 // 	directories[2] = "G:/kinect data/rgbd_dataset_freiburg1_room/";
@@ -3217,6 +3285,7 @@ int main()
 	cout << "2: " << directories[2] << endl;
 	cout << "3: " << directories[3] << endl;
 	cout << "4: " << directories[4] << endl;
+	cout << "5: " << directories[5] << endl;
 
 	cout << "directory: ";
 	cin >> dd;
@@ -3250,7 +3319,7 @@ int main()
 		cout << "pairwise filename: ";
 		cin >> fname;
 		ofstream out(fname);
-		PairwiseRegistration(ftype, false, &out);
+		PairwiseRegistration(ftype, false, true, &out);
 	}
 	else if (method == 1 || method == 3 || method == 4 || method == 5)
 	{
@@ -3293,7 +3362,7 @@ int main()
 		cout << "gtloop filenmae: ";
 		cin >> gtname;
 		ifstream gtloop_in(gtname);
-		GlobalRegistration(gftype, &gtloop_in, &global_result);
+		GlobalRegistration(gftype, nullptr, &global_result);
 	}
 
 	if (method == 4)
