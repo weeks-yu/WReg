@@ -1926,7 +1926,7 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 				cout << ", KF";
 			if (save)
 			{
-				*out << i << " true" << endl;
+				*out << i << " true false" << endl;
 				*out << frame->relative_tran << endl;
 			}
 		}
@@ -2124,7 +2124,7 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 
 				if (save)
 				{
-					*out << i << " true" << endl;
+					*out << i << " true" << (frame->ransac_failed ? "true" : "false") << endl;
 					*out << frame->relative_tran << endl;
 				}
 			}
@@ -2133,7 +2133,7 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 				last_frame_is_keyframe = false;
 				if (save)
 				{
-					*out << i << " false" << endl;
+					*out << i << " false false" << endl;
 					*out << frame->relative_tran << endl;
 				}
 			}
@@ -2168,7 +2168,7 @@ void readPairwiseResult(string filename, string feature_type = "SURF")
 {
 	cout << "Reading pairwise result from file: " << filename << endl;
 	ifstream in(filename);
-	string line;
+	string kf, rf;
 	float tmp;
 
 	keyframe_indices.clear();
@@ -2180,8 +2180,8 @@ void readPairwiseResult(string filename, string feature_type = "SURF")
 		int id;
 		bool keyframe = false;
 		Eigen::Matrix4f tran;
-		in >> id >> line;
-		if (line == "true")
+		in >> id >> kf >> rf;
+		if (kf == "true")
 		{
 			keyframe = true;
 		}
@@ -2208,6 +2208,10 @@ void readPairwiseResult(string filename, string feature_type = "SURF")
 			frame = new Frame();
 		}
 		frame->relative_tran = tran;
+		if (rf == "true")
+			frame->ransac_failed = true;
+		else
+			frame->ransac_failed = false;
 		graph.push_back(frame);
 		cout << endl;
 	}
@@ -2297,9 +2301,11 @@ void GlobalRegistration(string graph_ftype = "SIFT",
 		{
 			keyframe = true;
 			Eigen::Matrix4f tran = graph[i]->relative_tran;
+			bool rf = graph[i]->ransac_failed;
 			delete graph[i];
 			graph[i] = new Frame(rgbs[i], depths[i], graph_ftype, Eigen::Matrix4f::Identity());
 			graph[i]->relative_tran = tran;
+			graph[i]->ransac_failed = rf;
 			if (graph_ftype != "ORB")
 			{
 				graph[i]->f->buildFlannIndex();
