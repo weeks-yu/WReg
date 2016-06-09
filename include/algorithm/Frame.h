@@ -32,6 +32,7 @@ public:
 		//this->depth = new cv::Mat();
 		//imgDepth.copyTo(*this->depth);
 		depth = nullptr;
+		ransac_failed = false;
 		this->tran = tran;
 	}
 

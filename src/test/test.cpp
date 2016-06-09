@@ -2124,7 +2124,7 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 
 				if (save)
 				{
-					*out << i << " true" << (frame->ransac_failed ? "true" : "false") << endl;
+					*out << i << " true " << (frame->ransac_failed ? "true" : "false") << endl;
 					*out << frame->relative_tran << endl;
 				}
 			}
@@ -2912,10 +2912,10 @@ void repeat_pairwise_results()
 
 	names[0] = "xyz";
 	names[1] = "desk";
-	names[0] = "desk2";
-	names[1] = "360";
-	names[2] = "room";
-	names[3] = "floor";
+	names[2] = "desk2";
+	names[3] = "360";
+	names[4] = "room";
+	names[5] = "floor";
  	names[6] = "rpy";
  	names[7] = "teddy";
  	names[8] = "plant";
