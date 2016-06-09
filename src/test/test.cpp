@@ -2888,7 +2888,7 @@ void pairwise_results()
 
 void repeat_pairwise_results()
 {
-	const int dcount = 6;
+	const int dcount = 9;
 	std::string directories[dcount], names[dcount];
 	directories[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_xyz/";
 	directories[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk/";
@@ -2896,9 +2896,9 @@ void repeat_pairwise_results()
 	directories[3] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_360/";
 	directories[4] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_room/";
 	directories[5] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/";
-//	directories[6] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy";
-// 	directories[7] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_teddy/";
-// 	directories[8] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_plant/";
+	directories[6] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy";
+ 	directories[7] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_teddy/";
+ 	directories[8] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_plant/";
 
 // 	directories[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy";
 // 	directories[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_teddy/";
@@ -2906,13 +2906,13 @@ void repeat_pairwise_results()
 
 	names[0] = "xyz";
 	names[1] = "desk";
-	names[2] = "desk2";
-	names[3] = "360";
-	names[4] = "room";
-	names[5] = "floor";
-// 	names[6] = "rpy";
-// 	names[7] = "teddy";
-// 	names[8] = "plant";
+	names[0] = "desk2";
+	names[1] = "360";
+	names[2] = "room";
+	names[3] = "floor";
+ 	names[6] = "rpy";
+ 	names[7] = "teddy";
+ 	names[8] = "plant";
 
 // 	names[0] = "rpy";
 // 	names[1] = "teddy";
@@ -2924,14 +2924,17 @@ void repeat_pairwise_results()
 // 	ftypes[1] = "SIFT";
 // 	ftypes[2] = "SURF";
 
-	const int sdcount = 2;
+	const int sdcount = 1;
 	float dists[dcount][sdcount] = {0};
-	dists[0][0] = 0.05; dists[0][1] = 0.08; dists[0][2] = 0.15;	// xyz
-	dists[1][0] = 0.15; dists[1][1] = 0.2; dists[1][2] = 0.25;	// desk
-	dists[2][0] = 0.15; dists[2][1] = 0.2; dists[2][2] = 0.3; // desk2
-	dists[3][0] = 0.01; dists[3][1] = 0.02; dists[3][2] = 0.03; // 360
-	dists[4][0] = 0.08; dists[4][1] = 0.09; dists[4][2] = 0.15; // room
-	dists[5][0] = 0.04; dists[5][1] = 0.08; dists[5][2] = 0.3; // floor
+	dists[0][0] = 0.25;	// xyz
+	dists[1][0] = 0.2;	// desk
+	dists[2][0] = 0.3;  // desk2
+	dists[3][0] = 0.01; // 360
+	dists[4][0] = 0.25; // room
+	dists[5][0] = 0.3;  // floor
+	dists[6][0] = 0.3;  // rpy
+	dists[7][0] = 0.3;  // teddy
+	dists[8][0] = 0.03;  // plants
 
 	int repeat_time = 20;
 	int st = -1, ed = -1;
@@ -2957,12 +2960,12 @@ void repeat_pairwise_results()
 					ss << "E:/tempresults/" << names[dd] << "/repeat/"
 						<< names[dd] << "_repeat_" << ftypes[f] << "_" << repeat_time * sd + i << ".txt";
 					ofstream out1(ss.str());
-					PairwiseRegistration(ftypes[f], false, &out1, false);
+					PairwiseRegistration(ftypes[f], false, false, &out1, false);
 
 					ss.clear();
 					ss.str("");
 					ss << "E:/tempresults/" << names[dd] << "/repeat/"
-						<< names[dd] << "_" << ftypes[f] << "_" << i << ".txt";
+						<< names[dd] << "_" << ftypes[f] << "_" << repeat_time * sd + i << ".txt";
 					ofstream out2(ss.str());
 					Eigen::Matrix4f last_tran = Eigen::Matrix4f::Identity();
 					int k = 0;
@@ -2991,6 +2994,99 @@ void repeat_pairwise_results()
 	}
 }
 
+void repeat_global_results()
+{
+	const int dcount = 9;
+	std::string directories[dcount], names[dcount], prs[dcount];
+	directories[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_xyz/";
+	directories[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk/";
+	directories[2] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk2/";
+	directories[3] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_360/";
+	directories[4] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_room/";
+	directories[5] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/";
+	directories[6] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy";
+	directories[7] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_teddy/";
+	directories[8] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_plant/";
+
+// 	directories[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy";
+// 	directories[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_teddy/";
+// 	directories[2] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_plant/";
+
+	names[0] = "xyz";
+	names[1] = "desk";
+	names[2] = "desk2";
+	names[3] = "360";
+	names[4] = "room";
+	names[5] = "floor";
+	names[6] = "rpy";
+	names[7] = "teddy";
+	names[8] = "plant";
+
+	prs[0] = "";
+	prs[1] = "";
+	prs[2] = "";
+	prs[3] = "";
+	prs[4] = "";
+	prs[5] = "";
+	prs[6] = "";
+	prs[7] = "";
+	prs[8] = "";
+
+// 	names[0] = "rpy";
+// 	names[1] = "teddy";
+// 	names[2] = "plant";
+
+	const int gfcount = 3;
+	std::string gftypes[gfcount];
+	gftypes[0] = "SIFT";
+	gftypes[1] = "SURF";
+
+	const int sdcount = 1;
+	float dists[dcount][gfcount][sdcount] = {0};
+	dists[0][0][0] = 0.1; dists[0][1][0] = 0.03;
+	dists[1][0][0] = 0.03; dists[1][1][0] = 0.03;
+	dists[2][0][0] = 0.02; dists[2][1][0] = 0.1;
+	dists[3][0][0] = 0.3; dists[3][1][0] = 0.25;
+	dists[4][0][0] = 0.1; dists[4][1][0] = 0.03;
+	dists[5][0][0] = 0.25; dists[5][1][0] = 0.3;
+	dists[6][0][0] = 0.1; dists[6][1][0] = 0.3;
+	dists[7][0][0] = 0.25; dists[7][1][0] = 0.25;
+	dists[8][0][0] = 0.3; dists[8][1][0] = 0.2;
+
+	int st = -1, ed = -1;
+	stringstream ss;
+
+	int repeat_time = 20;
+
+	for (int dd = 0; dd < dcount; dd++)
+	{
+		readData(directories[dd], st, ed);
+
+		for (int f = 0; f < gfcount; f++)
+		{
+			cout << "\t" << gftypes[f];
+
+			for (int sd = 0; sd < sdcount; sd++)
+			{
+				cout << "\tdists: " << dists[dd][f][sd] << endl;
+				Config::instance()->set<float>("max_dist_for_inliers", dists[dd][f][sd]);
+
+				for (int i = 0; i < repeat_time; i++)
+				{
+					readPairwiseResult(prs[dd], "ORB");
+
+					ss.clear();
+					ss.str("");
+					ss << "E:/tempresults/" << names[dd] << "/global/"
+						<< names[dd] << "_" << gftypes[f] << "_" << i << ".txt";
+					ofstream out1(ss.str());
+					GlobalRegistration(gftypes[f], nullptr, &out1);
+				}
+			}
+		}
+	}	
+}
+
 int main()
 {
 	//keyframe_test();
@@ -3014,8 +3110,8 @@ int main()
 	//Statistics();
 
 // 	pairwise_results();
-//	repeat_pairwise_results();
-// 	return 0;
+	repeat_pairwise_results();
+ 	return 0;
 
 	const int dcount = 5;
 	std::string directories[dcount], names[dcount];
