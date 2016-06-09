@@ -1724,7 +1724,7 @@ void getClouds()
 	}
 }
 
-void readData(string directory, int st = -1, int ed = -1)
+void readData(string directory, int st = -1, int ed = -1, bool convert = true)
 {
 	cout << "Reading data from " << directory << endl;
 	stringstream ss;
@@ -1773,7 +1773,7 @@ void readData(string directory, int st = -1, int ed = -1)
 	}
 	c_in.close();
 
-	getClouds();
+	if (convert) getClouds();
 }
 
 void ShowPairwiseResults(ofstream *out = nullptr)
@@ -1842,7 +1842,7 @@ void ShowPairwiseResults(ofstream *out = nullptr)
 	}
 }
 
-void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, ofstream *out = nullptr, bool verbose = true)
+void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool useICP = false, ofstream *out = nullptr, bool verbose = true)
 {
 	vector<int> failed_pairwise;
 	bool save = out != nullptr;
@@ -2042,25 +2042,32 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, ofstr
 
 					frame->ransac_failed = true;
 
-					icpcuda->initICPModel((unsigned short *)depths[i - 1].data, 20.0f, Eigen::Matrix4f::Identity());
-					icpcuda->initICP((unsigned short *)depths[i].data, 20.0f);
+					if (useICP)
+					{
+						icpcuda->initICPModel((unsigned short *)depths[i - 1].data, 20.0f, Eigen::Matrix4f::Identity());
+						icpcuda->initICP((unsigned short *)depths[i].data, 20.0f);
 
-					Eigen::Vector3f t = tran2.topRightCorner(3, 1);
-					Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = tran2.topLeftCorner(3, 3);
+						Eigen::Vector3f t = tran2.topRightCorner(3, 1);
+						Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = tran2.topLeftCorner(3, 3);
 
-					Eigen::Matrix4f estimated_tran = Eigen::Matrix4f::Identity();
-					Eigen::Vector3f estimated_t = estimated_tran.topRightCorner(3, 1);
-					Eigen::Matrix<float, 3, 3, Eigen::RowMajor> estimated_rot = estimated_tran.topLeftCorner(3, 3);
+						Eigen::Matrix4f estimated_tran = Eigen::Matrix4f::Identity();
+						Eigen::Vector3f estimated_t = estimated_tran.topRightCorner(3, 1);
+						Eigen::Matrix<float, 3, 3, Eigen::RowMajor> estimated_rot = estimated_tran.topLeftCorner(3, 3);
 
-					icpcuda->getIncrementalTransformation(t, rot, estimated_t, estimated_rot, threads, blocks);
+						icpcuda->getIncrementalTransformation(t, rot, estimated_t, estimated_rot, threads, blocks);
 
-					tran2.topLeftCorner(3, 3) = rot;
-					tran2.topRightCorner(3, 1) = t;
+						tran2.topLeftCorner(3, 3) = rot;
+						tran2.topRightCorner(3, 1) = t;
 
-					if (FtoKF)
-						relative_tran = ac_tran * tran2;
+						if (FtoKF)
+							relative_tran = ac_tran * tran2;
+						else
+							relative_tran = tran2;
+					}
 					else
-						relative_tran = tran2;
+					{
+						relative_tran = last_tran;
+					}
 				}
 			}
 
@@ -2879,14 +2886,119 @@ void pairwise_results()
 	}
 }
 
+void repeat_pairwise_results()
+{
+	const int dcount = 6;
+	std::string directories[dcount], names[dcount];
+	directories[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_xyz/";
+	directories[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk/";
+	directories[2] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk2/";
+	directories[3] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_360/";
+	directories[4] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_room/";
+	directories[5] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/";
+//	directories[6] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy";
+// 	directories[7] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_teddy/";
+// 	directories[8] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_plant/";
+
+// 	directories[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy";
+// 	directories[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_teddy/";
+// 	directories[2] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_plant/";
+
+	names[0] = "xyz";
+	names[1] = "desk";
+	names[2] = "desk2";
+	names[3] = "360";
+	names[4] = "room";
+	names[5] = "floor";
+// 	names[6] = "rpy";
+// 	names[7] = "teddy";
+// 	names[8] = "plant";
+
+// 	names[0] = "rpy";
+// 	names[1] = "teddy";
+// 	names[2] = "plant";
+
+	const int fcount = 1;
+	std::string ftypes[fcount];
+	ftypes[0] = "ORB";
+// 	ftypes[1] = "SIFT";
+// 	ftypes[2] = "SURF";
+
+	const int sdcount = 2;
+	float dists[dcount][sdcount] = {0};
+	dists[0][0] = 0.05; dists[0][1] = 0.08; dists[0][2] = 0.15;	// xyz
+	dists[1][0] = 0.15; dists[1][1] = 0.2; dists[1][2] = 0.25;	// desk
+	dists[2][0] = 0.15; dists[2][1] = 0.2; dists[2][2] = 0.3; // desk2
+	dists[3][0] = 0.01; dists[3][1] = 0.02; dists[3][2] = 0.03; // 360
+	dists[4][0] = 0.08; dists[4][1] = 0.09; dists[4][2] = 0.15; // room
+	dists[5][0] = 0.04; dists[5][1] = 0.08; dists[5][2] = 0.3; // floor
+
+	int repeat_time = 20;
+	int st = -1, ed = -1;
+	stringstream ss;
+
+	for (int dd = 0; dd < dcount; dd++)
+	{
+		readData(directories[dd], st, ed, false);
+
+		for (int sd = 0; sd < sdcount; sd++)
+		{
+			cout << "\t dists: " << dists[dd][sd];
+			Config::instance()->set<float>("max_dist_for_inliers", dists[dd][sd]);
+
+			for (int f = 0; f < fcount; f++)
+			{
+				cout << "\t" << ftypes[f];
+
+				for (int i = 0; i < repeat_time; i++)
+				{
+					ss.clear();
+					ss.str("");
+					ss << "E:/tempresults/" << names[dd] << "/repeat/"
+						<< names[dd] << "_repeat_" << ftypes[f] << "_" << repeat_time * sd + i << ".txt";
+					ofstream out1(ss.str());
+					PairwiseRegistration(ftypes[f], false, &out1, false);
+
+					ss.clear();
+					ss.str("");
+					ss << "E:/tempresults/" << names[dd] << "/repeat/"
+						<< names[dd] << "_" << ftypes[f] << "_" << i << ".txt";
+					ofstream out2(ss.str());
+					Eigen::Matrix4f last_tran = Eigen::Matrix4f::Identity();
+					int k = 0;
+					for (int j = 0; j < frame_count; j++)
+					{
+						graph[j]->tran = last_tran * graph[j]->relative_tran;
+
+						Eigen::Vector3f t = TranslationFromMatrix4f(graph[j]->tran);
+						Eigen::Quaternionf q = QuaternionFromMatrix4f(graph[j]->tran);
+
+						out2 << fixed << setprecision(6) << timestamps[j]
+							<< ' ' << t(0) << ' ' << t(1) << ' ' << t(2)
+							<< ' ' << q.x() << ' ' << q.y() << ' ' << q.z() << ' ' << q.w() << endl;
+
+						if (k < keyframe_indices.size() && keyframe_indices[k] == j)
+						{
+							last_tran = graph[j]->tran;
+							k++;
+						}
+					}
+					out2.close();
+				}
+			}
+			cout << endl;
+		}
+	}
+}
+
 int main()
 {
 	//keyframe_test();
 	//something();
 	//icp_test();
 	//return 0;
-	Ransac_Test();
-	return 0;
+	//Ransac_Test();
+	//return 0;
 	//Ransac_Result_Show();
 	//return 0;
 	//Registration_Result_Show();
@@ -2902,6 +3014,7 @@ int main()
 	//Statistics();
 
 // 	pairwise_results();
+//	repeat_pairwise_results();
 // 	return 0;
 
 	const int dcount = 5;
@@ -2926,11 +3039,11 @@ int main()
 // 	ed = -1;
 // 	dist = 0.2;
 // 	string test_type = "ORB";
-// 	int repeat_time = 20;
+// 	int repeat_time = 10;
 // 
 // 	readData(directories[dd], st, ed);
 // 	Config::instance()->set<float>("max_dist_for_inliers", dist);
-// 	Config::instance()->set<int>("ransac_max_iteration", 2000);
+// 	Config::instance()->set<int>("ransac_max_iteration", 1000);
 // 
 // 	stringstream ss;
 // 
@@ -2938,13 +3051,13 @@ int main()
 // 	{
 // 		ss.clear();
 // 		ss.str("");
-// 		ss << "G:/desk_ftof_ORB_" << i << ".txt";
+// 		ss << "E:/desk_ftof_ORB_" << i << ".txt";
 // 		ofstream out1(ss.str());
-// 		PairwiseRegistration(test_type, false, &out1);
+// 		PairwiseRegistration(test_type, false, false, &out1);
 // 
 // 		ss.clear();
 // 		ss.str("");
-// 		ss << "G:/desk_ORB_" << i << ".txt";
+// 		ss << "E:/desk_ORB_" << i << ".txt";
 // 		ofstream out2(ss.str());
 // 		Eigen::Matrix4f last_tran = Eigen::Matrix4f::Identity();
 // 		int k = 0;
