@@ -132,8 +132,8 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 
 			for (int i = 0; i < frame->f->size(); i++)
 			{
-				frame->f->feature_ids[i] = Feature::NewID();
-				obs_field.obs.feat_id = frame->f->feature_ids[i];
+//				frame->f->feature_ids[i] = Feature::NewID();
+//				obs_field.obs.feat_id = frame->f->feature_ids[i];
 				obs_field.obs.obs_data.pt.x = frame->f->feature_pts_3d[i](0);
 				obs_field.obs.obs_data.pt.y = frame->f->feature_pts_3d[i](1);
 				obs_field.obs.obs_data.pt.z = frame->f->feature_pts_3d[i](2);
@@ -608,7 +608,7 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 
 			for (int i = 0; i < matches.size(); i++)
 			{
-				graph[k]->f->feature_ids[matches[i].queryIdx] = active_window.feature_pool->feature_ids[matches[i].trainIdx];
+//				graph[k]->f->feature_ids[matches[i].queryIdx] = active_window.feature_pool->feature_ids[matches[i].trainIdx];
 			}
 
 			SrbaT::new_kf_observations_t list_obs;
@@ -618,9 +618,9 @@ bool SrbaManager::addNode(Frame* frame, float weight, bool is_keyframe_candidate
 
 			for (int i = 0; i < graph[k]->f->size(); i++)
 			{
-				if (graph[k]->f->feature_ids[i] == 0)
-					graph[k]->f->feature_ids[i] = Feature::NewID();
-				obs_field.obs.feat_id = frame->f->feature_ids[i];
+//				if (graph[k]->f->feature_ids[i] == 0)
+//					graph[k]->f->feature_ids[i] = Feature::NewID();
+//				obs_field.obs.feat_id = frame->f->feature_ids[i];
 				obs_field.obs.obs_data.pt.x = frame->f->feature_pts_3d[i](0);
 				obs_field.obs.obs_data.pt.y = frame->f->feature_pts_3d[i](1);
 				obs_field.obs.obs_data.pt.z = frame->f->feature_pts_3d[i](2);

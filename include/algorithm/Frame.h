@@ -26,11 +26,12 @@ public:
 
 	Frame(const cv::Mat &imgRGB, const cv::Mat &imgDepth, string type = "SURF", const Eigen::Matrix4f &tran = Eigen::Matrix4f::Identity())
 	{
-		this->f = new Feature();
-		this->f->extract(imgRGB, imgDepth, type);
-		this->f->updateFeaturePoints3DReal(tran);
-		this->depth = new cv::Mat();
-		imgDepth.copyTo(*this->depth);
+		f = new Feature();
+		f->extract(imgRGB, imgDepth, type);
+		//this->f->updateFeaturePoints3DReal(tran);
+		//this->depth = new cv::Mat();
+		//imgDepth.copyTo(*this->depth);
+		depth = nullptr;
 		this->tran = tran;
 	}
 

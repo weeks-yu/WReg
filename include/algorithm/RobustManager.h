@@ -95,6 +95,10 @@ public:
 	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> loop_trans;
 	vector<Eigen::Matrix<double, 6, 6>, Eigen::aligned_allocator<Eigen::Matrix<double, 6, 6>>> loop_info;
 
+	vector<SwitchableEdge> failed_edges;
+	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> failed_trans;
+	vector<Eigen::Matrix<double, 6, 6>, Eigen::aligned_allocator<Eigen::Matrix<double, 6, 6>>> failed_info;
+
 	double weight;
 	float squared_dist_threshold;
 

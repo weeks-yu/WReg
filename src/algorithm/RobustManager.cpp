@@ -47,7 +47,6 @@ RobustManager::RobustManager(bool keyframe_only)
 	float distThresh = Config::instance()->get<float>("dist_threshold");
 	squared_dist_threshold = distThresh * distThresh;
 	float angleThresh = Config::instance()->get<float>("angle_threshold");
-//	pcc = new PointCloudCuda(width, height, cx, cy, fx, fy, depthFactor, distThresh, angleThresh);
 	pcc = nullptr;
 
 	aw_N = Config::instance()->get<int>("keyframe_check_N");
@@ -282,12 +281,12 @@ bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/
 			{
 				count++;
 				Frame *now_f = graph[keyframe_for_lc[i]];
-				for (int j = 0; j < now_f->f->feature_pts_3d_real.size(); j++)
+				for (int j = 0; j < now_f->f->feature_pts_3d.size(); j++)
 				{
-					feature_pool->feature_ids.push_back(now_f->f->feature_ids[j]);
+//					feature_pool->feature_ids.push_back(now_f->f->feature_ids[j]);
 					feature_pool->feature_pts.push_back(now_f->f->feature_pts[j]);
 					feature_pool->feature_pts_3d.push_back(now_f->f->feature_pts_3d[j]);
-					feature_pool->feature_pts_3d_real.push_back(now_f->f->feature_pts_3d_real[j]);
+//					feature_pool->feature_pts_3d_real.push_back(now_f->f->feature_pts_3d_real[j]);
 					feature_pool->feature_descriptors.push_back(now_f->f->feature_descriptors.row(j));
 					feature_pool->feature_frame_index.push_back(i);
 				}
@@ -315,7 +314,6 @@ bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/
 		v->setEstimate(Eigen2G2O(graph[k]->tran));
 		optimizer->addVertex(v);
 
-//		pcc->initCurr((unsigned short *)this->graph[k]->depth->data, 20.0f);
 		Eigen::Matrix<double, 6, 6> information;
 		for (int i = 0; i < frames.size(); i++)
 		{
@@ -323,16 +321,13 @@ bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/
 			float rmse;
 			int pc, pcorrc;
 			vector<cv::DMatch> inliers;
-//			pcc->initPrev((unsigned short *)this->graph[keyframe_for_lc[frames[i]]]->depth->data, 20.0f);
+
 			// find edges
 			if (Feature::getTransformationByRANSAC(tran, information, pc, pcorrc, rmse, &inliers,
-				feature_pool, graph[k]->f, pcc, matches[i]))
+				feature_pool, graph[k]->f, nullptr, matches[i]))
 			{
 //				if (keyframe_id[keyframe_for_lc[frames[i]]] != keyframe_indices.size() - 2)
 				{
-// 					float ratio = 1 / (loop_edges.size() + 1);
-// 					weight = weight * loop_edges.size() * ratio + pcorrc * squared_dist_threshold * ratio;
-
 					SwitchableEdge edge;
 					/*				edge.t_ = &t;*/
 					edge.id0 = keyframe_id[keyframe_for_lc[frames[i]]];
@@ -388,32 +383,56 @@ bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/
 // 				}
 			}
 		}
-
-// 		for (int i = 0; i < loop_edges.size(); i++)
-// 		{
-// 			loop_edges[i].ep_->setInformation(Eigen::Matrix<double, 1, 1>::Identity() * weight);
-// 		}
 		
 		delete feature_pool;
 
 		if (keyframe_indices.size() > 1)
 		{
-//			pcc->initPrev((unsigned short *)this->graph[keyframe_indices[keyframe_indices.size() - 2]]->depth->data, 20.0f);
 			Eigen::Matrix4f tran = graph[k]->relative_tran;
-//  			Eigen::Vector3f t = tran.topRightCorner(3, 1);
-//  			Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = tran.topLeftCorner(3, 3);
-//  			int point_count, point_corr_count;
-//  			pcc->getCoresp(t, rot, information, point_count, point_corr_count, threads, blocks);
+		
+			if (graph[k]->ransac_failed)
+			{
+				std::cout << ", failed edge";
+				SwitchableEdge edge;
+				/*				edge.t_ = &t;*/
+				edge.id0 = keyframe_indices.size() - 2;
+				edge.id1 = keyframe_indices.size() - 1;
 
-			g2o::EdgeSE3* g2o_edge = new g2o::EdgeSE3();
-			g2o_edge->vertices()[0] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(keyframe_indices.size() - 2));
-			g2o_edge->vertices()[1] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(keyframe_indices.size() - 1));
-			g2o_edge->setMeasurement(g2o::internal::fromSE3Quat(Eigen2G2O(tran)));
-			g2o_edge->setInformation(/*information*/InformationMatrix::Identity());
-			optimizer->addEdge(g2o_edge);
+				edge.v_ = new VertexSwitchLinear();
+				edge.v_->setId(switchable_id++);
+				edge.v_->setEstimate(0.5);
+				optimizer->addVertex(edge.v_);
 
-			odometry_traj.push_back(tran);
-			odometry_info.push_back(/*information*/InformationMatrix::Identity());
+				edge.ep_ = new EdgeSwitchPrior();
+				edge.ep_->vertices()[0] = edge.v_;
+				edge.ep_->setMeasurement(1.0);
+				edge.ep_->setInformation(Eigen::Matrix<double, 1, 1>::Identity() * 1.0);
+				optimizer->addEdge(edge.ep_);
+
+				edge.e_ = new EdgeSE3Switchable();
+				edge.e_->vertices()[0] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(edge.id0));
+				edge.e_->vertices()[1] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(edge.id1));
+				edge.e_->vertices()[2] = edge.v_;
+				edge.e_->setMeasurement(g2o::internal::fromSE3Quat(Eigen2G2O(tran)));
+				edge.e_->setInformation(/*information*/InformationMatrix::Identity());
+				optimizer->addEdge(edge.e_);
+				failed_edges.push_back(edge);
+				failed_trans.push_back(tran);
+				failed_info.push_back(/*information*/InformationMatrix::Identity());
+			}
+			else
+			{
+				g2o::EdgeSE3* g2o_edge = new g2o::EdgeSE3();
+				g2o_edge->vertices()[0] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(keyframe_indices.size() - 2));
+				g2o_edge->vertices()[1] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(keyframe_indices.size() - 1));
+				g2o_edge->setMeasurement(g2o::internal::fromSE3Quat(Eigen2G2O(tran)));
+				g2o_edge->setInformation(/*information*/InformationMatrix::Identity());
+				optimizer->addEdge(g2o_edge);
+
+				odometry_traj.push_back(tran);
+				odometry_info.push_back(/*information*/InformationMatrix::Identity());
+			}
+			
 
 #ifdef SAVE_TEST_INFOS
 			baseid.push_back(k);
@@ -423,8 +442,7 @@ bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/
 			inlierscount.push_back(0);
 			ransactrans.push_back(tran);
 #endif
-// 			if (frame_in_quadtree_indices.find(keyframe_indices[keyframe_indices.size() - 2]) == frame_in_quadtree_indices.end())
-// 				delete this->graph[keyframe_indices[keyframe_indices.size() - 2]]->depth;
+
 			count++;
 		}
 

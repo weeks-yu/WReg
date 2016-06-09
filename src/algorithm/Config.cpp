@@ -12,7 +12,7 @@ Config::Config() {
 	config["candidate_number"]		= static_cast<int>    (10);
 	config["min_matches"]			= static_cast<int>    (40);
 	config["min_inliers_percent"]	= static_cast<float>  (0.3);
-	config["max_dist_for_inliers"]	= static_cast<float>  (0.03);
+	config["max_dist_for_inliers"]	= static_cast<float>  (0.1);
 	config["matches_criterion"]		= static_cast<float>  (0.8);
 	config["coresp_percent"]		= static_cast<float>  (0.3);
 	config["ransac_max_iteration"]	= static_cast<int>    (1000);
@@ -70,7 +70,7 @@ Config::Config() {
 	// cuda parameters
 	config["icpcuda_threads"]		= static_cast<int>    (256);		// warpSize(32)的倍数
 	config["icpcuda_blocks"]		= static_cast<int>    (80);			// 480 * 640 / 80 / 256 = 15 整数
-	config["dist_threshold"]		= static_cast<float>  (0.01);
+	config["dist_threshold"]		= static_cast<float>  (0.1);
 	config["angle_threshold"]		= static_cast<float>  (0.34202);
 
 	// plane fitting

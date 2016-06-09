@@ -30,12 +30,12 @@ public:
 
 public:
 	
-	vector<unsigned long> feature_ids;
+//	vector<unsigned long> feature_ids;
 	vector<cv::KeyPoint> feature_pts;
 	vector_eigen_vector3f feature_pts_3d;
-	vector_eigen_vector3f feature_pts_3d_real;
+//	vector_eigen_vector3f feature_pts_3d_real;
 	cv::Mat feature_descriptors;
-	cv::Mat depth_image;
+//	cv::Mat depth_image;
 	vector<int> feature_frame_index;
 	bool multiple;
 	string type;
@@ -128,13 +128,13 @@ public:
 		PointCloudCuda *pcc,
 		const vector<cv::DMatch> &initial_matches);
 
-	static bool getTransformationByRANSAC_real(Eigen::Matrix4f &result_transform,
-		Eigen::Matrix<double, 6, 6> &result_information,
-		int &point_count, int &point_corr_count,
-		float &rmse, vector<cv::DMatch> *matches,
-		const Feature* earlier, const Feature* now,
-		PointCloudCuda *pcc,
-		const vector<cv::DMatch> &initial_matches);
+// 	static bool getTransformationByRANSAC_real(Eigen::Matrix4f &result_transform,
+// 		Eigen::Matrix<double, 6, 6> &result_information,
+// 		int &point_count, int &point_corr_count,
+// 		float &rmse, vector<cv::DMatch> *matches,
+// 		const Feature* earlier, const Feature* now,
+// 		PointCloudCuda *pcc,
+// 		const vector<cv::DMatch> &initial_matches);
 
 	static bool getPlanesByRANSAC(Eigen::Vector4f &result_plane, vector<pair<int, int>> *matches,
 		const cv::Mat &depth, const vector<pair<int, int>> &initial_point_indices);

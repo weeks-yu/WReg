@@ -251,11 +251,11 @@ void icp_test()
 {
 	const int icount = 2;
 	std::string rname[icount], dname[icount];
-	rname[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/rgb/1305033563.475960.png";
-	rname[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/rgb/1305033564.807990.png";
+	rname[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy/rgb/1305031230.865523.png";
+	rname[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy/rgb/1305031230.925860.png";
 
-	dname[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/depth/1305033563.472965.png";
-	dname[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/depth/1305033564.806879.png";
+	dname[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy/depth/1305031230.897394.png";
+	dname[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy/depth/1305031230.937310.png";
 
 	cv::Mat r[icount], d[icount];
 	PointCloudPtr cloud[icount];
@@ -337,14 +337,15 @@ void Ransac_Test()
 // 	rname[1] = "G:/kinect data/rgbd_dataset_freiburg1_floor/rgb/1305033566.576146.png";
 // 	dname[0] = "G:/kinect data/rgbd_dataset_freiburg1_floor/depth/1305033527.699102.png";
 // 	dname[1] = "G:/kinect data/rgbd_dataset_freiburg1_floor/depth/1305033566.605653.png";
-	rname[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk/rgb/1305031453.359684.png";
-	rname[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk/rgb/1305031454.291639.png";
-	dname[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk/depth/1305031453.374112.png";
-	dname[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk/depth/1305031454.304744.png";
+	rname[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy/rgb/1305031230.865523.png";
+	rname[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy/rgb/1305031230.925860.png";
+
+	dname[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy/depth/1305031230.897394.png";
+	dname[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy/depth/1305031230.937310.png";
 
 	cv::Mat r[icount], d[icount];
 	PointCloudPtr cloud[icount];
-	string feature_type = "SIFT";
+	string feature_type = "ORB";
 
 	r[0] = cv::imread(rname[0]);
 	d[0] = cv::imread(dname[0], -1);
@@ -1425,159 +1426,7 @@ void corr_test()
 
 void FeatureTest()
 {
-	const int dcount = 6;
-	std::string directories[dcount], names[dcount];
-	directories[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_xyz/";
-	directories[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk/";
-	directories[2] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_room/";
-	directories[3] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/";
-	directories[4] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk2/";
-	directories[5] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_360/";
-	names[0] = "xyz";
-	names[1] = "desk";
-	names[2] = "room";
-	names[3] = "floor";
-	names[4] = "desk2";
-	names[5] = "360";
 
-	const int fcount = 2;
-	std::string ftypes[fcount];
-	ftypes[0] = "SIFT";
-	ftypes[1] = "SURF";
-
-// 	const int gfcount = 2;
-// 	std::string gftypes[gfcount];
-// 	gftypes[0] = "SIFT";
-// 	gftypes[1] = "SURF";
-
-	const int sdcount = 18;
-	float dists[sdcount];
-	dists[0] = 0.01;
-	dists[1] = 0.02;
-	dists[2] = 0.03;
-	dists[3] = 0.04;
-	dists[4] = 0.05;
-	dists[5] = 0.06;
-	dists[6] = 0.07;
-	dists[7] = 0.08;
-	dists[8] = 0.09;
-	dists[9] = 0.1;
-	dists[10] = 0.15;
-	dists[11] = 0.2;
-	dists[12] = 0.25;
-	dists[13] = 0.30;
-	dists[14] = 0.35;
-	dists[15] = 0.4;
-	dists[16] = 0.45;
-	dists[17] = 0.5;
-
-	vector<double> timestamps;
-	vector<cv::DMatch> matches, inliers;
-	stringstream ss;
-
-	for (int d = 0; d < dcount; d++)
-	{
-		rgbs.clear();
-		depths.clear();
-		timestamps.clear();
-
-		cout << "Comnputing " << directories[d] << endl;
-		ss.clear();
-		ss.str("");
-		ss << directories[d] << "read.txt";
-		ifstream c_in(ss.str());
-		string line;
-		int k = 0;
-		while (getline(c_in, line))
-		{
-			int pos = line.find(" depth/");
-			if (pos != string::npos)
-			{
-				cv::Mat rgb = cv::imread(directories[d] + "/" + line.substr(0, pos));
-				cv::Mat depth = cv::imread(directories[d] + "/" + line.substr(pos + 1, line.length() - pos - 1), -1);
-				
-				rgbs[k] = rgb;
-				depths[k] = depth;
-
-				string ts_string = line.substr(pos + 7, line.length() - pos - 11);
-				ss.clear();
-				ss.str("");
-				ss << ts_string;
-				double ts;
-				ss >> ts;
-				timestamps.push_back(ts);
-
-				k++;
-			}
-		}
-		c_in.close();
-
-		for (int f = 0; f < fcount; f++)
-		{
-			for (int sd = 0; sd < sdcount; sd++)
-			{
-				cout << "\t" << ftypes[f] << "\t" << dists[sd] << endl;
-				Config::instance()->set<float>("max_dist_for_inliers", dists[sd]);
-
-				cout << "\t\t\t0" << endl;
-				Frame *last = new Frame(rgbs[0], depths[0], ftypes[f], Eigen::Matrix4f::Identity());
-				if (ftypes[f] != "ORB")
-				{
-					last->f->buildFlannIndex();
-				}
-
-				ss.clear();
-				ss.str("");
-				ss << "E:/" << names[d] << "_" << ftypes[f] << "_" << dists[sd] << ".txt";
-				ofstream r_out(ss.str());
-
-				Eigen::Matrix4f ac_tran = Eigen::Matrix4f::Identity();
-
-				for (int i = 1; i < k; i++)
-				{
-					if (i % 100 == 0)
-					{
-						cout << "\t\t\t" << i << endl;
-					}
-					Frame *now = new Frame(rgbs[i], depths[i], ftypes[f], Eigen::Matrix4f::Identity());
-
-					matches.clear();
-					inliers.clear();
-					Eigen::Matrix4f tran;
-					Eigen::Matrix<double, 6, 6> information;
-					float rmse;
-					int pc, pcorrc;
-
-					if (ftypes[f] != "ORB")
-						last->f->findMatchedPairs(matches, now->f);
-					else
-						last->f->findMatchedPairsBruteForce(matches, now->f);
-
-					if (Feature::getTransformationByRANSAC(tran, information, pc, pcorrc, rmse, &inliers, last->f, now->f, nullptr, matches))
-					{
-						tran = ac_tran * tran;
-						ac_tran = tran;
-					}
-					else
-					{
-						tran = ac_tran;
-					}
-					Eigen::Vector3f t = TranslationFromMatrix4f(tran);
-					Eigen::Quaternionf q = QuaternionFromMatrix4f(tran);
-
-					r_out << fixed << setprecision(6) << timestamps[i]
-						<< ' ' << t(0) << ' ' << t(1) << ' ' << t(2)
-						<< ' ' << q.x() << ' ' << q.y() << ' ' << q.z() << ' ' << q.w() << endl;
-
-					delete last;
-					last = now;
-					if (ftypes[f] != "ORB")
-						last->f->buildFlannIndex();
-				}
-				r_out.close();
-			}
-		}
-	}
 }
 
 void Statistics()
@@ -1865,6 +1714,7 @@ void Statistics()
 void getClouds()
 {
 	cout << "Converting images to clouds" << endl;
+	clouds.clear();
 	for (int i = 0; i < frame_count; i++)
 	{
 		PointCloudPtr cloud(new PointCloudT);
@@ -1992,7 +1842,7 @@ void ShowPairwiseResults(ofstream *out = nullptr)
 	}
 }
 
-void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, ofstream *out = nullptr)
+void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, ofstream *out = nullptr, bool verbose = true)
 {
 	vector<int> failed_pairwise;
 	bool save = out != nullptr;
@@ -2019,9 +1869,8 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, ofstr
 	float depthFactor = Config::instance()->get<float>("depth_factor");
 	float distThresh = Config::instance()->get<float>("dist_threshold");
 	float angleThresh = Config::instance()->get<float>("angle_threshold");
-//	PointCloudCuda *pcc = new PointCloudCuda(width, height, cx, cy, fx, fy, depthFactor, distThresh, angleThresh);
 	ICPOdometry *icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor, distThresh, angleThresh);
-	PointCloudCuda *pcc = nullptr;
+
 	const float max_dist_m = Config::instance()->get<float>("max_dist_for_inliers");
 	const float squared_max_dist_m = max_dist_m * max_dist_m;
 	const float min_inlier_percent = Config::instance()->get<float>("min_inliers_percent");
@@ -2041,16 +1890,24 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, ofstr
 
 	for (int i = 0; i < frame_count; i++)
 	{
-		cout << "Frame " << i;
+		if (verbose)
+			cout << "Frame " << i;
 		start = clock();
 		Frame *frame = new Frame(rgbs[i], depths[i], feature_type, Eigen::Matrix4f::Identity());
-		cout << ", F: " << clock() - start << "ms";
+		if (verbose)
+			cout << ", F: " << clock() - start << "ms";
 
 		if (i == 0)
 		{
 			frame->relative_tran = Eigen::Matrix4f::Identity();
 			if (feature_type != "ORB")
-				frame->f->buildFlannIndex();
+			{
+				if (FtoKF)
+					last_keyframe->f->buildFlannIndex();
+				else
+					frame->f->buildFlannIndex();
+			}
+				
 
 			last_frame = frame;
 			last_keyframe = frame;
@@ -2065,7 +1922,8 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, ofstr
 			keyframe_indices.push_back(i);
 			keyframe_id[i] = 0;
 			
-			cout << ", KF";
+			if (verbose)
+				cout << ", KF";
 			if (save)
 			{
 				*out << i << " true" << endl;
@@ -2074,7 +1932,6 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, ofstr
 		}
 		else
 		{
-//			pcc->initCurr((unsigned short *)depths[i].data, 20.0f);
 			matches.clear();
 			inliers.clear();
 
@@ -2083,40 +1940,61 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, ofstr
 
 			// f to f ransac
 			start = clock();
-//			pcc->initPrev((unsigned short *)depths[i - 1].data, 20.0f);
-			if (feature_type == "ORB")
-				last_frame->f->findMatchedPairsBruteForce(matches, frame->f);
+			if (FtoKF)
+			{
+				if (feature_type == "ORB")
+					last_keyframe->f->findMatchedPairsBruteForce(matches, frame->f);
+				else
+					last_keyframe->f->findMatchedPairs(matches, frame->f);
+			}
 			else
-				last_frame->f->findMatchedPairs(matches, frame->f);
-			cout << ", M: " << clock() - start << "ms";
+			{
+				if (feature_type == "ORB")
+					last_frame->f->findMatchedPairsBruteForce(matches, frame->f);
+				else
+					last_frame->f->findMatchedPairs(matches, frame->f);
+			}
+			
+			if (verbose)
+				cout << ", M: " << clock() - start << "ms";
 
 			start = clock();
-			bool ransac = Feature::getTransformationByRANSAC(tran, information,
-				pc, pcorrc, rmse, &inliers, last_frame->f, frame->f, pcc, matches);
-			cout << ", R: " << clock() - start << "ms";
+			bool ransac;
+			if (FtoKF)
+			{
+				ransac = Feature::getTransformationByRANSAC(tran, information,
+					pc, pcorrc, rmse, &inliers, last_keyframe->f, frame->f, nullptr, matches);
+			}
+			else
+			{
+				ransac = Feature::getTransformationByRANSAC(tran, information,
+					pc, pcorrc, rmse, &inliers, last_frame->f, frame->f, nullptr, matches);
+			}
+			
+			if (verbose)
+				cout << ", R: " << clock() - start << "ms";
 
 			// is new keyframe?
 			start = clock();
 			if (ransac)
 			{
 				relative_tran = tran;
-				cout << ", " << matches.size() << ", " << inliers.size();
+				if (verbose)
+					cout << ", " << matches.size() << ", " << inliers.size();
 
-				matches.clear();
-				inliers.clear();
-				if (feature_type == "ORB")
-					last_keyframe->f->findMatchedPairsBruteForce(matches, frame->f);
-				else
-					last_keyframe->f->findMatchedPairs(matches, frame->f);
+				if (!FtoKF)
+				{
+					matches.clear();
+					inliers.clear();
+					if (feature_type == "ORB")
+						last_keyframe->f->findMatchedPairsBruteForce(matches, frame->f);
+					else
+						last_keyframe->f->findMatchedPairs(matches, frame->f);
 
-				Feature::computeInliersAndError(inliers, rmse, nullptr, matches,
-					ac_tran * relative_tran,
-					last_keyframe->f, frame->f);
-
-//				Eigen::Matrix4f tran2;
-//				pcc->initPrev((unsigned short *)depths[keyframe_indices[keyframe_indices.size() - 1]].data, 20.0f);
-//				ransac = Feature::getTransformationByRANSAC(tran2, information,
-//					coresp, rmse, &inliers, last_keyframe->f, frame->f, pcc, matches);
+					Feature::computeInliersAndError(inliers, rmse, nullptr, matches,
+						ac_tran * relative_tran,
+						last_keyframe->f, frame->f);
+				}
 
 				float rrr = (float)inliers.size() / matches.size();
 				if (last_frame_is_keyframe)
@@ -2124,47 +2002,84 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, ofstr
 					rational_reference = rrr;
 				}
 				rrr /= rational_reference;
-				cout << ", " << rrr;
-				if (rrr < 0.5)
+				if (verbose)
+					cout << ", " << rrr;
+				if (rrr < Config::instance()->get<float>("keyframe_rational"))
 				{
 					isKeyframe = true;
 				}
 			}
 			else
 			{
-				cout << ", failed";
-				failed_pairwise.push_back(i);
+				Eigen::Matrix4f tran2 = Eigen::Matrix4f::Identity();
+				bool last_frame_success = false;
+				if (FtoKF && !last_frame_is_keyframe)
+				{
+					if (feature_type != "ORB")
+						last_frame->f->buildFlannIndex();
+					matches.clear();
+					inliers.clear();
+
+					if (feature_type == "ORB")
+						last_frame->f->findMatchedPairsBruteForce(matches, frame->f);
+					else
+						last_frame->f->findMatchedPairs(matches, frame->f);
+
+					last_frame_success = Feature::getTransformationByRANSAC(tran2, information,
+						pc, pcorrc, rmse, &inliers, last_frame->f, frame->f, nullptr, matches);
+				}
 
 				isKeyframe = true;
-				relative_tran = last_tran;
-				frame->ransac_failed = true;
+				if (FtoKF && last_frame_success)
+				{
+					relative_tran = ac_tran * tran2;
+				}
+				else
+				{
+					if (verbose)
+						cout << ", failed";
+					failed_pairwise.push_back(i);
 
-// 				icpcuda->initICPModel((unsigned short *)depths[i - 1].data, 20.0, Eigen::Matrix4f::Identity());
-// 				icpcuda->initICP((unsigned short *)depths[i].data, 20.0);
-// 
-// 				tran = Eigen::Matrix4f::Identity();
-// 				Eigen::Vector3f t = tran.topRightCorner(3, 1);
-// 				Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = tran.topLeftCorner(3, 3);
-// 				Eigen::Matrix4f e_tran = Eigen::Matrix4f::Identity();
-// 				Eigen::Vector3f e_t = e_tran.topRightCorner(3, 1);
-// 				Eigen::Matrix<float, 3, 3, Eigen::RowMajor> e_rot = e_tran.topLeftCorner(3, 3);
-// 				icpcuda->getIncrementalTransformation(t, rot, e_t, e_rot, threads, blocks);
-// 
-// 				tran.topLeftCorner(3, 3) = rot;
-// 				tran.topRightCorner(3, 1) = t;
-// 				tran = last_tran * tran;
+					frame->ransac_failed = true;
+
+					icpcuda->initICPModel((unsigned short *)depths[i - 1].data, 20.0f, Eigen::Matrix4f::Identity());
+					icpcuda->initICP((unsigned short *)depths[i].data, 20.0f);
+
+					Eigen::Vector3f t = tran2.topRightCorner(3, 1);
+					Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = tran2.topLeftCorner(3, 3);
+
+					Eigen::Matrix4f estimated_tran = Eigen::Matrix4f::Identity();
+					Eigen::Vector3f estimated_t = estimated_tran.topRightCorner(3, 1);
+					Eigen::Matrix<float, 3, 3, Eigen::RowMajor> estimated_rot = estimated_tran.topLeftCorner(3, 3);
+
+					icpcuda->getIncrementalTransformation(t, rot, estimated_t, estimated_rot, threads, blocks);
+
+					tran2.topLeftCorner(3, 3) = rot;
+					tran2.topRightCorner(3, 1) = t;
+
+					if (FtoKF)
+						relative_tran = ac_tran * tran2;
+					else
+						relative_tran = tran2;
+				}
 			}
 
 			last_tran = relative_tran;
 			ac_count++;
-			ac_tran = ac_tran * relative_tran;
-			relative_tran = ac_tran;
+			if (FtoKF)
+				ac_tran = relative_tran;
+			else
+			{
+				ac_tran = ac_tran * relative_tran;
+				relative_tran = ac_tran;
+			}
 
 			if (ac_count > mki)
 			{
 				isKeyframe = true;
 			}
-			cout << ", KF: " << clock() - start << "ms";
+			if (verbose)
+				cout << ", KF: " << clock() - start << "ms";
 
 			if (isKeyframe)
 			{
@@ -2174,20 +2089,26 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, ofstr
 
 			frame->relative_tran = relative_tran;
 
-			if (!last_frame_is_keyframe)
+			if (!FtoKF)
 			{
-				delete last_frame->f;
-				last_frame->f = nullptr;
+				if (!last_frame_is_keyframe)
+				{
+					delete last_frame->f;
+					last_frame->f = nullptr;
+				}
+				if (feature_type != "ORB")
+					frame->f->buildFlannIndex();
 			}
-			if (feature_type != "ORB")
-				frame->f->buildFlannIndex();
 			last_frame = frame;
 
 			if (isKeyframe)
 			{
-				cout << ", is Keyframe";
+				if (verbose)
+					cout << ", is Keyframe";
 				delete last_keyframe->f;
 				last_keyframe->f = nullptr;
+				if (FtoKF && feature_type != "ORB")
+					frame->f->buildFlannIndex();
 				last_keyframe = frame;
 				last_frame_is_keyframe = true;
 
@@ -2211,7 +2132,8 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, ofstr
 			}
 			graph.push_back(frame);
 		}
-		cout << endl;
+		if (verbose)
+			cout << endl;
 	}
 
 	if (last_frame_is_keyframe)
@@ -2225,10 +2147,13 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, ofstr
 		out->close();
 	}
 
-	cout << failed_pairwise.size() << endl;
-	for (int i = 0; i < failed_pairwise.size(); i++)
+	if (verbose)
 	{
-		cout << failed_pairwise[i] << endl;
+		cout << failed_pairwise.size() << endl;
+		for (int i = 0; i < failed_pairwise.size(); i++)
+		{
+			cout << failed_pairwise[i] << endl;
+		}
 	}
 }
 
@@ -2842,13 +2767,126 @@ void GlobalWithAll(ofstream *result_out = nullptr, ofstream *log_out = nullptr)
 	}
 }
 
+void pairwise_results()
+{
+	const int dcount = 3;
+	std::string directories[dcount], names[dcount];
+// 	directories[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_xyz/";
+// 	directories[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy";
+// 	directories[2] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk/";
+// 	directories[3] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk2/";
+// 	directories[4] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_360/";
+// 	directories[5] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_room/";
+// 	directories[6] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/";
+// 	directories[7] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_teddy/";
+// 	directories[8] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_plant/";
+
+	directories[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy";
+	directories[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_teddy/";
+	directories[2] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_plant/";
+
+// 	names[0] = "xyz";
+// 	names[1] = "rpy";
+// 	names[2] = "desk";
+// 	names[3] = "desk2";
+// 	names[4] = "360";
+// 	names[5] = "room";
+// 	names[6] = "floor";
+// 	names[7] = "teddy";
+// 	names[8] = "plant";
+
+	names[0] = "rpy";
+	names[1] = "teddy";
+	names[2] = "plant";
+
+	const int fcount = 3;
+	std::string ftypes[fcount];
+	ftypes[0] = "ORB";
+	ftypes[1] = "SIFT";
+	ftypes[2] = "SURF";
+
+	const int sdcount = 18;
+	float dists[sdcount];
+	dists[0] = 0.01;
+	dists[1] = 0.02;
+	dists[2] = 0.03;
+	dists[3] = 0.04;
+	dists[4] = 0.05;
+	dists[5] = 0.06;
+	dists[6] = 0.07;
+	dists[7] = 0.08;
+	dists[8] = 0.09;
+	dists[9] = 0.1;
+	dists[10] = 0.15;
+	dists[11] = 0.2;
+	dists[12] = 0.25;
+	dists[13] = 0.30;
+	dists[14] = 0.35;
+	dists[15] = 0.4;
+	dists[16] = 0.45;
+	dists[17] = 0.5;
+
+	int st = -1, ed = -1;
+	stringstream ss;
+
+	for (int dd = 0; dd < dcount; dd++)
+	{
+		readData(directories[dd], st, ed);
+
+		for (int sd = 0; sd < sdcount; sd++)
+		{
+			cout << "\t dists: " << dists[sd];
+			Config::instance()->set<float>("max_dist_for_inliers", dists[sd]);
+
+			for (int f = 0; f < fcount; f++)
+			{
+				cout << "\t" << ftypes[f];
+				ss.clear();
+				ss.str("");
+				ss << "E:/tempresults/" << names[dd] << "/"
+					<< names[dd] << "_ftof_" << ftypes[f] << "_" << dists[sd] << ".txt";
+				ofstream out1(ss.str());
+				PairwiseRegistration(ftypes[f], false, &out1, false);
+
+				ss.clear();
+				ss.str("");
+				ss << "E:/tempresults/" << names[dd] << "/"
+					<< names[dd] << "_" << ftypes[f] << "_" << dists[sd] << ".txt";
+				ofstream out2(ss.str());
+				Eigen::Matrix4f last_tran = Eigen::Matrix4f::Identity();
+				int k = 0;
+				for (int j = 0; j < frame_count; j++)
+				{
+					graph[j]->tran = last_tran * graph[j]->relative_tran;
+
+					Eigen::Vector3f t = TranslationFromMatrix4f(graph[j]->tran);
+					Eigen::Quaternionf q = QuaternionFromMatrix4f(graph[j]->tran);
+
+					out2 << fixed << setprecision(6) << timestamps[j]
+						<< ' ' << t(0) << ' ' << t(1) << ' ' << t(2)
+						<< ' ' << q.x() << ' ' << q.y() << ' ' << q.z() << ' ' << q.w() << endl;
+
+					if (k < keyframe_indices.size() && keyframe_indices[k] == j)
+					{
+						last_tran = graph[j]->tran;
+						k++;
+					}
+				}
+				out2.close();
+			}
+			cout << endl;
+		}
+	}
+}
+
 int main()
 {
 	//keyframe_test();
 	//something();
 	//icp_test();
-	//Ransac_Test();
 	//return 0;
+	Ransac_Test();
+	return 0;
 	//Ransac_Result_Show();
 	//return 0;
 	//Registration_Result_Show();
@@ -2862,12 +2900,17 @@ int main()
 	//FeatureTest();
 	//return 0;
 	//Statistics();
-	const int dcount = 4;
+
+// 	pairwise_results();
+// 	return 0;
+
+	const int dcount = 5;
 	std::string directories[dcount], names[dcount];
 	directories[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_xyz/";
 	directories[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk/";
 	directories[2] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_room/";
 	directories[3] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/";
+	directories[4] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy/";
 // 	directories[0] = "G:/kinect data/rgbd_dataset_freiburg1_xyz/";
 // 	directories[1] = "G:/kinect data/rgbd_dataset_freiburg1_desk/";
 // 	directories[2] = "G:/kinect data/rgbd_dataset_freiburg1_room/";
@@ -2958,6 +3001,7 @@ int main()
 	cout << "1: " << directories[1] << endl;
 	cout << "2: " << directories[2] << endl;
 	cout << "3: " << directories[3] << endl;
+	cout << "4: " << directories[4] << endl;
 
 	cout << "directory: ";
 	cin >> dd;

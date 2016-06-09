@@ -98,6 +98,17 @@ void SlamEngine::setUsingFeature(bool use)
 	using_feature = use;
 	if (using_feature)
 	{
+		int width = Config::instance()->get<int>("image_width");
+		int height = Config::instance()->get<int>("image_height");
+		float cx = Config::instance()->get<float>("camera_cx");
+		float cy = Config::instance()->get<float>("camera_cy");
+		float fx = Config::instance()->get<float>("camera_fx");
+		float fy = Config::instance()->get<float>("camera_fy");
+		float depthFactor = Config::instance()->get<float>("depth_factor");
+		float distThresh = Config::instance()->get<float>("dist_threshold");
+		float angleThresh = Config::instance()->get<float>("angle_threshold");
+		if (icpcuda == nullptr)
+			icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor, distThresh, angleThresh);
 	}
 }
 
@@ -129,7 +140,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 		if (m_size > max_pt_count) max_pt_count = m_size;
 		std::cout << "size: " << m_size;
 
-		if (using_icpcuda)
+		if (using_icpcuda || using_feature)
 		{
 			imgDepth.copyTo(last_depth);
 		}
@@ -327,23 +338,26 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			else
 			{
 				ransac_failed = true;
+				ransac_failed_frames.push_back(frame_id);
 				isKeyframe = true;
-				relative_tran = last_transformation;
 
-// 				icpcuda->initICPModel((unsigned short *)last_depth.data, 20.0f, Eigen::Matrix4f::Identity());
-// 				icpcuda->initICP((unsigned short *)imgDepth.data, 20.0f);
-// 
-// 				Eigen::Vector3f t = relative_tran.topRightCorner(3, 1);
-// 				Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = relative_tran.topLeftCorner(3, 3);
-// 
-// 				Eigen::Matrix4f estimated_tran = Eigen::Matrix4f::Identity();
-// 				Eigen::Vector3f estimated_t = estimated_tran.topRightCorner(3, 1);
-// 				Eigen::Matrix<float, 3, 3, Eigen::RowMajor> estimated_rot = estimated_tran.topLeftCorner(3, 3);
-// 
-// 				icpcuda->getIncrementalTransformation(t, rot, estimated_t, estimated_rot, threads, blocks);
-// 
-// 				relative_tran.topLeftCorner(3, 3) = rot;
-// 				relative_tran.topRightCorner(3, 1) = t;
+				icpcuda->initICPModel((unsigned short *)last_depth.data, 20.0f, Eigen::Matrix4f::Identity());
+				icpcuda->initICP((unsigned short *)imgDepth.data, 20.0f);
+
+				Eigen::Matrix4f tran2;
+				Eigen::Vector3f t = tran2.topRightCorner(3, 1);
+				Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = tran2.topLeftCorner(3, 3);
+
+				Eigen::Matrix4f estimated_tran = Eigen::Matrix4f::Identity();
+				Eigen::Vector3f estimated_t = estimated_tran.topRightCorner(3, 1);
+				Eigen::Matrix<float, 3, 3, Eigen::RowMajor> estimated_rot = estimated_tran.topLeftCorner(3, 3);
+
+				icpcuda->getIncrementalTransformation(t, rot, estimated_t, estimated_rot, threads, blocks);
+
+				tran2.topLeftCorner(3, 3) = rot;
+				tran2.topRightCorner(3, 1) = t;
+
+				relative_tran = tran2;
 			}
 		}
 
@@ -453,7 +467,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 		}
 
 		last_cloud = cloud_for_registration;
-		if (using_icpcuda)
+		if (using_icpcuda || using_feature)
 			imgDepth.copyTo(last_depth);
 		if (using_feature)
 		{
@@ -802,6 +816,15 @@ void SlamEngine::ShowStatistics()
 			{
 				cout << robust_manager.insertion_failure[i].first << ", " << robust_manager.insertion_failure[i].second << endl;
 			}
+		}
+	}
+
+	if (ransac_failed_frames.size() > 0)
+	{
+		cout << "ransac failed: " << endl;
+		for (int i = 0; i < ransac_failed_frames.size(); i++)
+		{
+			cout << ransac_failed_frames[i] << endl;
 		}
 	}
 }

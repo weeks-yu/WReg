@@ -102,6 +102,7 @@ public:
 	vector<int> id_detect_lc;
 	vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f>> current_positions;
 	vector<vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f>>> positions;
+	vector<int> ransac_failed_frames;
 
 private:
 	int frame_id;

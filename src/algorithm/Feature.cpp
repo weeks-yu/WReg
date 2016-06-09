@@ -120,11 +120,11 @@ void Feature::extract(const cv::Mat &imgRGB, const cv::Mat &imgDepth, string typ
 	{
 		Feature::ORBExtractor(feature_pts, feature_pts_3d, feature_descriptors, imgRGB, imgDepth);
 	}
-	for (int i = 0; i < feature_pts.size(); i++)
-	{
-		feature_ids.push_back(0);
-	}
-	depth_image = imgDepth;
+// 	for (int i = 0; i < feature_pts.size(); i++)
+// 	{
+// 		feature_ids.push_back(0);
+// 	}
+//	depth_image = imgDepth;
 	flann_matcher = nullptr;
 }
 
@@ -362,12 +362,12 @@ int Feature::getFrameCount()
 
 void Feature::updateFeaturePoints3DReal(const Eigen::Matrix4f &tran)
 {
-	Eigen::Affine3f a(tran);
-	feature_pts_3d_real.clear();
-	for (int i = 0; i < feature_pts.size(); i++)
-	{
-		feature_pts_3d_real.push_back(a * feature_pts_3d[i]);
-	}
+// 	Eigen::Affine3f a(tran);
+// 	feature_pts_3d_real.clear();
+// 	for (int i = 0; i < feature_pts.size(); i++)
+// 	{
+// 		feature_pts_3d_real.push_back(a * feature_pts_3d[i]);
+// 	}
 }
 
 template <class InputVector>
@@ -549,7 +549,7 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
 	int blocks = Config::instance()->get<int>("icpcuda_blocks");
 	float corr_percent = Config::instance()->get<float>("coresp_percent");
 	Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
-	int pc, pcorrc;
+	int pc = 1.0, pcorrc = 0.0;
 
 	bool *used = new bool[initial_matches.size()];
 	memset(used, 0, initial_matches.size() * sizeof(bool));
@@ -669,178 +669,178 @@ bool Feature::getTransformationByRANSAC(Eigen::Matrix4f &result_transform,
 	return best_inlier_cnt >= min_inlier_threshold;
 }
 
-bool Feature::getTransformationByRANSAC_real(Eigen::Matrix4f &result_transform,
-	Eigen::Matrix<double, 6, 6> &result_information,
-	int &point_count, int &point_corr_count,
-	float &rmse, vector<cv::DMatch> *matches, // output vars. if matches == nullptr, do not return inlier match
-	const Feature* earlier, const Feature* now,
-	PointCloudCuda *pcc,
-	const vector<cv::DMatch> &initial_matches)
-{
-	if (matches != nullptr)	matches->clear();
-
-	if (initial_matches.size() < (unsigned int)Config::instance()->get<int>("min_matches"))
-	{
-		return false;
-	}
-
-	unsigned int min_inlier_threshold = (unsigned int)(initial_matches.size() * Config::instance()->get<float>("min_inliers_percent"));
-	std::vector<cv::DMatch> inlier; //holds those feature correspondences that support the transformation
-	float inlier_error; //all squared errors
-	srand((long)std::clock());
-
-	// a point is an inlier if it's no more than max_dist_m m from its partner apart
-	const float max_dist_m = Config::instance()->get<float>("max_dist_for_inliers");
-	const float squared_max_dist_m = max_dist_m * max_dist_m;
-
-	// best values of all iterations (including invalids)
-	float best_error = 1e6, best_error_invalid = 1e6;
-	unsigned int best_inlier_invalid = 0, best_inlier_cnt = 0, valid_iterations = 0;
-	Eigen::Matrix4f transformation;
-
-	const unsigned int sample_size = 3;// chose this many randomly from the correspondences:
-
-	unsigned int ransac_iterations = Config::instance()->get<int>("ransac_max_iteration");
-	int threads = Config::instance()->get<int>("icpcuda_threads");
-	int blocks = Config::instance()->get<int>("icpcuda_blocks");
-	float corr_percent = Config::instance()->get<float>("coresp_percent");
-	Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
-	int pc, pcorrc;
-
-	for (unsigned int n_iter = 0; n_iter < ransac_iterations; n_iter++)
-	{
-		//generate a map of samples. Using a map solves the problem of drawing a sample more than once
-		std::set<cv::DMatch> sample_matches;
-		std::vector<cv::DMatch> sample_matches_vector;
-		while (sample_matches.size() < sample_size){
-			int id = rand() % initial_matches.size();
-			sample_matches.insert(initial_matches.at(id));
-			sample_matches_vector.push_back(initial_matches.at(id));
-		}
-
-		bool valid; // valid is false iff the sampled points clearly aren't inliers themself 
-		transformation = Feature::getTransformFromMatches(valid,
-			earlier->feature_pts_3d_real,
-			now->feature_pts_3d,
-			sample_matches, max_dist_m);
-
-		if (!valid) continue; // valid is false iff the sampled points aren't inliers themself 
-		if (transformation != transformation) continue; //Contains NaN
-
-		//test whether samples are inliers (more strict than before)
-		Feature::computeInliersAndError(inlier, inlier_error, nullptr,
-			sample_matches_vector, transformation,
-			earlier->feature_pts_3d_real, now->feature_pts_3d,
-			squared_max_dist_m);
-		if (inlier_error > 1000) continue; //most possibly a false match in the samples
-
-		Feature::computeInliersAndError(inlier, inlier_error, nullptr,
-			initial_matches, transformation,
-			earlier->feature_pts_3d_real, now->feature_pts_3d,
-			squared_max_dist_m);
-
-		// check also invalid iterations
-		if (inlier.size() > best_inlier_invalid)
-		{
-			best_inlier_invalid = inlier.size();
-			best_error_invalid = inlier_error;
-		}
-
-		if (inlier.size() < min_inlier_threshold || inlier_error > max_dist_m)
-		{
-			continue;
-		}
-
-		valid_iterations++;
-		//		assert(inlier_error>0);
-
-		//Performance hacks:
-		///Iterations with more than half of the initial_matches inlying, count twice
-		if (inlier.size() > initial_matches.size() * 0.5) n_iter++;
-		///Iterations with more than 80% of the initial_matches inlying, count threefold
-		if (inlier.size() > initial_matches.size() * 0.8) n_iter++;
-
-		if (inlier_error < best_error)
-		{ //copy this to the result
-			if (pcc != nullptr)
-			{
-				Eigen::Vector3f t = transformation.topRightCorner(3, 1);
-				Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = transformation.topLeftCorner(3, 3);
-				pcc->getCoresp(t, rot, information, pc, pcorrc, threads, blocks);
-			}
-
-			result_transform = transformation;
-			result_information = information;
-			point_count = pc;
-			point_corr_count = pcorrc;
-			if (matches != nullptr) *matches = inlier;
-			//			assert(matches.size() >= min_inlier_threshold);
-			//			assert(matches.size()>= ((float)initial_matches.size()) * min_inlier_ratio);
-			best_inlier_cnt = inlier.size();
-			rmse = inlier_error;
-			best_error = inlier_error;
-		}
-		// 		else
-		// 		{
-		// 			
-		// 		}
-
-		//int max_ndx = min((int) min_inlier_threshold,30); //? What is this 30?
-		float new_inlier_error;
-
-		transformation = Feature::getTransformFromMatches(valid,
-			earlier->feature_pts_3d_real, now->feature_pts_3d, inlier); // compute new trafo from all inliers:
-		if (transformation != transformation) continue; //Contains NaN
-		Feature::computeInliersAndError(inlier, new_inlier_error, nullptr,
-			initial_matches, transformation,
-			earlier->feature_pts_3d_real, now->feature_pts_3d,
-			squared_max_dist_m);
-
-		// check also invalid iterations
-		if (inlier.size() > best_inlier_invalid)
-		{
-			best_inlier_invalid = inlier.size();
-			best_error_invalid = inlier_error;
-		}
-
-		if (inlier.size() < min_inlier_threshold || new_inlier_error > max_dist_m)
-		{
-			continue;
-		}
-
-		//		assert(new_inlier_error > 0);
-
-		if (new_inlier_error < best_error)
-		{
-			if (pcc != nullptr)
-			{
-				Eigen::Vector3f t = transformation.topRightCorner(3, 1);
-				Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = transformation.topLeftCorner(3, 3);
-				pcc->getCoresp(t, rot, information, pc, pcorrc, threads, blocks);
-			}
-
-			result_transform = transformation;
-			if (pcc != nullptr)
-				result_information = information;
-			point_count = pc;
-			point_corr_count = pcorrc;
-			if (matches != nullptr) *matches = inlier;
-			//			assert(matches->size() >= min_inlier_threshold);
-			//			assert(matches.size()>= ((float)initial_matches->size())*min_inlier_ratio);
-			best_inlier_cnt = inlier.size();
-			rmse = new_inlier_error;
-			best_error = new_inlier_error;
-		}
-		// 		else
-		// 		{
-		// 
-		// 		}
-	} //iterations
-
-	if (pcc == nullptr)
-		result_information = Eigen::Matrix<double, 6, 6>::Identity();
-	return best_inlier_cnt >= min_inlier_threshold;
-}
+// bool Feature::getTransformationByRANSAC_real(Eigen::Matrix4f &result_transform,
+// 	Eigen::Matrix<double, 6, 6> &result_information,
+// 	int &point_count, int &point_corr_count,
+// 	float &rmse, vector<cv::DMatch> *matches, // output vars. if matches == nullptr, do not return inlier match
+// 	const Feature* earlier, const Feature* now,
+// 	PointCloudCuda *pcc,
+// 	const vector<cv::DMatch> &initial_matches)
+// {
+// 	if (matches != nullptr)	matches->clear();
+// 
+// 	if (initial_matches.size() < (unsigned int)Config::instance()->get<int>("min_matches"))
+// 	{
+// 		return false;
+// 	}
+// 
+// 	unsigned int min_inlier_threshold = (unsigned int)(initial_matches.size() * Config::instance()->get<float>("min_inliers_percent"));
+// 	std::vector<cv::DMatch> inlier; //holds those feature correspondences that support the transformation
+// 	float inlier_error; //all squared errors
+// 	srand((long)std::clock());
+// 
+// 	// a point is an inlier if it's no more than max_dist_m m from its partner apart
+// 	const float max_dist_m = Config::instance()->get<float>("max_dist_for_inliers");
+// 	const float squared_max_dist_m = max_dist_m * max_dist_m;
+// 
+// 	// best values of all iterations (including invalids)
+// 	float best_error = 1e6, best_error_invalid = 1e6;
+// 	unsigned int best_inlier_invalid = 0, best_inlier_cnt = 0, valid_iterations = 0;
+// 	Eigen::Matrix4f transformation;
+// 
+// 	const unsigned int sample_size = 3;// chose this many randomly from the correspondences:
+// 
+// 	unsigned int ransac_iterations = Config::instance()->get<int>("ransac_max_iteration");
+// 	int threads = Config::instance()->get<int>("icpcuda_threads");
+// 	int blocks = Config::instance()->get<int>("icpcuda_blocks");
+// 	float corr_percent = Config::instance()->get<float>("coresp_percent");
+// 	Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
+// 	int pc, pcorrc;
+// 
+// 	for (unsigned int n_iter = 0; n_iter < ransac_iterations; n_iter++)
+// 	{
+// 		//generate a map of samples. Using a map solves the problem of drawing a sample more than once
+// 		std::set<cv::DMatch> sample_matches;
+// 		std::vector<cv::DMatch> sample_matches_vector;
+// 		while (sample_matches.size() < sample_size){
+// 			int id = rand() % initial_matches.size();
+// 			sample_matches.insert(initial_matches.at(id));
+// 			sample_matches_vector.push_back(initial_matches.at(id));
+// 		}
+// 
+// 		bool valid; // valid is false iff the sampled points clearly aren't inliers themself 
+// 		transformation = Feature::getTransformFromMatches(valid,
+// 			earlier->feature_pts_3d_real,
+// 			now->feature_pts_3d,
+// 			sample_matches, max_dist_m);
+// 
+// 		if (!valid) continue; // valid is false iff the sampled points aren't inliers themself 
+// 		if (transformation != transformation) continue; //Contains NaN
+// 
+// 		//test whether samples are inliers (more strict than before)
+// 		Feature::computeInliersAndError(inlier, inlier_error, nullptr,
+// 			sample_matches_vector, transformation,
+// 			earlier->feature_pts_3d_real, now->feature_pts_3d,
+// 			squared_max_dist_m);
+// 		if (inlier_error > 1000) continue; //most possibly a false match in the samples
+// 
+// 		Feature::computeInliersAndError(inlier, inlier_error, nullptr,
+// 			initial_matches, transformation,
+// 			earlier->feature_pts_3d_real, now->feature_pts_3d,
+// 			squared_max_dist_m);
+// 
+// 		// check also invalid iterations
+// 		if (inlier.size() > best_inlier_invalid)
+// 		{
+// 			best_inlier_invalid = inlier.size();
+// 			best_error_invalid = inlier_error;
+// 		}
+// 
+// 		if (inlier.size() < min_inlier_threshold || inlier_error > max_dist_m)
+// 		{
+// 			continue;
+// 		}
+// 
+// 		valid_iterations++;
+// 		//		assert(inlier_error>0);
+// 
+// 		//Performance hacks:
+// 		///Iterations with more than half of the initial_matches inlying, count twice
+// 		if (inlier.size() > initial_matches.size() * 0.5) n_iter++;
+// 		///Iterations with more than 80% of the initial_matches inlying, count threefold
+// 		if (inlier.size() > initial_matches.size() * 0.8) n_iter++;
+// 
+// 		if (inlier_error < best_error)
+// 		{ //copy this to the result
+// 			if (pcc != nullptr)
+// 			{
+// 				Eigen::Vector3f t = transformation.topRightCorner(3, 1);
+// 				Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = transformation.topLeftCorner(3, 3);
+// 				pcc->getCoresp(t, rot, information, pc, pcorrc, threads, blocks);
+// 			}
+// 
+// 			result_transform = transformation;
+// 			result_information = information;
+// 			point_count = pc;
+// 			point_corr_count = pcorrc;
+// 			if (matches != nullptr) *matches = inlier;
+// 			//			assert(matches.size() >= min_inlier_threshold);
+// 			//			assert(matches.size()>= ((float)initial_matches.size()) * min_inlier_ratio);
+// 			best_inlier_cnt = inlier.size();
+// 			rmse = inlier_error;
+// 			best_error = inlier_error;
+// 		}
+// 		// 		else
+// 		// 		{
+// 		// 			
+// 		// 		}
+// 
+// 		//int max_ndx = min((int) min_inlier_threshold,30); //? What is this 30?
+// 		float new_inlier_error;
+// 
+// 		transformation = Feature::getTransformFromMatches(valid,
+// 			earlier->feature_pts_3d_real, now->feature_pts_3d, inlier); // compute new trafo from all inliers:
+// 		if (transformation != transformation) continue; //Contains NaN
+// 		Feature::computeInliersAndError(inlier, new_inlier_error, nullptr,
+// 			initial_matches, transformation,
+// 			earlier->feature_pts_3d_real, now->feature_pts_3d,
+// 			squared_max_dist_m);
+// 
+// 		// check also invalid iterations
+// 		if (inlier.size() > best_inlier_invalid)
+// 		{
+// 			best_inlier_invalid = inlier.size();
+// 			best_error_invalid = inlier_error;
+// 		}
+// 
+// 		if (inlier.size() < min_inlier_threshold || new_inlier_error > max_dist_m)
+// 		{
+// 			continue;
+// 		}
+// 
+// 		//		assert(new_inlier_error > 0);
+// 
+// 		if (new_inlier_error < best_error)
+// 		{
+// 			if (pcc != nullptr)
+// 			{
+// 				Eigen::Vector3f t = transformation.topRightCorner(3, 1);
+// 				Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = transformation.topLeftCorner(3, 3);
+// 				pcc->getCoresp(t, rot, information, pc, pcorrc, threads, blocks);
+// 			}
+// 
+// 			result_transform = transformation;
+// 			if (pcc != nullptr)
+// 				result_information = information;
+// 			point_count = pc;
+// 			point_corr_count = pcorrc;
+// 			if (matches != nullptr) *matches = inlier;
+// 			//			assert(matches->size() >= min_inlier_threshold);
+// 			//			assert(matches.size()>= ((float)initial_matches->size())*min_inlier_ratio);
+// 			best_inlier_cnt = inlier.size();
+// 			rmse = new_inlier_error;
+// 			best_error = new_inlier_error;
+// 		}
+// 		// 		else
+// 		// 		{
+// 		// 
+// 		// 		}
+// 	} //iterations
+// 
+// 	if (pcc == nullptr)
+// 		result_information = Eigen::Matrix<double, 6, 6>::Identity();
+// 	return best_inlier_cnt >= min_inlier_threshold;
+// }
 
 bool Feature::getPlanesByRANSAC(Eigen::Vector4f &result_plane, vector<pair<int, int>> *matches,
 	const cv::Mat &depth, const vector<pair<int, int>> &initial_point_indices)
