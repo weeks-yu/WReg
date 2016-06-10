@@ -2888,13 +2888,13 @@ void pairwise_results()
 // 	names[1] = "teddy";
 // 	names[2] = "plant";
 
-	const int fcount = 3;
+	const int fcount = 1;
 	std::string ftypes[fcount];
-	ftypes[0] = "ORB";
-	ftypes[1] = "SIFT";
-	ftypes[2] = "SURF";
+// 	ftypes[0] = "ORB";
+// 	ftypes[1] = "SIFT";
+	ftypes[0] = "SURF";
 
-	const int sdcount = 10;
+	const int sdcount = 9;
 	float dists[sdcount];
 	dists[0] = 0.01;
 	dists[1] = 0.02;
@@ -2902,31 +2902,8 @@ void pairwise_results()
 	dists[3] = 0.05;
 	dists[4] = 0.08;
 	dists[5] = 0.1;
-	dists[6] = 0.15;
 	dists[7] = 0.2;
-	dists[8] = 0.25;
-	dists[9] = 0.30;
-
-	float siftdists[dcount] = { 
-		0.1,
-		0.03,
-		0.02,
-		0.3,
-		0.1,
-		0.25,
-		0.1,
-		0.25,
-		0.3 };
-	float surfdists[dcount] = {
-		0.03,
-		0.03,
-		0.1,
-		0.25,
-		0.03,
-		0.3,
-		0.3,
-		0.25,
-		0.2	};
+	dists[8] = 0.3;
 
 	int st = -1, ed = -1;
 	stringstream ss;
@@ -2942,11 +2919,6 @@ void pairwise_results()
 
 			for (int f = 0; f < fcount; f++)
 			{
-				if (ftypes[f] == "SIFT" && dists[sd] != siftdists[dd] ||
-					ftypes[f] == "SURF" && dists[sd] != surfdists[dd])
-				{
-					continue;
-				}
 				cout << "\t" << ftypes[f];
 				ss.clear();
 				ss.str("");
@@ -2960,7 +2932,7 @@ void pairwise_results()
 					<< names[dd] << "_" << ftypes[f] << "_" << dists[sd] << ".txt";
 				ofstream out2(ss.str());
 
-				PairwiseRegistration(ftypes[f], false, true, &out1, &out1, false);
+				PairwiseRegistration(ftypes[f], false, true, &out1, &out2, false);
 
 // 				Eigen::Matrix4f last_tran = Eigen::Matrix4f::Identity();
 // 				int k = 0;
