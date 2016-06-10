@@ -2472,6 +2472,13 @@ void GlobalRegistration(string graph_ftype = "SIFT",
 		result_out->close();
 	}
 
+	if (save_log)
+	{
+		*log_out << "Keyframe number: " << keyframe_indices.size() << endl;
+		*log_out << "LC candidate: " << engine.getLCCandidate() << endl;
+		log_out->close();
+	}
+
 // 	vector<pair<int, int>> loops = engine.GetLoop();
 // 	cout << "Loop: " << loops.size() << endl;
 // 	for (int i = 0; i < loops.size(); i++)
@@ -3101,12 +3108,12 @@ void repeat_global_results()
 	prs[0] = "E:/bestresults/xyz/xyz_repeat_ORB_15.txt";
 	prs[1] = "E:/bestresults/desk/desk_repeat_ORB_6.txt";
 	prs[2] = "E:/bestresults/desk2/desk2_repeat_ORB_18.txt";
-	prs[3] = "E:/bestresults/360/360_repeat_ORB_2.txt";
-	prs[4] = "E:/bestresults/room/room_repeat_ORB_19.txt";
-	prs[5] = "E:/bestresults/floor/floor_repeat_ORB_19.txt";
-	prs[6] = "E:/bestresults/rpy/rpy_repeat_ORB_12.txt";
-	prs[7] = "E:/bestresults/teddy/teddy_repeat_ORB_12.txt";
-	prs[8] = "E:/bestresults/plant/plant_repeat_ORB_0.txt";
+	prs[3] = "E:/bestresults/360/360_repeat_SURF_1.txt";
+	prs[4] = "E:/bestresults/room/room_repeat_SURF_1.txt";
+	prs[5] = "E:/bestresults/floor/floor_repeat_SURF_2.txt";
+	prs[6] = "E:/bestresults/rpy/rpy_repeat_SURF_2.txt";
+	prs[7] = "E:/bestresults/teddy/teddy_repeat_SURF_0.txt";
+	prs[8] = "E:/bestresults/plant/plant_repeat_SURF_1.txt";
 
 // 	names[0] = "rpy";
 // 	names[1] = "teddy";
@@ -3138,7 +3145,7 @@ void repeat_global_results()
 	{
 		readData(directories[dd], st, ed, false);
 
-		for (int f = gfcount - 1; f >= 0; f--)
+		for (int f = gfcount - 1; f >= 1; f--)
 		{
 			cout << "\t" << gftypes[f];
 
@@ -3156,7 +3163,13 @@ void repeat_global_results()
 					ss << "E:/tempresults/" << names[dd] << "/global/"
 						<< names[dd] << "_" << gftypes[f] << "_" << i << ".txt";
 					ofstream out1(ss.str());
-					GlobalRegistration(gftypes[f], nullptr, &out1);
+
+					ss.clear();
+					ss.str("");
+					ss << "E:/tempresults/" << names[dd] << "/global/"
+						<< names[dd] << "_" << gftypes[f] << "_" << i << ".log";
+					ofstream out2(ss.str());
+					GlobalRegistration(gftypes[f], nullptr, &out1, &out2);
 				}
 			}
 		}
@@ -3186,11 +3199,11 @@ int main()
 	//Statistics();
 
 // 	pairwise_results();
-	repeat_pairwise_results();
+//	repeat_pairwise_results();
 //	repeat_global_results();
- 	return 0;
+// 	return 0;
 
-	const int dcount = 6;
+	const int dcount = 9;
 	std::string directories[dcount], names[dcount];
 	directories[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_xyz/";
 	directories[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk/";
@@ -3198,6 +3211,9 @@ int main()
 	directories[3] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/";
 	directories[4] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy/";
 	directories[5] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_360/";
+	directories[6] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_room/";
+	directories[7] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_teddy/";
+	directories[8] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_plant/";
 // 	directories[0] = "G:/kinect data/rgbd_dataset_freiburg1_xyz/";
 // 	directories[1] = "G:/kinect data/rgbd_dataset_freiburg1_desk/";
 // 	directories[2] = "G:/kinect data/rgbd_dataset_freiburg1_room/";
@@ -3290,6 +3306,9 @@ int main()
 	cout << "3: " << directories[3] << endl;
 	cout << "4: " << directories[4] << endl;
 	cout << "5: " << directories[5] << endl;
+	cout << "6: " << directories[6] << endl;
+	cout << "7: " << directories[7] << endl;
+	cout << "8: " << directories[8] << endl;
 
 	cout << "directory: ";
 	cin >> dd;

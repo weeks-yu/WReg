@@ -61,13 +61,15 @@ public:
 	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> ransactrans;
 #endif
 
-private:
+public:
 
 	g2o::SparseOptimizer* optimizer;
 
-	int iteration_count;
-
 	vector<Frame*> graph;
+
+private:
+
+	int iteration_count;
 
 	int last_kc;
 
@@ -122,8 +124,8 @@ public:
 
 	vector<Frame*> getGraph() { return graph; }
 
-private:
-	Eigen::Matrix4f G2O2Matrix4f(const g2o::SE3Quat se3) {
+public:
+	static Eigen::Matrix4f G2O2Matrix4f(const g2o::SE3Quat se3) {
 		Eigen::Matrix4d m = se3.to_homogeneous_matrix(); //_Matrix< 4, 4, double >
 		Eigen::Matrix4f mm;
 		for (int i = 0; i < 4; i++)

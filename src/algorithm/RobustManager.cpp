@@ -8,7 +8,7 @@ typedef g2o::LinearSolverPCG<SlamBlockSolver::PoseMatrixType> SlamLinearPCGSolve
 RobustManager::RobustManager(bool use_lp)
 {
 	optimizer = new g2o::SparseOptimizer();
-	optimizer->setVerbose(false);
+	optimizer->setVerbose(true);
 	SlamBlockSolver * solver = NULL;
 	SlamLinearCSparseSolver* linearSolver = new SlamLinearCSparseSolver();
 	linearSolver->setBlockOrdering(false);

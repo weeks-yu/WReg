@@ -42,7 +42,7 @@ Config::Config() {
 	config["hogman_iterations"]		= static_cast<int>    (10);
 
 	// Robust
-	config["robust_iterations"]		= static_cast<int> (100);
+	config["robust_iterations"]		= static_cast<int> (10);
 
 	// Camera parameters
 	config["image_width"]			= static_cast<int>    (640);

@@ -315,6 +315,7 @@ bool Feature::findMatchedPairsMultiple(vector<int> &frames, vector<vector<cv::DM
 		memset(frame_match_count, 0, frame_count * sizeof(int));
 		for (int j = 0; j < k; j++)
 		{
+			if (j >= matches_[i].size()) break;
 			int u = this->feature_frame_index[matches_[i][j].trainIdx];
 			if (frame_match_count[u] == 1)
 			{

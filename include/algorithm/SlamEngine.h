@@ -85,6 +85,12 @@ public:
 	void SaveLogs(ofstream &outfile);
 	void ShowStatistics();
 
+	int getLCCandidate()
+	{
+		if (using_robust_optimizer)
+			return robust_manager.keyframe_for_lc.size();
+	}
+
 private:
 	bool IsTransformationBigEnough();
 
@@ -103,6 +109,8 @@ public:
 	vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f>> current_positions;
 	vector<vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f>>> positions;
 	vector<int> ransac_failed_frames;
+
+	RobustManager robust_manager;
 
 private:
 	int frame_id;
@@ -141,7 +149,6 @@ private:
 
 	HogmanManager hogman_manager;
 	SrbaManager srba_manager;
-	RobustManager robust_manager;
 
 	// parameters - downsampling
 	
