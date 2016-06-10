@@ -104,7 +104,7 @@ public:
 
 public:
 
-	RobustManager(bool keyframe_only = false);
+	RobustManager(bool use_lp = true);
 
 	bool addNode(Frame* frame, bool keyframe = false);
 

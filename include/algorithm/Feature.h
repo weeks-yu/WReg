@@ -98,6 +98,11 @@ public:
 		cv::Mat &feature_descriptors,
 		const cv::Mat &imgRGB, const cv::Mat &imgDepth);
 
+	static void SURFExtractor_GPU(vector<cv::KeyPoint> &feature_pts,
+		vector_eigen_vector3f &feature_pts_3d,
+		cv::Mat &feature_descriptors,
+		const cv::Mat &imgRGB, const cv::Mat &imgDepth);
+
 	static void ORBExtractor(vector<cv::KeyPoint> &feature_pts,
 		vector_eigen_vector3f &feature_pts_3d,
 		cv::Mat &feature_descriptors,

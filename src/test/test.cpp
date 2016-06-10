@@ -1842,10 +1842,12 @@ void ShowPairwiseResults(ofstream *out = nullptr)
 	}
 }
 
-void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool useICP = false, ofstream *out = nullptr, bool verbose = true)
+void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool useICP = false,
+	ofstream *out = nullptr, ofstream *gout = nullptr, bool verbose = true)
 {
 	vector<int> failed_pairwise;
 	bool save = out != nullptr;
+	bool save_global = gout != nullptr;
 	
 	Frame *last_keyframe, *last_frame;
 	bool last_frame_is_keyframe = false;
@@ -1870,6 +1872,7 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 	float distThresh = Config::instance()->get<float>("dist_threshold");
 	float angleThresh = Config::instance()->get<float>("angle_threshold");
 	ICPOdometry *icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor, distThresh, angleThresh);
+	//ICPOdometry *icpcuda = nullptr;
 
 	const float max_dist_m = Config::instance()->get<float>("max_dist_for_inliers");
 	const float squared_max_dist_m = max_dist_m * max_dist_m;
@@ -2073,38 +2076,38 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 						{
 							relative_tran = tran2;
 
-							matches.clear();
-							inliers.clear();
-							if (feature_type == "ORB")
-								last_keyframe->f->findMatchedPairsBruteForce(matches, frame->f);
-							else
-								last_keyframe->f->findMatchedPairs(matches, frame->f);
-
-// 							Feature::getTransformationByRANSAC(tran, information, pc, pcorrc, rmse,
-// 								&inliers, last_keyframe->f, frame->f, nullptr, matches);
-							Feature::computeInliersAndError(inliers, rmse, nullptr, matches,
-								ac_tran * relative_tran,
-								last_keyframe->f, frame->f);
-
-							float rrr;
-							if (matches.size() > 0)
-								rrr = (float)inliers.size() / matches.size();
-							else
-								rrr = 0;
-							if (last_frame_is_keyframe)
-							{
-								if (rrr > 0)
-									rational_reference = rrr;
-								else
-									rational_reference = 10000;
-							}
-							rrr /= rational_reference;
-							if (verbose)
-								cout << ", " << rrr;
-							if (rrr < Config::instance()->get<float>("keyframe_rational"))
-							{
+// 							matches.clear();
+// 							inliers.clear();
+// 							if (feature_type == "ORB")
+// 								last_keyframe->f->findMatchedPairsBruteForce(matches, frame->f);
+// 							else
+// 								last_keyframe->f->findMatchedPairs(matches, frame->f);
+// 
+// // 							Feature::getTransformationByRANSAC(tran, information, pc, pcorrc, rmse,
+// // 								&inliers, last_keyframe->f, frame->f, nullptr, matches);
+// 							Feature::computeInliersAndError(inliers, rmse, nullptr, matches,
+// 								ac_tran * relative_tran,
+// 								last_keyframe->f, frame->f);
+// 
+// 							float rrr;
+// 							if (matches.size() > 0)
+// 								rrr = (float)inliers.size() / matches.size();
+// 							else
+// 								rrr = 0;
+// 							if (last_frame_is_keyframe)
+// 							{
+// 								if (rrr > 0)
+// 									rational_reference = rrr;
+// 								else
+// 									rational_reference = 10000;
+// 							}
+// 							rrr /= rational_reference;
+// 							if (verbose)
+// 								cout << ", " << rrr;
+// 							if (rrr < Config::instance()->get<float>("keyframe_rational"))
+// 							{
 								isKeyframe = true;
-							}
+//							}
 						}
 					}
 					else
@@ -2200,6 +2203,30 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 	if (save)
 	{
 		out->close();
+	}
+
+	if (save_global)
+	{
+		Eigen::Matrix4f last_tran = Eigen::Matrix4f::Identity();
+		int k = 0;
+		for (int j = 0; j < frame_count; j++)
+		{
+			graph[j]->tran = last_tran * graph[j]->relative_tran;
+
+			Eigen::Vector3f t = TranslationFromMatrix4f(graph[j]->tran);
+			Eigen::Quaternionf q = QuaternionFromMatrix4f(graph[j]->tran);
+
+			*gout << fixed << setprecision(6) << timestamps[j]
+				<< ' ' << t(0) << ' ' << t(1) << ' ' << t(2)
+				<< ' ' << q.x() << ' ' << q.y() << ' ' << q.z() << ' ' << q.w() << endl;
+
+			if (k < keyframe_indices.size() && keyframe_indices[k] == j)
+			{
+				last_tran = graph[j]->tran;
+				k++;
+			}
+		}
+		gout->close();
 	}
 
 	if (verbose)
@@ -2445,13 +2472,13 @@ void GlobalRegistration(string graph_ftype = "SIFT",
 		result_out->close();
 	}
 
-	vector<pair<int, int>> loops = engine.GetLoop();
-	cout << "Loop: " << loops.size() << endl;
-	for (int i = 0; i < loops.size(); i++)
-	{
-		cout << loops[i].first << " " << loops[i].second << endl;
-	}
-
+// 	vector<pair<int, int>> loops = engine.GetLoop();
+// 	cout << "Loop: " << loops.size() << endl;
+// 	for (int i = 0; i < loops.size(); i++)
+// 	{
+// 		cout << loops[i].first << " " << loops[i].second << endl;
+// 	}
+// 
 	cout << "Getting scene" << endl;
 	PointCloudPtr cloud = engine.GetScene();
 	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("3D Viewer"));
@@ -2926,33 +2953,35 @@ void pairwise_results()
 				ss << "E:/tempresults/" << names[dd] << "/"
 					<< names[dd] << "_ftof_" << ftypes[f] << "_" << dists[sd] << ".txt";
 				ofstream out1(ss.str());
-				PairwiseRegistration(ftypes[f], false, true, &out1, false);
 
 				ss.clear();
 				ss.str("");
 				ss << "E:/tempresults/" << names[dd] << "/"
 					<< names[dd] << "_" << ftypes[f] << "_" << dists[sd] << ".txt";
 				ofstream out2(ss.str());
-				Eigen::Matrix4f last_tran = Eigen::Matrix4f::Identity();
-				int k = 0;
-				for (int j = 0; j < frame_count; j++)
-				{
-					graph[j]->tran = last_tran * graph[j]->relative_tran;
 
-					Eigen::Vector3f t = TranslationFromMatrix4f(graph[j]->tran);
-					Eigen::Quaternionf q = QuaternionFromMatrix4f(graph[j]->tran);
+				PairwiseRegistration(ftypes[f], false, true, &out1, &out1, false);
 
-					out2 << fixed << setprecision(6) << timestamps[j]
-						<< ' ' << t(0) << ' ' << t(1) << ' ' << t(2)
-						<< ' ' << q.x() << ' ' << q.y() << ' ' << q.z() << ' ' << q.w() << endl;
-
-					if (k < keyframe_indices.size() && keyframe_indices[k] == j)
-					{
-						last_tran = graph[j]->tran;
-						k++;
-					}
-				}
-				out2.close();
+// 				Eigen::Matrix4f last_tran = Eigen::Matrix4f::Identity();
+// 				int k = 0;
+// 				for (int j = 0; j < frame_count; j++)
+// 				{
+// 					graph[j]->tran = last_tran * graph[j]->relative_tran;
+// 
+// 					Eigen::Vector3f t = TranslationFromMatrix4f(graph[j]->tran);
+// 					Eigen::Quaternionf q = QuaternionFromMatrix4f(graph[j]->tran);
+// 
+// 					out2 << fixed << setprecision(6) << timestamps[j]
+// 						<< ' ' << t(0) << ' ' << t(1) << ' ' << t(2)
+// 						<< ' ' << q.x() << ' ' << q.y() << ' ' << q.z() << ' ' << q.w() << endl;
+// 
+// 					if (k < keyframe_indices.size() && keyframe_indices[k] == j)
+// 					{
+// 						last_tran = graph[j]->tran;
+// 						k++;
+// 					}
+// 				}
+// 				out2.close();
 			}
 			cout << endl;
 		}
@@ -2993,27 +3022,27 @@ void repeat_pairwise_results()
 
 	const int fcount = 1;
 	std::string ftypes[fcount];
-	ftypes[0] = "ORB";
+//	ftypes[0] = "ORB";
 // 	ftypes[1] = "SIFT";
-// 	ftypes[2] = "SURF";
+ 	ftypes[0] = "SURF";
 
 	const int sdcount = 1;
 	float dists[dcount][sdcount] = {0};
-	dists[0][0] = 0.05;	// xyz
-	dists[1][0] = 0.2;	// desk
-	dists[2][0] = 0.3;  // desk2
-	dists[3][0] = 0.01; // 360
-	dists[4][0] = 0.25; // room
+	dists[0][0] = 0.03;	// xyz
+	dists[1][0] = 0.03;	// desk
+	dists[2][0] = 0.1;  // desk2
+	dists[3][0] = 0.25; // 360
+	dists[4][0] = 0.3; // room
 	dists[5][0] = 0.3;  // floor
 	dists[6][0] = 0.3;  // rpy
-	dists[7][0] = 0.3;  // teddy
-	dists[8][0] = 0.03;  // plants
+	dists[7][0] = 0.25;  // teddy
+	dists[8][0] = 0.2;  // plants
 
-	int repeat_time = 20;
+	int repeat_time = 3;
 	int st = -1, ed = -1;
 	stringstream ss;
 
-	for (int dd = 4; dd < dcount; dd++)
+	for (int dd = 0; dd < dcount; dd++)
 	{
 		readData(directories[dd], st, ed, false);
 
@@ -3033,33 +3062,35 @@ void repeat_pairwise_results()
 					ss << "E:/tempresults/" << names[dd] << "/repeat/"
 						<< names[dd] << "_repeat_" << ftypes[f] << "_" << repeat_time * sd + i << ".txt";
 					ofstream out1(ss.str());
-					PairwiseRegistration(ftypes[f], false, false, &out1, false);
 
 					ss.clear();
 					ss.str("");
 					ss << "E:/tempresults/" << names[dd] << "/repeat/"
 						<< names[dd] << "_" << ftypes[f] << "_" << repeat_time * sd + i << ".txt";
 					ofstream out2(ss.str());
-					Eigen::Matrix4f last_tran = Eigen::Matrix4f::Identity();
-					int k = 0;
-					for (int j = 0; j < frame_count; j++)
-					{
-						graph[j]->tran = last_tran * graph[j]->relative_tran;
 
-						Eigen::Vector3f t = TranslationFromMatrix4f(graph[j]->tran);
-						Eigen::Quaternionf q = QuaternionFromMatrix4f(graph[j]->tran);
+					PairwiseRegistration(ftypes[f], false, true, &out1, &out2, false);
 
-						out2 << fixed << setprecision(6) << timestamps[j]
-							<< ' ' << t(0) << ' ' << t(1) << ' ' << t(2)
-							<< ' ' << q.x() << ' ' << q.y() << ' ' << q.z() << ' ' << q.w() << endl;
-
-						if (k < keyframe_indices.size() && keyframe_indices[k] == j)
-						{
-							last_tran = graph[j]->tran;
-							k++;
-						}
-					}
-					out2.close();
+// 					Eigen::Matrix4f last_tran = Eigen::Matrix4f::Identity();
+// 					int k = 0;
+// 					for (int j = 0; j < frame_count; j++)
+// 					{
+// 						graph[j]->tran = last_tran * graph[j]->relative_tran;
+// 
+// 						Eigen::Vector3f t = TranslationFromMatrix4f(graph[j]->tran);
+// 						Eigen::Quaternionf q = QuaternionFromMatrix4f(graph[j]->tran);
+// 
+// 						out2 << fixed << setprecision(6) << timestamps[j]
+// 							<< ' ' << t(0) << ' ' << t(1) << ' ' << t(2)
+// 							<< ' ' << q.x() << ' ' << q.y() << ' ' << q.z() << ' ' << q.w() << endl;
+// 
+// 						if (k < keyframe_indices.size() && keyframe_indices[k] == j)
+// 						{
+// 							last_tran = graph[j]->tran;
+// 							k++;
+// 						}
+// 					}
+// 					out2.close();
 				}
 			}
 			cout << endl;
@@ -3095,21 +3126,21 @@ void repeat_global_results()
 	names[7] = "teddy";
 	names[8] = "plant";
 
-	prs[0] = "";
-	prs[1] = "";
-	prs[2] = "";
-	prs[3] = "";
-	prs[4] = "";
-	prs[5] = "";
-	prs[6] = "";
-	prs[7] = "";
-	prs[8] = "";
+	prs[0] = "E:/bestresults/xyz/xyz_repeat_ORB_15.txt";
+	prs[1] = "E:/bestresults/desk/desk_repeat_ORB_6.txt";
+	prs[2] = "E:/bestresults/desk2/desk2_repeat_ORB_18.txt";
+	prs[3] = "E:/bestresults/360/360_repeat_ORB_2.txt";
+	prs[4] = "E:/bestresults/room/room_repeat_ORB_19.txt";
+	prs[5] = "E:/bestresults/floor/floor_repeat_ORB_19.txt";
+	prs[6] = "E:/bestresults/rpy/rpy_repeat_ORB_12.txt";
+	prs[7] = "E:/bestresults/teddy/teddy_repeat_ORB_12.txt";
+	prs[8] = "E:/bestresults/plant/plant_repeat_ORB_0.txt";
 
 // 	names[0] = "rpy";
 // 	names[1] = "teddy";
 // 	names[2] = "plant";
 
-	const int gfcount = 3;
+	const int gfcount = 2;
 	std::string gftypes[gfcount];
 	gftypes[0] = "SIFT";
 	gftypes[1] = "SURF";
@@ -3129,13 +3160,13 @@ void repeat_global_results()
 	int st = -1, ed = -1;
 	stringstream ss;
 
-	int repeat_time = 20;
+	int repeat_time = 4;
 
-	for (int dd = 0; dd < dcount; dd++)
+	for (int dd = 6; dd < dcount; dd++)
 	{
-		readData(directories[dd], st, ed);
+		readData(directories[dd], st, ed, false);
 
-		for (int f = 0; f < gfcount; f++)
+		for (int f = gfcount - 1; f >= 0; f--)
 		{
 			cout << "\t" << gftypes[f];
 
@@ -3182,15 +3213,16 @@ int main()
 	//return 0;
 	//Statistics();
 
- 	pairwise_results();
-//	repeat_pairwise_results();
+// 	pairwise_results();
+	repeat_pairwise_results();
+//	repeat_global_results();
  	return 0;
 
 	const int dcount = 6;
 	std::string directories[dcount], names[dcount];
 	directories[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_xyz/";
 	directories[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk/";
-	directories[2] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_room/";
+	directories[2] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk2/";
 	directories[3] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/";
 	directories[4] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy/";
 	directories[5] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_360/";
@@ -3319,7 +3351,12 @@ int main()
 		cout << "pairwise filename: ";
 		cin >> fname;
 		ofstream out(fname);
-		PairwiseRegistration(ftype, false, true, &out);
+
+		string tname;
+		cout << "trajectory filename: ";
+		cin >> tname;
+		ofstream out2(tname);
+		PairwiseRegistration(ftype, false, true, &out, &out2);
 	}
 	else if (method == 1 || method == 3 || method == 4 || method == 5)
 	{
@@ -3358,10 +3395,10 @@ int main()
 		cin >> gname;
 		ofstream global_result(gname);
 
-		string gtname;
-		cout << "gtloop filenmae: ";
-		cin >> gtname;
-		ifstream gtloop_in(gtname);
+// 		string gtname;
+// 		cout << "gtloop filenmae: ";
+// 		cin >> gtname;
+// 		ifstream gtloop_in(gtname);
 		GlobalRegistration(gftype, nullptr, &global_result);
 	}
 

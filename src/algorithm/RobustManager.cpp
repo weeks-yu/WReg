@@ -5,7 +5,7 @@ typedef g2o::BlockSolver< g2o::BlockSolverTraits<6, 3> >  SlamBlockSolver;
 typedef g2o::LinearSolverCSparse<SlamBlockSolver::PoseMatrixType> SlamLinearCSparseSolver;
 typedef g2o::LinearSolverPCG<SlamBlockSolver::PoseMatrixType> SlamLinearPCGSolver;
 
-RobustManager::RobustManager(bool keyframe_only)
+RobustManager::RobustManager(bool use_lp)
 {
 	optimizer = new g2o::SparseOptimizer();
 	optimizer->setVerbose(false);
@@ -17,6 +17,7 @@ RobustManager::RobustManager(bool keyframe_only)
 	optimizer->setAlgorithm(algo);
 	switchable_id = 1 << 16;
 	iteration_count = Config::instance()->get<int>("robust_iterations");
+	using_line_process = use_lp;
 
 	min_graph_opt_time = 1e8;
 	max_graph_opt_time = 0;
@@ -103,33 +104,33 @@ bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/
 	{
 		int k = graph.size() - 1;
 
-// 		int *keyframeTest = new int[aw_N * aw_M];
-// 		bool *keyframeExists = new bool[aw_N * aw_M];
-// 		int keyframeTestCount = 0;
-// 		int keyframeExistsCount = 0;
-// 
-// 		for (int i = 0; i < aw_M; i++)
-// 		{
-// 			for (int j = 0; j < aw_N; j++)
-// 			{
-// 				keyframeTest[i * aw_N + j] = 0;
-// 				keyframeExists[i * aw_N + j] = false;
-// 			}
-// 		}
-// 
-// 		for (int i = 0; i < this->graph[k]->f->size(); i++)
-// 		{
-// 			cv::KeyPoint keypoint = this->graph[k]->f->feature_pts[i];
-// 			int tN = aw_N * keypoint.pt.x / width;
-// 			int tM = aw_M * keypoint.pt.y / height;
-// 			tN = tN < 0 ? 0 : (tN >= aw_N ? aw_N - 1 : tN);
-// 			tM = tM < 0 ? 0 : (tM >= aw_M ? aw_M - 1 : tM);
-// 			if (!keyframeExists[tM * aw_N + tN])
-// 			{
-// 				keyframeExistsCount++;
-// 				keyframeExists[tM * aw_N + tN] = true;
-// 			}
-// 		}
+		int *keyframeTest = new int[aw_N * aw_M];
+		bool *keyframeExists = new bool[aw_N * aw_M];
+		int keyframeTestCount = 0;
+		int keyframeExistsCount = 0;
+
+		for (int i = 0; i < aw_M; i++)
+		{
+			for (int j = 0; j < aw_N; j++)
+			{
+				keyframeTest[i * aw_N + j] = 0;
+				keyframeExists[i * aw_N + j] = false;
+			}
+		}
+
+		for (int i = 0; i < this->graph[k]->f->size(); i++)
+		{
+			cv::KeyPoint keypoint = this->graph[k]->f->feature_pts[i];
+			int tN = aw_N * keypoint.pt.x / width;
+			int tM = aw_M * keypoint.pt.y / height;
+			tN = tN < 0 ? 0 : (tN >= aw_N ? aw_N - 1 : tN);
+			tM = tM < 0 ? 0 : (tM >= aw_M ? aw_M - 1 : tM);
+			if (!keyframeExists[tM * aw_N + tN])
+			{
+				keyframeExistsCount++;
+				keyframeExists[tM * aw_N + tN] = true;
+			}
+		}
 
 		// individually
 // 		Eigen::Vector3f current_pose = TranslationFromMatrix4f(graph[k]->tran);
@@ -327,6 +328,7 @@ bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/
 				feature_pool, graph[k]->f, nullptr, matches[i]))
 			{
 //				if (keyframe_id[keyframe_for_lc[frames[i]]] != keyframe_indices.size() - 2)
+				if (using_line_process)
 				{
 					SwitchableEdge edge;
 					/*				edge.t_ = &t;*/
@@ -354,33 +356,41 @@ bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/
 					loop_edges.push_back(edge);
 					loop_trans.push_back(tran);
 					loop_info.push_back(/*information*/InformationMatrix::Identity());
-
+				}
+				else
+				{
+					g2o::EdgeSE3* g2o_edge = new g2o::EdgeSE3();
+					g2o_edge->vertices()[0] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(keyframe_id[keyframe_for_lc[frames[i]]]));
+					g2o_edge->vertices()[1] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(keyframe_indices.size() - 1));
+					g2o_edge->setMeasurement(g2o::internal::fromSE3Quat(Eigen2G2O(tran)));
+					g2o_edge->setInformation(/*information*/InformationMatrix::Identity());
+					optimizer->addEdge(g2o_edge);
+				}
 #ifdef SAVE_TEST_INFOS
-					baseid.push_back(k);
-					targetid.push_back(keyframe_for_lc[frames[i]]);
-					rmses.push_back(rmse);
-					matchescount.push_back(matches[i].size());
-					inlierscount.push_back(inliers.size());
-					ransactrans.push_back(tran);
+				baseid.push_back(k);
+				targetid.push_back(keyframe_for_lc[frames[i]]);
+				rmses.push_back(rmse);
+				matchescount.push_back(matches[i].size());
+				inlierscount.push_back(inliers.size());
+				ransactrans.push_back(tran);
 #endif
 
-					count++;
-				}
+				count++;
 				
-// 				if (k - keyframe_for_lc[frames[i]] > 200)
-// 				{
-// 					continue;
-// 				}
-// 				for (int j = 0; j < inliers.size(); j++)
-// 				{
-// 					cv::KeyPoint keypoint = this->graph[k]->f->feature_pts[inliers[j].queryIdx];
-// 					int tN = aw_N * keypoint.pt.x / width;
-// 					int tM = aw_M * keypoint.pt.y / height;
-// 					tN = tN < 0 ? 0 : (tN >= aw_N ? aw_N - 1 : tN);
-// 					tM = tM < 0 ? 0 : (tM >= aw_M ? aw_M - 1 : tM);
-// 
-// 					keyframeTest[tM * aw_N + tN]++;
-// 				}
+				if (k - keyframe_for_lc[frames[i]] > 90)
+				{
+					continue;
+				}
+				for (int j = 0; j < inliers.size(); j++)
+				{
+					cv::KeyPoint keypoint = this->graph[k]->f->feature_pts[inliers[j].queryIdx];
+					int tN = aw_N * keypoint.pt.x / width;
+					int tM = aw_M * keypoint.pt.y / height;
+					tN = tN < 0 ? 0 : (tN >= aw_N ? aw_N - 1 : tN);
+					tM = tM < 0 ? 0 : (tM >= aw_M ? aw_M - 1 : tM);
+
+					keyframeTest[tM * aw_N + tN]++;
+				}
 			}
 		}
 		
@@ -390,37 +400,37 @@ bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/
 		{
 			Eigen::Matrix4f tran = graph[k]->relative_tran;
 		
-			if (graph[k]->ransac_failed)
-			{
-				std::cout << ", failed edge";
-				SwitchableEdge edge;
-				/*				edge.t_ = &t;*/
-				edge.id0 = keyframe_indices.size() - 2;
-				edge.id1 = keyframe_indices.size() - 1;
-
-				edge.v_ = new VertexSwitchLinear();
-				edge.v_->setId(switchable_id++);
-				edge.v_->setEstimate(0.5);
-				optimizer->addVertex(edge.v_);
-
-				edge.ep_ = new EdgeSwitchPrior();
-				edge.ep_->vertices()[0] = edge.v_;
-				edge.ep_->setMeasurement(1.0);
-				edge.ep_->setInformation(Eigen::Matrix<double, 1, 1>::Identity() * 1.0);
-				optimizer->addEdge(edge.ep_);
-
-				edge.e_ = new EdgeSE3Switchable();
-				edge.e_->vertices()[0] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(edge.id0));
-				edge.e_->vertices()[1] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(edge.id1));
-				edge.e_->vertices()[2] = edge.v_;
-				edge.e_->setMeasurement(g2o::internal::fromSE3Quat(Eigen2G2O(tran)));
-				edge.e_->setInformation(/*information*/InformationMatrix::Identity());
-				optimizer->addEdge(edge.e_);
-				failed_edges.push_back(edge);
-				failed_trans.push_back(tran);
-				failed_info.push_back(/*information*/InformationMatrix::Identity());
-			}
-			else
+// 			if (graph[k]->ransac_failed)
+// 			{
+// 				std::cout << ", failed edge";
+// 				SwitchableEdge edge;
+// 				/*				edge.t_ = &t;*/
+// 				edge.id0 = keyframe_indices.size() - 2;
+// 				edge.id1 = keyframe_indices.size() - 1;
+// 
+// 				edge.v_ = new VertexSwitchLinear();
+// 				edge.v_->setId(switchable_id++);
+// 				edge.v_->setEstimate(1.0);
+// 				optimizer->addVertex(edge.v_);
+// 
+// 				edge.ep_ = new EdgeSwitchPrior();
+// 				edge.ep_->vertices()[0] = edge.v_;
+// 				edge.ep_->setMeasurement(1.0);
+// 				edge.ep_->setInformation(Eigen::Matrix<double, 1, 1>::Identity() * 1.0);
+// 				optimizer->addEdge(edge.ep_);
+// 
+// 				edge.e_ = new EdgeSE3Switchable();
+// 				edge.e_->vertices()[0] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(edge.id0));
+// 				edge.e_->vertices()[1] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(edge.id1));
+// 				edge.e_->vertices()[2] = edge.v_;
+// 				edge.e_->setMeasurement(g2o::internal::fromSE3Quat(Eigen2G2O(tran)));
+// 				edge.e_->setInformation(/*information*/InformationMatrix::Identity());
+// 				optimizer->addEdge(edge.e_);
+// 				failed_edges.push_back(edge);
+// 				failed_trans.push_back(tran);
+// 				failed_info.push_back(/*information*/InformationMatrix::Identity());
+// 			}
+// 			else
 			{
 				g2o::EdgeSE3* g2o_edge = new g2o::EdgeSE3();
 				g2o_edge->vertices()[0] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(keyframe_indices.size() - 2));
@@ -460,25 +470,25 @@ bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/
 		std::cout << ", Graph: " << fixed << setprecision(3) << time;
 
 		cout << endl;
-// 		for (int i = 0; i < aw_M; i++)
-// 		{
-// 			for (int j = 0; j < aw_N; j++)
-// 			{
-// 				cout << keyframeTest[i * aw_N + j] << " ";
-// 				if (keyframeTest[i * aw_N + j] >= aw_F)
-// 					keyframeTestCount++;
-// 			}
-// 		}
-// 		cout << endl;
-// 
-// 		delete keyframeTest;
-// 		delete keyframeExists;
+		for (int i = 0; i < aw_M; i++)
+		{
+			for (int j = 0; j < aw_N; j++)
+			{
+				cout << keyframeTest[i * aw_N + j] << " ";
+				if (keyframeTest[i * aw_N + j] >= aw_F)
+					keyframeTestCount++;
+			}
+		}
+		cout << endl;
 
-//		if (keyframeTestCount + aw_N * aw_M - keyframeExistsCount < aw_N * aw_M * aw_P)
+		delete keyframeTest;
+		delete keyframeExists;
+
+		if (keyframeTestCount + aw_N * aw_M - keyframeExistsCount < aw_N * aw_M * aw_P)
 		{
 			keyframe_for_lc.push_back(k);
 //			frame_in_quadtree_indices.insert(k);
-// 			Eigen::Vector3f translation = TranslationFromMatrix4f(this->graph[k]->tran);
+			Eigen::Vector3f translation = TranslationFromMatrix4f(this->graph[k]->tran);
 // 			if (!active_window.insert(translation(0), translation(1), k))
 // 				insertion_failure.push_back(pair<float, float>(translation(0), translation(1)));
 // 			active_window.move(graph, RectangularRegion(translation(0), translation(1), aw_Size, aw_Size));

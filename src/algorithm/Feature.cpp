@@ -4,6 +4,8 @@
 #include <opencv2/legacy/legacy.hpp>
 #include <opencv2/nonfree/features2d.hpp>
 // #include <opencv2/nonfree/nonfree.hpp>
+#include "opencv2/gpu/gpu.hpp"
+#include "opencv2/nonfree/gpu.hpp"
 #include <pcl/common/transformation_from_correspondences.h>
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
@@ -73,6 +75,36 @@ void Feature::SURFExtractor(vector<cv::KeyPoint> &feature_pts,
 	}
 }
 
+void Feature::SURFExtractor_GPU(vector<cv::KeyPoint> &feature_pts,
+	vector_eigen_vector3f &feature_pts_3d,
+	cv::Mat &feature_descriptors,
+	const cv::Mat &imgRGB, const cv::Mat &imgDepth)
+{
+	cv::Mat grey;
+	cv::cvtColor(imgRGB, grey, CV_BGR2GRAY);
+	//cv::gpu::printShortCudaDeviceInfo(cv::gpu::getDevice());
+	cv::gpu::GpuMat gpuRGB, gpuKeypoints, gpuDescriptors;
+	gpuRGB.upload(grey);
+	cv::gpu::SURF_GPU surf;
+
+	surf(gpuRGB, cv::gpu::GpuMat(), gpuKeypoints, gpuDescriptors);
+
+	vector<cv::KeyPoint> fpts;
+	cv::Mat descriptors;
+	surf.downloadKeypoints(gpuKeypoints, fpts);
+	gpuDescriptors.download(descriptors);
+
+	for (int i = 0; i < fpts.size(); i++)
+	{
+		if (imgDepth.at<ushort>(cvRound(fpts[i].pt.y), cvRound(fpts[i].pt.x)) == 0)
+			continue;
+		feature_pts.push_back(fpts[i]);
+		Eigen::Vector3f pt = ConvertPointTo3D(fpts[i].pt.x, fpts[i].pt.y, imgDepth);
+		feature_pts_3d.push_back(pt);
+		feature_descriptors.push_back(descriptors.row(i));
+	}
+}
+
 void Feature::ORBExtractor(vector<cv::KeyPoint> &feature_pts,
 	vector_eigen_vector3f &feature_pts_3d,
 	cv::Mat &feature_descriptors,
@@ -115,6 +147,7 @@ void Feature::extract(const cv::Mat &imgRGB, const cv::Mat &imgDepth, string typ
 	else if (type == "SURF")
 	{
 		Feature::SURFExtractor(feature_pts, feature_pts_3d, feature_descriptors, imgRGB, imgDepth);
+		//Feature::SURFExtractor_GPU(feature_pts, feature_pts_3d, feature_descriptors, imgRGB, imgDepth);
 	}
 	else if (type == "ORB")
 	{
@@ -398,7 +431,7 @@ Eigen::Matrix4f Feature::getTransformFromMatches(bool &valid,
 			f.push_back(from);
 			t.push_back(to);    
 		}
-		tfc.add(from, to, 1.0 / to(2)); //the further, the less weight b/c of accuracy decay
+		tfc.add(from, to, 1.0 /*/ to(2)*/); //the further, the less weight b/c of accuracy decay
 	}
 
 	// find smallest distance between a point and its neighbour in the same cloud
