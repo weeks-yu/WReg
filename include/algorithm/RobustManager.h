@@ -108,6 +108,8 @@ public:
 
 	RobustManager(bool use_lp = true);
 
+	void setUsingLineProcess(bool use) { using_line_process = use; }
+
 	bool addNode(Frame* frame, bool keyframe = false);
 
 	Eigen::Matrix4f getTransformation(int k);

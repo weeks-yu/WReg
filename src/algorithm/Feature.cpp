@@ -305,19 +305,21 @@ bool Feature::findMatchedPairsMultiple(vector<int> &frames, vector<vector<cv::DM
 // 	float* dists_ptr = dists.ptr<float> (0);
 
 	float ratio = Config::instance()->get<float>("matches_criterion");
-	int* frame_match_count = new int[this->getFrameCount()];
+	std::map<int, int> frame_match_count;
 	std::map<int, int> result_index;
 	std::map<int, vector<cv::DMatch>> matches_map;
 
 	cv::DMatch match;
 	for (int i = 0; i < matches_.size(); i++)
 	{
-		memset(frame_match_count, 0, frame_count * sizeof(int));
+		frame_match_count.clear();
+		result_index.clear();
 		for (int j = 0; j < k; j++)
 		{
 			if (j >= matches_[i].size()) break;
 			int u = this->feature_frame_index[matches_[i][j].trainIdx];
-			if (frame_match_count[u] == 1)
+			if (frame_match_count.find(u) != frame_match_count.end() &&
+				frame_match_count[u] == 1)
 			{
 				if (matches_[i][result_index[u]].distance < ratio * matches_[i][j].distance)
 				{
@@ -325,14 +327,13 @@ bool Feature::findMatchedPairsMultiple(vector<int> &frames, vector<vector<cv::DM
 				}
 				frame_match_count[u]++;
 			}
-			else if (frame_match_count[u] == 0)
+			else if (frame_match_count.find(u) == frame_match_count.end())
 			{
 				result_index[u] = j;
-				frame_match_count[u]++;
+				frame_match_count[u] = 1;
 			}
 		}
 	}
-	delete [] frame_match_count;
 
 	vector<pair<int, vector<cv::DMatch>>> candidate;
 	unsigned int min_count = (unsigned int) Config::instance()->get<int>("min_matches");

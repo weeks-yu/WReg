@@ -2370,6 +2370,7 @@ void GlobalRegistration(string graph_ftype = "SIFT",
 	engine.setUsingHogmanOptimizer(false);
 	engine.setUsingSrbaOptimzier(false);
 	engine.setUsingRobustOptimzier(true);
+	engine.robust_manager.setUsingLineProcess(true);
 	for (int i = 0; i < frame_count; i++)
 	{
 		bool keyframe = false;
