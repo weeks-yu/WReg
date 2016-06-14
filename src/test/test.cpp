@@ -2370,7 +2370,7 @@ void GlobalRegistration(string graph_ftype = "SIFT",
 	engine.setUsingHogmanOptimizer(false);
 	engine.setUsingSrbaOptimzier(false);
 	engine.setUsingRobustOptimzier(true);
-	engine.robust_manager.setUsingLineProcess(true);
+	engine.robust_manager.setUsingLineProcess(false);
 	for (int i = 0; i < frame_count; i++)
 	{
 		bool keyframe = false;
@@ -2487,21 +2487,21 @@ void GlobalRegistration(string graph_ftype = "SIFT",
 // 		cout << loops[i].first << " " << loops[i].second << endl;
 // 	}
 // 
-	cout << "Getting scene" << endl;
-	PointCloudPtr cloud = engine.GetScene();
-	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("3D Viewer"));
-	viewer->setBackgroundColor(0, 0, 0);
-	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
+//	cout << "Getting scene" << endl;
+//	PointCloudPtr cloud = engine.GetScene();
+//	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("3D Viewer"));
+//	viewer->setBackgroundColor(0, 0, 0);
+//	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
 	//viewer->registerKeyboardCallback(KeyboardEventOccurred, (void*)&viewer);
-	viewer->addPointCloud<pcl::PointXYZRGB>(cloud, rgb, "cloud");
-	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
-	viewer->addCoordinateSystem(1.0);
-	viewer->initCameraParameters();
+//	viewer->addPointCloud<pcl::PointXYZRGB>(cloud, rgb, "cloud");
+//	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
+//	viewer->addCoordinateSystem(1.0);
+//	viewer->initCameraParameters();
 
-	while (!viewer->wasStopped())
-	{
-		viewer->spinOnce(100);
-	}
+//	while (!viewer->wasStopped())
+//	{
+//		viewer->spinOnce(100);
+//	}
 }
 
 void FindGroundTruthLoop(string directory, string feature_type = "SURF", ofstream *gt_out = nullptr)
@@ -3113,8 +3113,8 @@ void repeat_global_results()
 	prs[4] = "E:/bestresults/room/room_repeat_SURF_1.txt";
 	prs[5] = "E:/bestresults/floor/floor_repeat_SURF_2.txt";
 	prs[6] = "E:/bestresults/rpy/rpy_repeat_SURF_2.txt";
-	prs[7] = "E:/bestresults/teddy/teddy_repeat_SURF_0.txt";
-	prs[8] = "E:/bestresults/plant/plant_repeat_SURF_1.txt";
+	prs[7] = "E:/teddy_repeat_SURF_0.txt";
+	prs[8] = "E:/plant_repeat_SURF_1.txt";
 
 // 	names[0] = "rpy";
 // 	names[1] = "teddy";
@@ -3125,52 +3125,33 @@ void repeat_global_results()
 	gftypes[0] = "SIFT";
 	gftypes[1] = "SURF";
 
-	const int sdcount = 1;
-	float dists[dcount][gfcount][sdcount] = {0};
-	dists[0][0][0] = 0.1; dists[0][1][0] = 0.03;
-	dists[1][0][0] = 0.03; dists[1][1][0] = 0.03;
-	dists[2][0][0] = 0.02; dists[2][1][0] = 0.1;
-	dists[3][0][0] = 0.3; dists[3][1][0] = 0.25;
-	dists[4][0][0] = 0.1; dists[4][1][0] = 0.03;
-	dists[5][0][0] = 0.25; dists[5][1][0] = 0.3;
-	dists[6][0][0] = 0.1; dists[6][1][0] = 0.3;
-	dists[7][0][0] = 0.25; dists[7][1][0] = 0.25;
-	dists[8][0][0] = 0.3; dists[8][1][0] = 0.2;
+	const int sdcount = 8;
+	float dists[sdcount] = {0.01, 0.02, 0.03, 0.05, 0.08, 0.1, 0.2, 0.3};
 
 	int st = -1, ed = -1;
 	stringstream ss;
 
-	int repeat_time = 4;
-
-	for (int dd = 6; dd < dcount; dd++)
+	for (int dd = 7; dd < dcount; dd++)
 	{
 		readData(directories[dd], st, ed, false);
 
-		for (int f = gfcount - 1; f >= 1; f--)
-		{
-			cout << "\t" << gftypes[f];
-
 			for (int sd = 0; sd < sdcount; sd++)
 			{
-				cout << "\tdists: " << dists[dd][f][sd] << endl;
-				Config::instance()->set<float>("max_dist_for_inliers", dists[dd][f][sd]);
+				cout << "\tdists: " << dists[sd] << endl;
+				Config::instance()->set<float>("max_dist_for_inliers", dists[sd]);
 
-				for (int i = 0; i < repeat_time; i++)
-				{
-					readPairwiseResult(prs[dd], "ORB");
+				readPairwiseResult(prs[dd], "SURF");
 
-					ss.clear();
-					ss.str("");
-					ss << "E:/tempresults/" << names[dd] << "/global/"
-						<< names[dd] << "_" << gftypes[f] << "_" << i << ".txt";
-					ofstream out1(ss.str());
+				ss.clear();
+				ss.str("");
+				ss << "E:/" << names[dd] << "_global_surf_surf_" << dists[sd] << ".txt";
+				ofstream out1(ss.str());
 
-					ss.clear();
-					ss.str("");
-					ss << "E:/tempresults/" << names[dd] << "/global/"
-						<< names[dd] << "_" << gftypes[f] << "_" << i << ".log";
-					ofstream out2(ss.str());
-					GlobalRegistration(gftypes[f], nullptr, &out1, &out2);
+				ss.clear();
+				ss.str("");
+				ss << "E:/" << names[dd] << "_global_surf_surf_" << dists[sd] << ".log";
+				ofstream out2(ss.str());
+				GlobalRegistration(gftypes[f], nullptr, &out1, &out2);
 				}
 			}
 		}
@@ -3201,8 +3182,8 @@ int main()
 
 // 	pairwise_results();
 //	repeat_pairwise_results();
-//	repeat_global_results();
-// 	return 0;
+	repeat_global_results();
+ 	return 0;
 
 	const int dcount = 9;
 	std::string directories[dcount], names[dcount];
