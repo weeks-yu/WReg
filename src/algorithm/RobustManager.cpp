@@ -23,6 +23,10 @@ RobustManager::RobustManager(bool use_lp)
 	max_graph_opt_time = 0;
 	total_graph_opt_time = 0;
 
+	total_kdtree_build = 0.0;
+	total_kdtree_match = 0.0;
+	total_loop_ransac = 0.0;
+
 	min_edge_weight = 1e10;
 	max_edge_weight = 0;
 
@@ -294,15 +298,19 @@ bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/
 			}
 		}
 		feature_pool->buildFlannIndex();
+		time = clock() - start;
+		total_kdtree_build += time;
 
-		std::cout << ", KD-tree: " << clock() - start << "ms";
+		std::cout << ", KD-tree: " << time << "ms";
 		std::cout << ", RN: " << count;
 
 		start = clock();
 		vector<int> frames;
 		vector<vector<cv::DMatch>> matches;
 		feature_pool->findMatchedPairsMultiple(frames, matches, this->graph[k]->f);
-		std::cout << ", MM: " << clock() - start << "ms";
+		time = clock() - start;
+		total_kdtree_match += time;
+		std::cout << ", MM: " << time << "ms";
 
 		count = matches.size();
 		if (count < min_closure_candidate) min_closure_candidate = count;
@@ -315,6 +323,7 @@ bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/
 		v->setEstimate(Eigen2G2O(graph[k]->tran));
 		optimizer->addVertex(v);
 
+		start = clock();
 		Eigen::Matrix<double, 6, 6> information;
 		for (int i = 0; i < frames.size(); i++)
 		{
@@ -442,7 +451,6 @@ bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/
 				odometry_traj.push_back(tran);
 				odometry_info.push_back(/*information*/InformationMatrix::Identity());
 			}
-			
 
 #ifdef SAVE_TEST_INFOS
 			baseid.push_back(k);
@@ -456,18 +464,18 @@ bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/
 			count++;
 		}
 
+		time = clock() - start;
+		total_loop_ransac += time;
 		cout << ", oberservation: " << count << endl;
 
 		start = clock();
 		optimizer->initializeOptimization();
 		optimizer->optimize(iteration_count);
+		time = clock() - start;
+		total_graph_opt_time += time;
+		std::cout << ", Graph: " << time;
 
 		keyframe_id.insert(pair<int, int>(k, keyframe_indices.size() - 1));
-		time = (clock() - start) / 1000.0;
-		if (time < min_graph_opt_time) min_graph_opt_time = time;
-		if (time > max_graph_opt_time) max_graph_opt_time = time;
-		total_graph_opt_time += time;
-		std::cout << ", Graph: " << fixed << setprecision(3) << time;
 
 		cout << endl;
 		for (int i = 0; i < aw_M; i++)

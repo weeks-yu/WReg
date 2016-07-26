@@ -33,6 +33,10 @@ public:
 	map<int, int> keyframe_id;
 //	set<int> frame_in_quadtree_indices;
 
+	double total_kdtree_build;
+	double total_kdtree_match;
+	double total_loop_ransac;
+
 	double min_graph_opt_time;
 	double max_graph_opt_time;
 	double total_graph_opt_time;

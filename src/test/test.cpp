@@ -1843,11 +1843,12 @@ void ShowPairwiseResults(ofstream *out = nullptr)
 }
 
 void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool useICP = false,
-	ofstream *out = nullptr, ofstream *gout = nullptr, bool verbose = true)
+	ofstream *out = nullptr, ofstream *gout = nullptr, bool verbose = true, ofstream *log = nullptr)
 {
 	vector<int> failed_pairwise;
 	bool save = out != nullptr;
 	bool save_global = gout != nullptr;
+	bool save_log = log != nullptr;
 	
 	Frame *last_keyframe, *last_frame;
 	bool last_frame_is_keyframe = false;
@@ -1891,18 +1892,25 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 
 	clock_t start, total_start = clock();
 
+	double time, time_feature_extraction = 0.0, time_feature_match = 0.0;
+	double time_ransac = 0.0, time_keyframe = 0.0, time_flann = 0.0;
+
 	for (int i = 0; i < frame_count; i++)
 	{
 		if (verbose)
 			cout << "Frame " << i;
 		start = clock();
 		Frame *frame = new Frame(rgbs[i], depths[i], feature_type, Eigen::Matrix4f::Identity());
+		time = clock() - start;
+		time_feature_extraction += time;
+
 		if (verbose)
-			cout << ", F: " << clock() - start << "ms";
+			cout << ", F: " << time << "ms";
 
 		if (i == 0)
 		{
 			frame->relative_tran = Eigen::Matrix4f::Identity();
+			start = clock();
 			if (feature_type != "ORB")
 			{
 				if (FtoKF)
@@ -1910,7 +1918,8 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 				else
 					frame->f->buildFlannIndex();
 			}
-				
+			time = clock() - start;
+			time_flann += time;
 
 			last_frame = frame;
 			last_keyframe = frame;
@@ -1957,9 +1966,10 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 				else
 					last_frame->f->findMatchedPairs(matches, frame->f);
 			}
-			
+			time = clock() - start;
+			time_feature_match += time;
 			if (verbose)
-				cout << ", M: " << clock() - start << "ms";
+				cout << ", M: " << time << "ms";
 
 			start = clock();
 			bool ransac;
@@ -1973,18 +1983,19 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 				ransac = Feature::getTransformationByRANSAC(tran, information,
 					pc, pcorrc, rmse, &inliers, last_frame->f, frame->f, nullptr, matches);
 			}
-			
+			time = clock() - start;
+			time_ransac += time;
 			if (verbose)
-				cout << ", R: " << clock() - start << "ms";
+				cout << ", R: " << time << "ms";
 
 			// is new keyframe?
-			start = clock();
 			if (ransac)
 			{
 				relative_tran = tran;
 				if (verbose)
 					cout << ", " << matches.size() << ", " << inliers.size();
 
+				start = clock();
 				if (!FtoKF)
 				{
 					matches.clear();
@@ -2014,6 +2025,8 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 						rational_reference = 10000;
 				}
 				rrr /= rational_reference;
+				time = clock() - start;
+				time_keyframe += time;
 				if (verbose)
 					cout << ", " << rrr;
 				if (rrr < Config::instance()->get<float>("keyframe_rational"))
@@ -2051,6 +2064,7 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 				{
 					if (useICP)
 					{
+						start = clock();
 						icpcuda->initICPModel((unsigned short *)depths[i - 1].data, 20.0f, Eigen::Matrix4f::Identity());
 						icpcuda->initICP((unsigned short *)depths[i].data, 20.0f);
 
@@ -2066,6 +2080,9 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 
 						tran2.topLeftCorner(3, 3) = rot;
 						tran2.topRightCorner(3, 1) = t;
+
+						time = clock() - start;
+						time_ransac += time;
 
 						if (FtoKF)
 						{
@@ -2147,6 +2164,7 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 
 			frame->relative_tran = relative_tran;
 
+			start = clock();
 			if (!FtoKF)
 			{
 				if (!last_frame_is_keyframe)
@@ -2189,6 +2207,9 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 				}
 			}
 			graph.push_back(frame);
+
+			time = clock() - start;
+			time_flann += time;
 		}
 		if (verbose)
 			cout << endl;
@@ -2198,6 +2219,26 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 	{
 		delete last_keyframe->f;
 		last_keyframe->f = nullptr;
+	}
+
+	time = clock() - total_start;
+
+	if (save_log)
+	{
+		*log << "frame count " << frame_count << endl;
+		*log << "total " << time << endl;
+		*log << "total per frame " << time / frame_count << endl;
+		*log << "feature extraction " << time_feature_extraction << endl;
+		*log << "feature extraction per frame " << time_feature_extraction / frame_count << endl;
+		*log << "feature matching " << time_feature_match << endl;
+		*log << "feature matching per frame " << time_feature_match / frame_count << endl;
+		*log << "flann " << time_flann << endl;
+		*log << "flann per frame " << time_flann / frame_count << endl;
+		*log << "ransac " << time_ransac << endl;
+		*log << "ransac per frame " << time_ransac / frame_count << endl;
+		*log << "keyframe " << time_keyframe << endl;
+		*log << "keyframe per frame " << time_keyframe / frame_count << endl;
+		//log->close();
 	}
 
 	if (save)
@@ -2365,12 +2406,15 @@ void GlobalRegistration(string graph_ftype = "SIFT",
 	bool save_log = log_out != nullptr;
 	bool read_gtloop = gtloop_in != nullptr;
 
+	double total_time = 0.0, time;
+	clock_t start;
+
 	cout << "Global registration" << endl;
  	SlamEngine engine;
 	engine.setUsingHogmanOptimizer(false);
 	engine.setUsingSrbaOptimzier(false);
 	engine.setUsingRobustOptimzier(true);
-	engine.robust_manager.setUsingLineProcess(false);
+	engine.robust_manager.setUsingLineProcess(true);
 	for (int i = 0; i < frame_count; i++)
 	{
 		bool keyframe = false;
@@ -2388,7 +2432,10 @@ void GlobalRegistration(string graph_ftype = "SIFT",
 				graph[i]->f->buildFlannIndex();
 			}
 		}
+		start = clock();
 		engine.AddGraph(graph[i], clouds[i], keyframe, timestamps[i]);
+		time = clock() - start;
+		total_time += time;
 	}
 
 	if (read_gtloop)
@@ -2475,8 +2522,18 @@ void GlobalRegistration(string graph_ftype = "SIFT",
 
 	if (save_log)
 	{
-		*log_out << "Keyframe number: " << keyframe_indices.size() << endl;
-		*log_out << "LC candidate: " << engine.getLCCandidate() << endl;
+		*log_out << "Keyframe number " << keyframe_indices.size() << endl;
+		*log_out << "LC candidate " << engine.getLCCandidate() << endl;
+		*log_out << "total time " << total_time << endl;
+		*log_out << "total time per frame " << total_time / frame_count << endl;
+		*log_out << "kdtree build " << engine.robust_manager.total_kdtree_build << endl;
+		*log_out << "kdtree build per frame" << engine.robust_manager.total_kdtree_build / frame_count << endl;
+		*log_out << "kdtree match " << engine.robust_manager.total_kdtree_match << endl;
+		*log_out << "kdtree match per frame" << engine.robust_manager.total_kdtree_match / frame_count << endl;
+		*log_out << "loop ransac " << engine.robust_manager.total_loop_ransac << endl;
+		*log_out << "loop ransac per frame" << engine.robust_manager.total_loop_ransac / frame_count << endl;
+		*log_out << "graph " << engine.robust_manager.total_graph_opt_time << endl;
+		*log_out << "graph per frame" << engine.robust_manager.total_graph_opt_time / frame_count << endl;
 		log_out->close();
 	}
 
@@ -3110,8 +3167,8 @@ void repeat_global_results()
 	prs[1] = "E:/bestresults/desk/desk_repeat_ORB_6.txt";
 	prs[2] = "E:/bestresults/desk2/desk2_repeat_ORB_18.txt";
 	prs[3] = "E:/bestresults/360/360_repeat_SURF_1.txt";
-	prs[4] = "E:/bestresults/room/room_repeat_SURF_1.txt";
-	prs[5] = "E:/bestresults/floor/floor_repeat_SURF_2.txt";
+	prs[4] = "E:/room_repeat_SURF_1.txt";
+	prs[5] = "E:/floor_repeat_SURF_2.txt";
 	prs[6] = "E:/bestresults/rpy/rpy_repeat_SURF_2.txt";
 	prs[7] = "E:/teddy_repeat_SURF_0.txt";
 	prs[8] = "E:/plant_repeat_SURF_1.txt";
@@ -3131,31 +3188,152 @@ void repeat_global_results()
 	int st = -1, ed = -1;
 	stringstream ss;
 
-	for (int dd = 7; dd < dcount; dd++)
+	for (int dd = 4; dd < 5; dd++)
 	{
 		readData(directories[dd], st, ed, false);
 
-			for (int sd = 0; sd < sdcount; sd++)
-			{
-				cout << "\tdists: " << dists[sd] << endl;
-				Config::instance()->set<float>("max_dist_for_inliers", dists[sd]);
+		for (int sd = 0; sd < sdcount; sd++)
+		{
+			cout << "\tdists: " << dists[sd] << endl;
+			Config::instance()->set<float>("max_dist_for_inliers", dists[sd]);
 
-				readPairwiseResult(prs[dd], "SURF");
+			readPairwiseResult(prs[dd], "SURF");
 
-				ss.clear();
-				ss.str("");
-				ss << "E:/" << names[dd] << "_global_surf_surf_" << dists[sd] << ".txt";
-				ofstream out1(ss.str());
+			ss.clear();
+			ss.str("");
+			ss << "E:/" << names[dd] << "_nolp_surf_" << dists[sd] << ".txt";
+			ofstream out1(ss.str());
 
-				ss.clear();
-				ss.str("");
-				ss << "E:/" << names[dd] << "_global_surf_surf_" << dists[sd] << ".log";
-				ofstream out2(ss.str());
-				GlobalRegistration(gftypes[f], nullptr, &out1, &out2);
-				}
-			}
+			ss.clear();
+			ss.str("");
+			ss << "E:/" << names[dd] << "_nolp_surf_" << dists[sd] << ".log";
+			ofstream out2(ss.str());
+			GlobalRegistration("SURF", nullptr, &out1, &out2);
 		}
 	}	
+}
+
+void showResultWithTrajectory(ifstream *input)
+{
+	if (!input)
+		return;
+
+	set<int> needed;
+	trans.clear();
+	string line;
+	stringstream ss;
+	int k = 0;
+	while (getline(*input, line))
+	{
+		ss.clear();
+		ss.str("");
+		ss << line;
+
+		double timestamp;
+		Eigen::Vector3f t;
+		Eigen::Quaternionf q;
+		ss >> timestamp >> t(0) >> t(1) >> t(2) >> q.x() >> q.y() >> q.z() >> q.w();
+		Eigen::Matrix4f tran = transformationFromQuaternionsAndTranslation(q, t);
+
+		while (k < frame_count &&
+			fabs(timestamp - timestamps[k]) >= 1e-4 && timestamp > timestamps[k])
+		{
+			trans.push_back(Eigen::Matrix4f::Identity());
+			k++;
+		}
+
+		if (k < frame_count && fabs(timestamp - timestamps[k]) < 1e-4)
+		{
+			trans.push_back(tran);
+			needed.insert(k);
+			k++;
+		}
+	}
+
+	PointCloudPtr cloud(new PointCloudT);
+	for (int i = 0; i < frame_count; i++)
+	{
+		if (needed.find(i) == needed.end())
+			continue;
+		PointCloudPtr tc(new PointCloudT);
+		pcl::transformPointCloud(*clouds[i], *tc, trans[i]);
+
+		*cloud += *tc;
+		if ((i + 1) % 30 == 0)
+		{
+			cloud = DownSamplingByVoxelGrid(cloud, 0.01, 0.01, 0.01);
+		}
+	}
+	cloud = DownSamplingByVoxelGrid(cloud, 0.01, 0.01, 0.01);
+	
+	cout << "Getting scene" << endl;
+	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("3D Viewer"));
+	viewer->setBackgroundColor(0, 0, 0);
+	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud);
+//	viewer->registerKeyboardCallback(KeyboardEventOccurred, (void*)&viewer);
+	viewer->addPointCloud<pcl::PointXYZRGB>(cloud, rgb, "cloud");
+	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
+	viewer->addCoordinateSystem(1.0);
+	viewer->initCameraParameters();
+
+	while (!viewer->wasStopped())
+	{
+		viewer->spinOnce(100);
+	}
+}
+
+void time_test()
+{
+	const int dcount = 9;
+	std::string directories[dcount], names[dcount], prs[dcount];
+	directories[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_xyz/";
+	directories[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk/";
+	directories[2] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk2/";
+	directories[3] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_360/";
+	directories[4] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_room/";
+	directories[5] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/";
+	directories[6] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy";
+	directories[7] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_teddy/";
+	directories[8] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_plant/";
+
+	names[0] = "xyz";
+	names[1] = "desk";
+	names[2] = "desk2";
+	names[3] = "360";
+	names[4] = "room";
+	names[5] = "floor";
+	names[6] = "rpy";
+	names[7] = "teddy";
+	names[8] = "plant";
+
+	prs[0] = "E:/bestresults/xyz/xyz_ftof_SURF_0.05.txt";
+	prs[1] = "E:/bestresults/desk/desk_ftof_SURF_0.08.txt";
+	prs[2] = "E:/bestresults/desk2/desk2_ftof_SURF_0.1.txt";
+	prs[3] = "E:/bestresults/360/360_repeat_SURF_1.txt";
+	prs[4] = "E:/bestresults/room/room_repeat_SURF_1.txt";
+	prs[5] = "E:/bestresults/floor/floor_repeat_SURF_2.txt";
+	prs[6] = "E:/bestresults/rpy/rpy_repeat_SURF_2.txt";
+	prs[7] = "E:/bestresults/teddy/teddy_repeat_SURF_0.txt";
+	prs[8] = "E:/bestresults/plant/plant_repeat_SURF_1.txt";
+
+	float dists[dcount] = { 0.01, 0.02, 0.05, 0.01, 0.03, 0.03, 0.03, 0.03, 0.01 };
+
+	int st = -1, ed = -1;
+	stringstream ss;
+
+	for (int dd = 0; dd < dcount; dd++)
+	{
+		readData(directories[dd], st, ed, false);
+		Config::instance()->set<float>("max_dist_for_inliers", dists[dd]);
+
+		ss.clear();
+		ss.str("");
+		ss << "E:/" << names[dd] << "_log.txt";
+		ofstream log_out(ss.str());
+		PairwiseRegistration("SURF", false, true, nullptr, nullptr, true, &log_out);
+
+		GlobalRegistration("SURF", nullptr, nullptr, &log_out);
+	}
 }
 
 int main()
@@ -3182,8 +3360,23 @@ int main()
 
 // 	pairwise_results();
 //	repeat_pairwise_results();
-	repeat_global_results();
- 	return 0;
+//	repeat_global_results();
+//	time_test();
+
+	cv::Mat img = cv::imread("E:/1305033538.912812.png", -1);
+	cv::Mat img2(img.rows, img.cols, CV_8UC1);
+	for (int i = 0; i < img.rows; i++)
+	{
+		for (int j = 0; j < img.cols; j++)
+		{
+			img2.at<unsigned char>(i, j) = img.at<ushort>(i, j) / 30000 * 255;
+		}
+	}
+
+	//cv::equalizeHist(img2, img2);
+	cv::imshow("result", img2);
+	cv::waitKey();
+	return 0;
 
 	const int dcount = 9;
 	std::string directories[dcount], names[dcount];
@@ -3308,6 +3501,7 @@ int main()
 	cout << "3: read pairwise result & global registration & show result" << endl;
 	cout << "4: read pairwise result & loop closure test" << endl;
 	cout << "5: read pairwise result & global registration gt & show result" << endl;
+	cout << "6: show result by trajectory" << endl;
 	cin >> method;
 
 	if (method == 0 || method == 2)
@@ -3397,6 +3591,15 @@ int main()
 		ofstream global_result(gname);
 		FindGroundTruthLoop(directories[dd]);
 		GlobalWithAll(&global_result);
+	}
+
+	if (method == 6)
+	{
+		string trname;
+		cout << "trajectory filename: ";
+		cin >> trname;
+		ifstream tr_result(trname);
+		showResultWithTrajectory(&tr_result);
 	}
 }  
 

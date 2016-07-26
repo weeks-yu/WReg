@@ -508,10 +508,10 @@ void SlamEngine::AddGraph(Frame *frame, PointCloudPtr cloud, bool keyframe, doub
 		cout << "Frame " << frame_id;
 		frame->tran = frame->relative_tran;
 
-		// test
-		vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f>> d;
-		positions.push_back(d);
-		// test end
+// 		// test
+// 		vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f>> d;
+// 		positions.push_back(d);
+// 		// test end
 		last_keyframe_detect_lc = robust_manager.addNode(frame, true);
 
 		if (!last_keyframe_detect_lc)
@@ -531,18 +531,18 @@ void SlamEngine::AddGraph(Frame *frame, PointCloudPtr cloud, bool keyframe, doub
 		if (keyframe)
 		{
 			cout << "Frame " << frame_id;
-			frame->f->updateFeaturePoints3DReal(frame->tran);
+			//frame->f->updateFeaturePoints3DReal(frame->tran);
 
 			// test
-			vector<Frame *> graph = robust_manager.getGraph();
-			vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f>>  d;
-			for (int i = 0; i < robust_manager.keyframe_indices.size(); i++)
-			{
-				Eigen::Vector3f translation = TranslationFromMatrix4f(graph[robust_manager.keyframe_indices[i]]->tran);
-				d.push_back(translation);
-			}
-			current_positions.push_back(TranslationFromMatrix4f(frame->tran));
-			positions.push_back(d);
+// 			vector<Frame *> graph = robust_manager.getGraph();
+// 			vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f>>  d;
+// 			for (int i = 0; i < robust_manager.keyframe_indices.size(); i++)
+// 			{
+// 				Eigen::Vector3f translation = TranslationFromMatrix4f(graph[robust_manager.keyframe_indices[i]]->tran);
+// 				d.push_back(translation);
+// 			}
+// 			current_positions.push_back(TranslationFromMatrix4f(frame->tran));
+// 			positions.push_back(d);
 
 			// test-end
 
@@ -552,12 +552,12 @@ void SlamEngine::AddGraph(Frame *frame, PointCloudPtr cloud, bool keyframe, doub
 				delete frame->f;
 				frame->f = nullptr;
 			}
-			// test
-			else
-			{
-				id_detect_lc.push_back(frame_id);
-			}
-			// test end
+// 			// test
+// 			else
+// 			{
+// 				id_detect_lc.push_back(frame_id);
+// 			}
+// 			// test end
 
 			std::cout << endl;
 		}
