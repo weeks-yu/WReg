@@ -27,22 +27,22 @@
 #include "Transformation.h"
 
 using namespace std;
-using namespace srba;
+//using namespace srba;
 
-struct RBA_OPTIONS_GRAPH : public RBA_OPTIONS_DEFAULT
-{
-	//	typedef ecps::local_areas_fixed_size            edge_creation_policy_t;  //!< One of the most important choices: how to construct the relative coordinates graph problem
-	//	typedef options::sensor_pose_on_robot_none      sensor_pose_on_robot_t;  //!< The sensor pose coincides with the robot pose
-	typedef options::observation_noise_constant_matrix<observations::RelativePoses_3D>   obs_noise_matrix_t;      // The sensor noise matrix is the same for all observations and equal to some given matrix
-	//	typedef options::solver_LM_schur_dense_cholesky solver_t;                //!< Solver algorithm (Default: Lev-Marq, with Schur, with dense Cholesky)
-};
-
-typedef RbaEngine <
-	kf2kf_poses::SE3,               // Parameterization  of KF-to-KF poses
-	landmarks::RelativePoses3D,     // Parameterization of landmark positions
-	observations::RelativePoses_3D, // Type of observations
-	RBA_OPTIONS_GRAPH
-> SrbaGraphT;
+// struct RBA_OPTIONS_GRAPH : public RBA_OPTIONS_DEFAULT
+// {
+// 	//	typedef ecps::local_areas_fixed_size            edge_creation_policy_t;  //!< One of the most important choices: how to construct the relative coordinates graph problem
+// 	//	typedef options::sensor_pose_on_robot_none      sensor_pose_on_robot_t;  //!< The sensor pose coincides with the robot pose
+// 	typedef options::observation_noise_constant_matrix<observations::RelativePoses_3D>   obs_noise_matrix_t;      // The sensor noise matrix is the same for all observations and equal to some given matrix
+// 	//	typedef options::solver_LM_schur_dense_cholesky solver_t;                //!< Solver algorithm (Default: Lev-Marq, with Schur, with dense Cholesky)
+// };
+// 
+// typedef RbaEngine <
+// 	kf2kf_poses::SE3,               // Parameterization  of KF-to-KF poses
+// 	landmarks::RelativePoses3D,     // Parameterization of landmark positions
+// 	observations::RelativePoses_3D, // Type of observations
+// 	RBA_OPTIONS_GRAPH
+// > SrbaGraphT;
 
 typedef boost::shared_ptr<pcl::visualization::PCLVisualizer> ViewerPtr;
 
@@ -98,64 +98,64 @@ int rgb[20][3] = {
 	{ 0, 0, 64 }
 };
 
-struct bfs_visitor_struct
-{
-	bool visit_filter_feat(const TLandmarkID lm_ID, const topo_dist_t cur_dist)
-	{
-		return false;
-	}
-
-	void visit_feat(const TLandmarkID lm_ID, const topo_dist_t cur_dist) { }
-
-	bool visit_filter_kf(const TKeyFrameID kf_ID, const topo_dist_t cur_dist)
-	{
-		return true;
-	}
-
-	void visit_kf(const TKeyFrameID kf_ID, const topo_dist_t cur_dist) { }
-
-	bool visit_filter_k2k(
-		const TKeyFrameID current_kf,
-		const TKeyFrameID next_kf,
-		const SrbaGraphT::k2k_edge_t* edge,
-		const topo_dist_t cur_dist)
-	{
-		return true;
-	}
-
-	void visit_k2k(
-		const TKeyFrameID current_kf,
-		const TKeyFrameID next_kf,
-		const SrbaGraphT::k2k_edge_t* edge,
-		const topo_dist_t cur_dist)
-	{
-		if (!is_keyframe_pose_set[next_kf])
-		{
-			SrbaGraphT::pose_t pose = edge->inv_pose;
-			Eigen::Vector3f translation(pose.x(), pose.y(), pose.z());
-			mrpt::math::CQuaternionDouble q;
-			pose.getAsQuaternion(q);
-			Eigen::Quaternionf quaternion(q.r(), q.x(), q.y(), q.z());
-			Eigen::Matrix4f rt = transformationFromQuaternionsAndTranslation(quaternion, translation);
-
-			keyframe_poses[next_kf] = keyframe_poses[current_kf] * rt.inverse();
-			is_keyframe_pose_set[next_kf] = true;
-		}
-	}
-
-	bool visit_filter_k2f(
-		const TKeyFrameID current_kf,
-		const SrbaGraphT::k2f_edge_t* edge,
-		const topo_dist_t cur_dist)
-	{
-		return false;
-	}
-
-	void visit_k2f(
-		const TKeyFrameID current_kf,
-		const SrbaGraphT::k2f_edge_t *edge,
-		const topo_dist_t cur_dist) { }
-};
+// struct bfs_visitor_struct
+// {
+// 	bool visit_filter_feat(const TLandmarkID lm_ID, const topo_dist_t cur_dist)
+// 	{
+// 		return false;
+// 	}
+// 
+// 	void visit_feat(const TLandmarkID lm_ID, const topo_dist_t cur_dist) { }
+// 
+// 	bool visit_filter_kf(const TKeyFrameID kf_ID, const topo_dist_t cur_dist)
+// 	{
+// 		return true;
+// 	}
+// 
+// 	void visit_kf(const TKeyFrameID kf_ID, const topo_dist_t cur_dist) { }
+// 
+// 	bool visit_filter_k2k(
+// 		const TKeyFrameID current_kf,
+// 		const TKeyFrameID next_kf,
+// 		const SrbaGraphT::k2k_edge_t* edge,
+// 		const topo_dist_t cur_dist)
+// 	{
+// 		return true;
+// 	}
+// 
+// 	void visit_k2k(
+// 		const TKeyFrameID current_kf,
+// 		const TKeyFrameID next_kf,
+// 		const SrbaGraphT::k2k_edge_t* edge,
+// 		const topo_dist_t cur_dist)
+// 	{
+// 		if (!is_keyframe_pose_set[next_kf])
+// 		{
+// 			SrbaGraphT::pose_t pose = edge->inv_pose;
+// 			Eigen::Vector3f translation(pose.x(), pose.y(), pose.z());
+// 			mrpt::math::CQuaternionDouble q;
+// 			pose.getAsQuaternion(q);
+// 			Eigen::Quaternionf quaternion(q.r(), q.x(), q.y(), q.z());
+// 			Eigen::Matrix4f rt = transformationFromQuaternionsAndTranslation(quaternion, translation);
+// 
+// 			keyframe_poses[next_kf] = keyframe_poses[current_kf] * rt.inverse();
+// 			is_keyframe_pose_set[next_kf] = true;
+// 		}
+// 	}
+// 
+// 	bool visit_filter_k2f(
+// 		const TKeyFrameID current_kf,
+// 		const SrbaGraphT::k2f_edge_t* edge,
+// 		const topo_dist_t cur_dist)
+// 	{
+// 		return false;
+// 	}
+// 
+// 	void visit_k2f(
+// 		const TKeyFrameID current_kf,
+// 		const SrbaGraphT::k2f_edge_t *edge,
+// 		const topo_dist_t cur_dist) { }
+// };
 
 void draw_feature_point(cv::Mat &img, const vector<cv::KeyPoint> &kp)
 {
@@ -3273,7 +3273,7 @@ void showResultWithTrajectory(ifstream *input)
 //	viewer->registerKeyboardCallback(KeyboardEventOccurred, (void*)&viewer);
 	viewer->addPointCloud<pcl::PointXYZRGB>(cloud, rgb, "cloud");
 	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
-	viewer->addCoordinateSystem(1.0);
+//	viewer->addCoordinateSystem(1.0);
 	viewer->initCameraParameters();
 
 	while (!viewer->wasStopped())
@@ -3363,32 +3363,34 @@ int main()
 //	repeat_global_results();
 //	time_test();
 
-	cv::Mat img = cv::imread("E:/1305033538.912812.png", -1);
-	cv::Mat img2(img.rows, img.cols, CV_8UC1);
-	for (int i = 0; i < img.rows; i++)
-	{
-		for (int j = 0; j < img.cols; j++)
-		{
-			img2.at<unsigned char>(i, j) = img.at<ushort>(i, j) / 30000 * 255;
-		}
-	}
+// 	cv::Mat img = cv::imread("E:/1305033538.912812.png", -1);
+// 	cv::Mat img2(img.rows, img.cols, CV_8UC1);
+// 	for (int i = 0; i < img.rows; i++)
+// 	{
+// 		for (int j = 0; j < img.cols; j++)
+// 		{
+// 			img2.at<unsigned char>(i, j) = img.at<ushort>(i, j) / 30000 * 255;
+// 		}
+// 	}
+// 
+// 	//cv::equalizeHist(img2, img2);
+// 	cv::imshow("result", img2);
+// 	cv::waitKey();
+// 	return 0;
 
-	//cv::equalizeHist(img2, img2);
-	cv::imshow("result", img2);
-	cv::waitKey();
-	return 0;
+	std::string directory = "E:/school/data/";
 
 	const int dcount = 9;
 	std::string directories[dcount], names[dcount];
-	directories[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_xyz/";
-	directories[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk/";
-	directories[2] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk2/";
-	directories[3] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/";
-	directories[4] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy/";
-	directories[5] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_360/";
-	directories[6] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_room/";
-	directories[7] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_teddy/";
-	directories[8] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_plant/";
+	directories[0] = directory + "rgbd_dataset_freiburg1_xyz/";
+	directories[1] = directory + "rgbd_dataset_freiburg1_desk/";
+	directories[2] = directory + "rgbd_dataset_freiburg1_desk2/";
+	directories[3] = directory + "rgbd_dataset_freiburg1_floor/";
+	directories[4] = directory + "rgbd_dataset_freiburg1_rpy/";
+	directories[5] = directory + "rgbd_dataset_freiburg1_360/";
+	directories[6] = directory + "rgbd_dataset_freiburg1_room/";
+	directories[7] = directory + "rgbd_dataset_freiburg1_teddy/";
+	directories[8] = directory + "rgbd_dataset_freiburg1_plant/";
 // 	directories[0] = "G:/kinect data/rgbd_dataset_freiburg1_xyz/";
 // 	directories[1] = "G:/kinect data/rgbd_dataset_freiburg1_desk/";
 // 	directories[2] = "G:/kinect data/rgbd_dataset_freiburg1_room/";

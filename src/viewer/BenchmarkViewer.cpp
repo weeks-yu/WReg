@@ -53,6 +53,11 @@ void BenchmarkViewer::ShowPointCloud(PointCloudPtr result)
 	ui->qvtkWidget->update();
 }
 
+PointCloudPtr BenchmarkViewer::GetPointCloud()
+{
+	return cloud;
+}
+
 void BenchmarkViewer::resizeEvent(QResizeEvent *event)
 {
 	if (!currRGB.isNull())

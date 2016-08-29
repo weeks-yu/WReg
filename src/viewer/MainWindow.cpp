@@ -137,7 +137,6 @@ void MainWindow::ShowBenchmarkResult(const QString &filename, int fi, int fst, i
 		Eigen::Vector3f t;
 		Eigen::Quaternionf q;
 		input >> timestamp >> t(0) >> t(1) >> t(2) >> q.x() >> q.y() >> q.z() >> q.w();
-		Eigen::Matrix4f tran = transformationFromQuaternionsAndTranslation(q, t);
 
 		QStringList lists = QString(line.data()).split(' ');
 
@@ -146,18 +145,18 @@ void MainWindow::ShowBenchmarkResult(const QString &filename, int fi, int fst, i
 
 		if (!(fabs(timestamp_this - timestamp) < 1e-4))
 		{
-			if (timestamp_this > timestamp)
+			if (timestamp_this < timestamp)
 			{
 				continue;
 			}
 			while (!(fabs(timestamp_this - timestamp) < 1e-4) &&
-				timestamp_this < timestamp && getline(fileInput, line))
+				timestamp_this > timestamp && !input.eof())
 			{
-				lists = QString(line.data()).split(' ');
-				timestamp_string = lists[1].mid(6, lists[1].length() - 10);
-				timestamp_this = timestamp_string.toDouble();
+				input >> timestamp >> t(0) >> t(1) >> t(2) >> q.x() >> q.y() >> q.z() >> q.w();
 			}
 		}
+
+		Eigen::Matrix4f tran = transformationFromQuaternionsAndTranslation(q, t);
 
 		ss.str("");
 		ss << directory << "/" << lists[0].toStdString();
@@ -187,7 +186,17 @@ void MainWindow::onActionOpenTriggered()
 
 void MainWindow::onActionSaveTriggered()
 {
-
+	QString filename = QFileDialog::getSaveFileName(this, tr("Save pcd fild"), "", tr("pcd files(*.pcd)"));
+	if (!filename.isNull())
+	{
+		QWidget *w = mdiArea->currentSubWindow()->widget();
+		QString s = w->metaObject()->className();
+		if (s == "BenchmarkViewer")
+		{
+			BenchmarkViewer *bv = (BenchmarkViewer *)w;
+			pcl::io::savePCDFile(filename.toStdString(), *(bv->GetPointCloud()), true);
+		}
+	}
 }
 
 void MainWindow::onActionOpenReadTxtTriggered()

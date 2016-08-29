@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SrbaManager.h"
+//#include "SrbaManager.h"
 #include <pcl/registration/gicp.h>
 #include <opencv2/core/core.hpp>
 #include "RobustManager.h"
@@ -148,7 +148,7 @@ private:
 	float last_rational;
 
 	HogmanManager hogman_manager;
-	SrbaManager srba_manager;
+//	SrbaManager srba_manager;
 
 	// parameters - downsampling
 	

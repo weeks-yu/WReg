@@ -171,7 +171,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			}
 			else if (using_srba_optimizer)
 			{
-				is_in_quadtree = srba_manager.addNode(frame, 1.0, true, &inliers, &exists);
+//				is_in_quadtree = srba_manager.addNode(frame, 1.0, true, &inliers, &exists);
 			}
 			else if (using_robust_optimizer)
 			{
@@ -386,7 +386,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 			}
 			else if (using_srba_optimizer)
 			{
-				global_tran = srba_manager.getLastKeyframeTransformation() * relative_tran;
+//				global_tran = srba_manager.getLastKeyframeTransformation() * relative_tran;
 			}
 			else if (using_robust_optimizer)
 			{
@@ -407,7 +407,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				}
 				else if (using_srba_optimizer)
 				{
-					is_in_quadtree = srba_manager.addNode(g_frame, weight, true, &inliers, &exists);
+//					is_in_quadtree = srba_manager.addNode(g_frame, weight, true, &inliers, &exists);
 				}
 				else if (using_robust_optimizer)
 				{
@@ -447,7 +447,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				}
 				else if (using_srba_optimizer)
 				{
-					srba_manager.addNode(g_frame, weight, false);
+//					srba_manager.addNode(g_frame, weight, false);
 				}
 				else if (using_robust_optimizer)
 				{
@@ -649,8 +649,8 @@ PointCloudPtr SlamEngine::GetScene()
 		PointCloudPtr tc(new PointCloudT);
 		if (using_hogman_optimizer)
 			pcl::transformPointCloud(*point_clouds[i], *tc, hogman_manager.getTransformation(i));
-		else if (using_srba_optimizer)
-			pcl::transformPointCloud(*point_clouds[i], *tc, srba_manager.getTransformation(i));
+//		else if (using_srba_optimizer)
+//			pcl::transformPointCloud(*point_clouds[i], *tc, srba_manager.getTransformation(i));
 		else if (using_robust_optimizer)
 			pcl::transformPointCloud(*point_clouds[i], *tc, robust_manager.getTransformation(i));
 		else
@@ -673,8 +673,8 @@ vector<pair<double, Eigen::Matrix4f>> SlamEngine::GetTransformations()
 	{
 		if (using_hogman_optimizer)
 			ret.push_back(pair<double, Eigen::Matrix4f>(timestamps[i], hogman_manager.getTransformation(i)));
-		else if (using_srba_optimizer)
-			ret.push_back(pair<double, Eigen::Matrix4f>(timestamps[i], srba_manager.getTransformation(i)));
+//		else if (using_srba_optimizer)
+//			ret.push_back(pair<double, Eigen::Matrix4f>(timestamps[i], srba_manager.getTransformation(i)));
 		else if (using_robust_optimizer)
 			ret.push_back(pair<double, Eigen::Matrix4f>(timestamps[i], robust_manager.getTransformation(i)));
 		else
@@ -703,16 +703,16 @@ void SlamEngine::SaveLogs(ofstream &outfile)
 	if (using_srba_optimizer)
 	{
 		//outfile << "base\ttarget\trmse\tmatches\tinliers\ttransformation" << endl;
-		outfile << srba_manager.baseid.size() << endl;
-		for (int i = 0; i < srba_manager.baseid.size(); i++)
-		{
-			outfile << srba_manager.baseid[i] << "\t"
-				<< srba_manager.targetid[i] << "\t"
-				<< srba_manager.rmses[i] << "\t"
-				<< srba_manager.matchescount[i] << "\t"
-				<< srba_manager.inlierscount[i] << endl;
-			outfile << srba_manager.ransactrans[i] << endl;
-		}
+// 		outfile << srba_manager.baseid.size() << endl;
+// 		for (int i = 0; i < srba_manager.baseid.size(); i++)
+// 		{
+// 			outfile << srba_manager.baseid[i] << "\t"
+// 				<< srba_manager.targetid[i] << "\t"
+// 				<< srba_manager.rmses[i] << "\t"
+// 				<< srba_manager.matchescount[i] << "\t"
+// 				<< srba_manager.inlierscount[i] << endl;
+// 			outfile << srba_manager.ransactrans[i] << endl;
+// 		}
 	}
 	else if (using_hogman_optimizer)
 	{
@@ -763,8 +763,8 @@ void SlamEngine::ShowStatistics()
 	cout << "Number of keyframes   : ";
 	if (using_hogman_optimizer)
 		cout << hogman_manager.keyframeInQuadTreeCount << endl;
-	else if (using_srba_optimizer)
-		cout << srba_manager.keyframeInQuadTreeCount << endl;
+//	else if (using_srba_optimizer)
+//		cout << srba_manager.keyframeInQuadTreeCount << endl;
 	else if (using_robust_optimizer)
 		cout << robust_manager.keyframe_for_lc.size() << endl;
 	else
@@ -777,7 +777,7 @@ void SlamEngine::ShowStatistics()
 	cout << "-------------------------------------------------------------------------------" << endl;
 	if (using_hogman_optimizer)
 	{
-		cout << "Min Closure Time      : " << fixed << setprecision(3) << srba_manager.min_closure_detect_time << ",\t\tMax Closure Time: " << srba_manager.max_closure_detect_time << endl;
+		cout << "Min Closure Time      : " << fixed << setprecision(3) << hogman_manager.min_closure_detect_time << ",\t\tMax Closure Time: " << hogman_manager.max_closure_detect_time << endl;
 		cout << "Avg Closure Time      : " << hogman_manager.total_closure_detect_time / hogman_manager.clousureCount << endl;
 		cout << "Min Closure Candidate : " << hogman_manager.min_closure_candidate << "\t\tMax Closure Candidate: " << hogman_manager.max_closure_candidate << endl;
 		cout << "-------------------------------------------------------------------------------" << endl;
@@ -787,13 +787,13 @@ void SlamEngine::ShowStatistics()
 	}
 	else if (using_srba_optimizer)
 	{
-		cout << "Min Closure Time      : " << fixed << setprecision(3) << srba_manager.min_closure_detect_time << ",\t\tMax Closure Time: " << srba_manager.max_closure_detect_time << endl;
-		cout << "Avg Closure Time      : " << srba_manager.total_closure_detect_time / srba_manager.clousureCount << endl;
-		cout << "Min Closure Candidate : " << srba_manager.min_closure_candidate << "\t\tMax Closure Candidate: " << srba_manager.max_closure_candidate << endl;
-		cout << "-------------------------------------------------------------------------------" << endl;
-		cout << "Min Graph Time        : " << srba_manager.min_graph_opt_time << "\t\tMax Graph Time: " << srba_manager.max_graph_opt_time << endl;
-		cout << "Avg Graph Time        : " << srba_manager.total_graph_opt_time / frame_id << endl;
-		cout << "Min Edge Weight       : " << srba_manager.min_edge_weight << "\t\tMax Edge Weight: " << srba_manager.max_edge_weight << endl;
+// 		cout << "Min Closure Time      : " << fixed << setprecision(3) << srba_manager.min_closure_detect_time << ",\t\tMax Closure Time: " << srba_manager.max_closure_detect_time << endl;
+// 		cout << "Avg Closure Time      : " << srba_manager.total_closure_detect_time / srba_manager.clousureCount << endl;
+// 		cout << "Min Closure Candidate : " << srba_manager.min_closure_candidate << "\t\tMax Closure Candidate: " << srba_manager.max_closure_candidate << endl;
+// 		cout << "-------------------------------------------------------------------------------" << endl;
+// 		cout << "Min Graph Time        : " << srba_manager.min_graph_opt_time << "\t\tMax Graph Time: " << srba_manager.max_graph_opt_time << endl;
+// 		cout << "Avg Graph Time        : " << srba_manager.total_graph_opt_time / frame_id << endl;
+// 		cout << "Min Edge Weight       : " << srba_manager.min_edge_weight << "\t\tMax Edge Weight: " << srba_manager.max_edge_weight << endl;
 	}
 	else if (using_robust_optimizer)
 	{

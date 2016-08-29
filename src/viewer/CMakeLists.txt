@@ -8,10 +8,10 @@ include_directories(../../robustoptimizer)
 link_directories(${PROJECT_BINARY_DIR}/lib)
 
 #Find VTK
-find_package(VTK 6.2 REQUIRED)
+find_package(VTK 7.0 REQUIRED)
 
 #Find PCL
-find_package(PCL 1.7 REQUIRED)
+find_package(PCL 1.8 REQUIRED)
 
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
@@ -22,10 +22,10 @@ find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
 #Find SRBA
-set(SRBA_DIR ${PROJECT_SOURCE_DIR})
-find_package(SRBA REQUIRED)
-include_directories(${SRBA_INCLUDE_DIRS})
-find_package(MRPT REQUIRED ${SRBA_REQUIRED_MRPT_MODULES})
+#set(SRBA_DIR ${PROJECT_SOURCE_DIR})
+#find_package(SRBA REQUIRED)
+#include_directories(${SRBA_INCLUDE_DIRS})
+#find_package(MRPT REQUIRED ${SRBA_REQUIRED_MRPT_MODULES})
 
 #Find G2O
 find_package(G2O REQUIRED)
@@ -85,7 +85,7 @@ add_executable(WReg ${VIEWER_HEADERS} ${VIEWER_SOURCES} ${VIEWER_UIS} ${VIEWER_R
 target_link_libraries(WReg
 	${OpenCV_LIBS}
 	${PCL_LIBRARIES}
-	${MRPT_LIBS}
+#	${MRPT_LIBS}
 	${VTK_LIBRARIES}
 	${CUDA_LIBRARIES}
 	${G2O_LIBRARIES}

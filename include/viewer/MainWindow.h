@@ -67,6 +67,8 @@ private:
 	BenchmarkViewer *benchmarkViewer;
 
 	SlamEngine *engine;
+
+	bool inBenchmarkMode;
 };
 
 #endif // MAINWINDOW_H

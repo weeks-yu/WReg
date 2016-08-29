@@ -28,6 +28,7 @@ public:
 	void ShowRGBImage(QImage *rgb);
 	void ShowDepthImage(QImage *depth);
 	void ShowPointCloud(PointCloudPtr result);
+	PointCloudPtr GetPointCloud();
 
 protected:
 	virtual void resizeEvent(QResizeEvent *event);
