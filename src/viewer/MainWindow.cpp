@@ -74,16 +74,15 @@ void MainWindow::ShowBenchmarkTest(const QString &directory)
 		uiDockBenchmark->setupUi(dockBenchmark);
 	}
 	uiDockBenchmark->lineEditDirectory->setText(directory);
-	uiDockBenchmark->pushButtonSave->setDisabled(true);
+	uiDockBenchmark->pushButtonSaveTrajectories->setDisabled(true);
 	this->addDockWidget(Qt::LeftDockWidgetArea, dockBenchmark);
 	dockBenchmark->show();
 
-	connect(uiDockBenchmark->pushButtonRun, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonRunClicked);
 	connect(uiDockBenchmark->pushButtonDirectory, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonDirectoryClicked);
-	connect(uiDockBenchmark->pushButtonSave, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonSaveClicked);
+	connect(uiDockBenchmark->pushButtonRun, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonRunClicked);
 	connect(uiDockBenchmark->pushButtonSaveKeyframes, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonSaveKeyframesClicked);
+	connect(uiDockBenchmark->pushButtonSaveTrajectories, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonSaveTrajectoriesClicked);
 	connect(uiDockBenchmark->pushButtonSaveLogs, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonSaveLogsClicked);
-	connect(uiDockBenchmark->pushButtonRefine, &QPushButton::clicked, this, &MainWindow::onBenchmarkPushButtonRefineClicked);
 
 	// center
 	benchmarkViewer = new BenchmarkViewer(this);
@@ -99,11 +98,8 @@ void MainWindow::ShowBenchmarkResult(const QString &filename, int fi, int fst, i
 	if (engine != nullptr)
 		delete engine;
 	engine = new SlamEngine();
-	engine->setUsingSrbaOptimzier(false);
-	engine->setUsingHogmanOptimizer(false);
 	engine->setUsingIcpcuda(false);
-	engine->setUsingGicp(false);
-	engine->setUsingDownsampling(false);
+	engine->setUsingRobustOptimizer(false);
 
 	string directory;
 	ifstream input(filename.toStdString());
@@ -196,6 +192,11 @@ void MainWindow::onActionSaveTriggered()
 			BenchmarkViewer *bv = (BenchmarkViewer *)w;
 			pcl::io::savePCDFile(filename.toStdString(), *(bv->GetPointCloud()), true);
 		}
+		else if (s == "PclViewer")
+		{
+			PclViewer *pv = (PclViewer *)w;
+			pcl::io::savePCDFile(filename.toStdString(), *(pv->GetPointCloud()), true);
+		}
 	}
 }
 
@@ -248,24 +249,29 @@ void MainWindow::onActionShowResultFromFileTriggered()
 
 void MainWindow::onBenchmarkPushButtonRunClicked(bool checked)
 {
-	if (!Parser::isFloat(uiDockBenchmark->lineEditDownsampleRate->text()))
+	if (!Parser::isFloat(uiDockBenchmark->lineEditICPDist->text()))
 	{
-		QMessageBox::warning(this, "Parameter Error", "Downsampling: parameter \"Downsample Rate\" should be float.");
+		QMessageBox::warning(this, "Parameter Error", "Group ICP: Parameter \"Dist Threshold\" should be float.");
 		return;
 	}
-	if (!Parser::isFloat(uiDockBenchmark->lineEditGICPCorrDist->text()))
+	if (!Parser::isFloat(uiDockBenchmark->lineEditICPAngle->text()))
 	{
-		QMessageBox::warning(this, "Parameter Error", "GICP: parameter \"Max Correspondence Dist\" should be float.");
+		QMessageBox::warning(this, "Parameter Error", "Group ICP: Parameter \"Angle Threshold\" should be float.");
 		return;
 	}
-	if (!Parser::isFloat(uiDockBenchmark->lineEditGICPEpsilon->text()))
+	if (!Parser::isFloat(uiDockBenchmark->lineEditFeatureInlierPercentage->text()))
 	{
-		QMessageBox::warning(this, "Parameter Error", "GICP: parameter \"Transformation Epsilon\" should be float.");
+		QMessageBox::warning(this, "Parameter Error", "Group Feature: Parameter \"Inlier Percentage\" should be float.");
 		return;
 	}
-	if (!Parser::isFloat(uiDockBenchmark->lineEditFeatureInlier->text()))
+	if (!Parser::isFloat(uiDockBenchmark->lineEditFeatureInlierDist->text()))
 	{
-		QMessageBox::warning(this, "Parameter Error", "Feature: parameter \"Inlier Percentage\" should be float.");
+		QMessageBox::warning(this, "Parameter Error", "Group Feature: Parameter \"Inlier Dist\" should be float.");
+		return;
+	}
+	if (!Parser::isFloat(uiDockBenchmark->lineEditGraphInlierDist->text()))
+	{
+		QMessageBox::warning(this, "Parameter Error", "Group Feature: Parameter \"Graph Inlier Dist\" should be float.");
 		return;
 	}
 
@@ -274,61 +280,28 @@ void MainWindow::onBenchmarkPushButtonRunClicked(bool checked)
 		delete engine;
 	engine = new SlamEngine();
 	int method = uiDockBenchmark->comboBoxMethod->currentIndex();
-	bool usingGICP = method == 0 || method == 1;
-	bool usingICPCUDA = method == 2 || method == 3 || method == 4 || method == 5;
-	bool usingFeature = method == 6 || method == 7;
-	bool usingHogmanOptimizer = method == 0 || method == 2;
-	bool usingSrbaOptimizer = method == 4;
-	bool usingRobustOptimizer = method == 5 || method == 7;
-	bool usingDownSampling = usingGICP && uiDockBenchmark->checkBoxDownSampling->isChecked();
+	bool usingICPCUDA = method == 0 || method == 1;
+	bool usingFeature = method == 2 || method == 3;
+	bool usingRobustOptimizer = method == 1 || method == 3;
 	
-	engine->setUsingDownsampling(usingDownSampling);
-	if (usingDownSampling)
-	{
-		engine->setDownsampleRate(uiDockBenchmark->lineEditDownsampleRate->text().toFloat());
-	}
-	engine->setUsingGicp(usingGICP);
-	if (usingGICP)
-	{
-		engine->setGicpMaxIterations(uiDockBenchmark->spinBoxGICPIterations->text().toInt());
-		engine->setGicpMaxCorrDist(uiDockBenchmark->lineEditGICPCorrDist->text().toFloat());
-		engine->setGicpEpsilon(uiDockBenchmark->lineEditGICPEpsilon->text().toFloat());
-	}
 	engine->setUsingIcpcuda(usingICPCUDA);
-	if (usingICPCUDA)
-	{
-
-	}
 	engine->setUsingFeature(usingFeature);
 	if (usingFeature)
 	{
 		QString type = uiDockBenchmark->comboBoxFeatureType->currentText();
 		engine->setFeatureType(type.toStdString());
 		engine->setFeatureMinMatches(uiDockBenchmark->spinBoxFeatureMinMatches->text().toInt());
-		engine->setFeatureInlierPercentage(uiDockBenchmark->lineEditFeatureInlier->text().toFloat());
-		engine->setFeatureInlierDist(uiDockBenchmark->lineEditFeatureDist->text().toFloat());
+		engine->setFeatureInlierPercentage(uiDockBenchmark->lineEditFeatureInlierPercentage->text().toFloat());
+		engine->setFeatureInlierDist(uiDockBenchmark->lineEditFeatureInlierDist->text().toFloat());
 	}
-	engine->setUsingHogmanOptimizer(usingHogmanOptimizer);
-	if (usingHogmanOptimizer)
-	{
-		
-	}
-	engine->setUsingSrbaOptimzier(usingSrbaOptimizer);
-	if (usingSrbaOptimizer)
-	{
-		
-	}
-	engine->setUsingRobustOptimzier(usingRobustOptimizer);
+	engine->setUsingRobustOptimizer(usingRobustOptimizer);
 	if (usingRobustOptimizer)
-	{
-		
-	}
-	if (usingHogmanOptimizer || usingRobustOptimizer || usingSrbaOptimizer)
 	{
 		QString type = uiDockBenchmark->comboBoxGraphFeatureType->currentText();
 		engine->setGraphFeatureType(type.toStdString());
-		engine->setFeatureMinMatches(uiDockBenchmark->spinBoxFeatureMinMatches->text().toInt());
-		engine->setFeatureInlierPercentage(uiDockBenchmark->lineEditFeatureInlier->text().toFloat());
+		engine->setGraphMinMatches(uiDockBenchmark->spinBoxGraphMinMatches->text().toInt());
+		engine->setGraphInlierPercentage(uiDockBenchmark->lineEditGraphInlierPercentage->text().toFloat());
+		engine->setGraphInlierDist(uiDockBenchmark->lineEditGraphInlierDist->text().toFloat());
 	}
 
 	SlamThread *thread = new SlamThread(uiDockBenchmark->lineEditDirectory->text(), engine,
@@ -340,7 +313,7 @@ void MainWindow::onBenchmarkPushButtonRunClicked(bool checked)
 	connect(thread, &SlamThread::RegistrationDone, this, &MainWindow::onBenchmarkRegistrationDone);
 	thread->start();
 	uiDockBenchmark->pushButtonRun->setDisabled(true);
-	uiDockBenchmark->pushButtonSave->setDisabled(true);
+	uiDockBenchmark->pushButtonSaveTrajectories->setDisabled(true);
 }
 
 void MainWindow::onBenchmarkPushButtonDirectoryClicked(bool checked)
@@ -364,7 +337,7 @@ void MainWindow::onBenchmarkPushButtonDirectoryClicked(bool checked)
 	}
 }
 
-void MainWindow::onBenchmarkPushButtonSaveClicked(bool checked)
+void MainWindow::onBenchmarkPushButtonSaveTrajectoriesClicked(bool checked)
 {
 	QString filename = QFileDialog::getSaveFileName(this, tr("Save Transformations"), "", tr("txt files(*.txt)"));
 	if (!filename.isNull())
@@ -413,8 +386,6 @@ void MainWindow::onBenchmarkPushButtonSaveKeyframesClicked(bool checked)
 		{
 			QString fn = fi.absoluteFilePath() + "/keyframe_candidate_" + QString::number(engine->keyframe_candidates_id[i]) + "_rgb.png";
 			cv::imwrite(fn.toStdString(), engine->keyframe_candidates[i].first);
-// 			fn = fi.absoluteFilePath() + "/keyframe_candidate_" + QString::number(i) + "_depth.png";
-// 			cv::imwrite(fn.toStdString(), engine->keyframe_candidates[i].second);
 		}
 
 		cout << engine->keyframes.size() << endl;
@@ -425,8 +396,6 @@ void MainWindow::onBenchmarkPushButtonSaveKeyframesClicked(bool checked)
 			QString fn = fi.absoluteFilePath() + "/keyframe_" + QString::number(engine->keyframes_id[i]) + "_rgb_" +
 				inliers_sig + "_" + exists_sig + ".png";
 			cv::imwrite(fn.toStdString(), engine->keyframes[i].first);
-// 			fn = fi.absoluteFilePath() + "/keyframe_" + QString::number(i) + "_depth.png";
-// 			cv::imwrite(fn.toStdString(), engine->keyframe_candidates[i].second);
 		}
 #endif
 
@@ -445,18 +414,6 @@ void MainWindow::onBenchmarkPushButtonSaveLogsClicked(bool checked)
 			engine->SaveLogs(outfile);
 		}
 		outfile.close();
-	}
-}
-
-void MainWindow::onBenchmarkPushButtonRefineClicked(bool checked)
-{
-	if (engine)
-	{
-		if (engine->isUsingRobustOptimizer())
-		{
-			engine->Refine();
-			benchmarkViewer->ShowPointCloud(engine->GetScene());
-		}
 	}
 }
 
@@ -489,5 +446,5 @@ void MainWindow::onBenchmarkRegistrationDone()
 {
 	benchmarkViewer->ShowPointCloud(engine->GetScene());
 	uiDockBenchmark->pushButtonRun->setDisabled(false);
-	uiDockBenchmark->pushButtonSave->setDisabled(false);
+	uiDockBenchmark->pushButtonSaveTrajectories->setDisabled(false);
 }

@@ -35,15 +35,10 @@ void ActiveWindow::move(const vector<Frame*> &graph, const RectangularRegion &r)
 		Frame *now_f = graph[active_frames[i]];
 		for (int j = 0; j < now_f->f->feature_pts_3d.size(); j++)
 		{
-			if (true /*|| region.containsPoint(now_f->f->feature_pts_3d_real[j](0), now_f->f->feature_pts_3d_real[j](1))*/)
-			{
-//				feature_pool->feature_ids.push_back(now_f->f->feature_ids[j]);
-				feature_pool->feature_pts.push_back(now_f->f->feature_pts[j]);
-				feature_pool->feature_pts_3d.push_back(now_f->f->feature_pts_3d[j]);
-//				feature_pool->feature_pts_3d_real.push_back(now_f->f->feature_pts_3d_real[j]);
-				feature_pool->feature_descriptors.push_back(now_f->f->feature_descriptors.row(j));
-				feature_pool->feature_frame_index.push_back(i);
-			}
+			feature_pool->feature_pts.push_back(now_f->f->feature_pts[j]);
+			feature_pool->feature_pts_3d.push_back(now_f->f->feature_pts_3d[j]);
+			feature_pool->feature_descriptors.push_back(now_f->f->feature_descriptors.row(j));
+			feature_pool->feature_frame_index.push_back(i);
 		}
 	}
 	feature_pool->buildFlannIndex();

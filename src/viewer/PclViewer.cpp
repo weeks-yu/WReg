@@ -22,3 +22,8 @@ PclViewer::~PclViewer()
 {
 	delete ui;
 }
+
+PointCloudPtr PclViewer::GetPointCloud()
+{
+	return cloud;
+}

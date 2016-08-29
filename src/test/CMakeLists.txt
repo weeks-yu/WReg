@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 
 include_directories(../../include/algorithm)
 include_directories(../../include/test)
-include_directories(../../aislib)
 include_directories(../../cudalib)
 include_directories(../../robustoptimizer)
 link_directories(${PROJECT_BINARY_DIR}/lib)
@@ -17,12 +16,6 @@ add_definitions(${PCL_DEFINITIONS})
 #Find OpenCv
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
-
-#Find SRBA
-#set(SRBA_DIR ${PROJECT_SOURCE_DIR})
-#find_package(SRBA REQUIRED)
-#include_directories(${SRBA_INCLUDE_DIRS})
-#find_package(MRPT REQUIRED ${SRBA_REQUIRED_MRPT_MODULES})
 
 #Find G2O
 find_package(G2O REQUIRED)
@@ -48,10 +41,8 @@ add_executable(Test ${TEST_HEADERS} ${TEST_SOURCES})
 
 target_link_libraries(Test
 	${OpenCV_LIBS}
-#	${MRPT_LIBS}
 	${PCL_LIBRARIES}
 	${CUDA_LIBRARIES}
 	${G2O_LIBRARIES}
-	aislib
 	icpcuda
 	algorithm)

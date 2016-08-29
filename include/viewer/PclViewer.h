@@ -10,9 +10,7 @@
 #include <pcl/visualization/pcl_visualizer.h>
 
 #include <vtkRenderWindow.h>
-
-typedef pcl::PointXYZRGB PointT;
-typedef pcl::PointCloud<PointT> PointCloudT;
+#include "PointCloud.h"
 
 namespace Ui {
 	class PclViewer;
@@ -26,11 +24,13 @@ public:
 	explicit PclViewer(PointCloudT::Ptr cloud, QWidget *parent = 0);
 	~PclViewer();
 
+	PointCloudPtr GetPointCloud();
+
 protected:
 	Ui::PclViewer *ui;
 
 	pcl::visualization::PCLVisualizer::Ptr viewer;
-	PointCloudT::Ptr cloud;
+	PointCloudPtr cloud;
 };
 
 #endif // PCLVIEWER_H

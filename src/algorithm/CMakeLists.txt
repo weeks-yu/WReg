@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 
 include_directories(../../include/algorithm)
-include_directories(../../aislib)
 include_directories(../../cudalib)
 include_directories(../../robustoptimizer)
 link_directories(${PROJECT_BINARY_DIR}/lib)
@@ -15,12 +14,6 @@ add_definitions(${PCL_DEFINITIONS})
 #Find OpenCv
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
-
-#Find SRBA
-#set(SRBA_DIR ${PROJECT_SOURCE_DIR})
-#find_package(SRBA REQUIRED)
-#include_directories(${SRBA_INCLUDE_DIRS})
-#find_package(MRPT REQUIRED ${SRBA_REQUIRED_MRPT_MODULES})
 
 #Find G2O
 find_package(G2O REQUIRED)
@@ -41,11 +34,9 @@ set(ALGORITHM_HEADER
 	../../include/algorithm/Feature.h
 	../../include/algorithm/Frame.h
 	../../include/algorithm/ActiveWindow.h
-	../../include/algorithm/HogmanManager.h
 	../../include/algorithm/RobustManager.h
-#	../../include/algorithm/SrbaManager.h
 	../../include/algorithm/PointCloud.h
-	../../include/algorithm/QuadTree.h
+#	../../include/algorithm/QuadTree.h
 	../../include/algorithm/Transformation.h
 	../../include/algorithm/SlamEngine.h)
 	
@@ -53,9 +44,7 @@ set(ALGORITHM_SRC
 	Config.cpp
 	Feature.cpp
 	ActiveWindow.cpp
-	HogmanManager.cpp
 	RobustManager.cpp
-#	SrbaManager.cpp
 	PointCloud.cpp
 	Transformation.cpp
 	SlamEngine.cpp)
@@ -64,10 +53,8 @@ add_library(algorithm STATIC ${ALGORITHM_HEADER} ${ALGORITHM_SRC})
 target_link_libraries(algorithm
 	${OpenCV_LIBS}
 	${PCL_LIBRARIES}
-#	${MRPT_LIBS}
 	${CUDA_LIBRARIES}
 	${G2O_LIBRARIES}
-	aislib
 	icpcuda
 	robustoptimizer
 	)

@@ -1,5 +1,5 @@
 #pragma once
-#include "QuadTree.h"
+//#include "QuadTree.h"
 #include "Frame.h"
 #include "ActiveWindow.h"
 
@@ -26,12 +26,9 @@ public:
 
 public:
 
-//	ActiveWindow active_window;
 	vector<int> keyframe_for_lc;
-
 	vector<int> keyframe_indices;
 	map<int, int> keyframe_id;
-//	set<int> frame_in_quadtree_indices;
 
 	double total_kdtree_build;
 	double total_kdtree_match;
@@ -41,19 +38,10 @@ public:
 	double max_graph_opt_time;
 	double total_graph_opt_time;
 
-	double min_edge_weight;
-	double max_edge_weight;
-
-	double min_closure_detect_time;
-	double max_closure_detect_time;
-	double total_closure_detect_time;
+	double min_lc_detect_time;
+	double max_lc_detect_time;
+	double total_lc_detect_time;
 	
-	int min_closure_candidate;
-	int max_closure_candidate;
-
-	vector<pair<float, float>> insertion_failure;
-
-//	int keyframeLoopCandidateCount;
 	int clousureCount;
 
 #ifdef SAVE_TEST_INFOS
@@ -81,10 +69,6 @@ private:
 
 	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> temp_poses;
 
-	PointCloudCuda *pcc;
-	int threads;
-	int blocks;
-
 	int switchable_id;
 
 	int aw_N, aw_M, aw_F, width, height;
@@ -92,21 +76,10 @@ private:
 
 	bool using_line_process;
 
-public:
-
-	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> odometry_traj;
-	vector<Eigen::Matrix<double, 6, 6>, Eigen::aligned_allocator<Eigen::Matrix<double, 6, 6>>> odometry_info;
-
-	vector<SwitchableEdge> loop_edges;
-	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> loop_trans;
-	vector<Eigen::Matrix<double, 6, 6>, Eigen::aligned_allocator<Eigen::Matrix<double, 6, 6>>> loop_info;
-
-	vector<SwitchableEdge> failed_edges;
-	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> failed_trans;
-	vector<Eigen::Matrix<double, 6, 6>, Eigen::aligned_allocator<Eigen::Matrix<double, 6, 6>>> failed_info;
-
-	double weight;
-	float squared_dist_threshold;
+	int min_matches;
+	float inlier_percentage;
+	float inlier_dist;
+	int knn_k;
 
 public:
 
@@ -123,10 +96,6 @@ public:
 	Eigen::Matrix4f getLastKeyframeTransformation();
 
 	int size();
-
-	void refine();
-
-	void getLineProcessResult(vector<int> &id0s, vector<int> &id1s, vector<float> &linep);
 
 	vector<Frame*> getGraph() { return graph; }
 

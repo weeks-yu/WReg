@@ -5,17 +5,23 @@ using namespace std;
 Config* Config::_instance = nullptr;
 
 Config::Config() {
-	config["feature_type"]			= std::string("ORB");
-	config["graph_feature_type"]    = std::string("SIFT");
+	config["feature_type"]			= static_cast<std::string>("SURF");
+	config["graph_feature_type"]    = static_cast<std::string>("SURF");
+	config["downsample_rate"]		= static_cast<float>  (0.01);
 
 	// RANSAC
 	config["candidate_number"]		= static_cast<int>    (10);
-	config["min_matches"]			= static_cast<int>    (40);
-	config["min_inliers_percent"]	= static_cast<float>  (0.3);
-	config["max_dist_for_inliers"]	= static_cast<float>  (0.1);
 	config["matches_criterion"]		= static_cast<float>  (0.8);
-	config["coresp_percent"]		= static_cast<float>  (0.3);
 	config["ransac_max_iteration"]	= static_cast<int>    (1000);
+	config["min_matches"]			= static_cast<int>    (40);
+	config["min_inlier_p"]			= static_cast<float>  (0.3);
+	config["max_inlier_dist"]		= static_cast<float>  (0.1);
+
+	// Graph
+	config["graph_min_matches"]		= static_cast<int>    (40);
+	config["graph_min_inlier_p"]	= static_cast<float>  (0.3);
+	config["graph_max_inlier_dist"]	= static_cast<float>  (0.1);
+	config["graph_knn_k"]			= static_cast<int> (30);
 
 	// Keyframe
 	config["max_keyframe_interval"] = static_cast<int>    (15);
@@ -38,10 +44,7 @@ Config::Config() {
 	config["keyframe_check_F"]		= static_cast<int>    (1);
 	config["keyframe_check_P"]		= static_cast<float>  (0.75);
 
-	// HOG-man
-	config["hogman_iterations"]		= static_cast<int>    (10);
-
-	// Robust
+ 	// Robust
 	config["robust_iterations"]		= static_cast<int> (10);
 
 	// Camera parameters
@@ -63,37 +66,11 @@ Config::Config() {
 	config["depth_factor"]			= static_cast<float>  (5000.0);
 //	config["depth_factor"]			= static_cast<float>  (1000.0);
 
-	// hogman parameters
-	config["graph_levels"]			= static_cast<int>    (3);
-	config["node_distance"]			= static_cast<int>    (2);
-
 	// cuda parameters
 	config["icpcuda_threads"]		= static_cast<int>    (256);		// warpSize(32)的倍数
 	config["icpcuda_blocks"]		= static_cast<int>    (80);			// 480 * 640 / 80 / 256 = 15 整数
 	config["dist_threshold"]		= static_cast<float>  (0.1);
 	config["angle_threshold"]		= static_cast<float>  (0.34202);
-
-	// plane fitting
-	config["plane_max_iteration"]	= static_cast<int>    (20);
-	config["plane_dist_threshold"]	= static_cast<float>  (0.02);
-
-// 	config["start_paused"]                 =  static_cast<bool>  (1);
-// 	config["subscriber_queue_size"]        =  static_cast<int>   (20);
-// 	config["publisher_queue_size"]         =  static_cast<int>   (1);
-// 	config["adjuster_max_keypoints"]       =  static_cast<int>   (1800);
-// 	config["adjuster_min_keypoints"]       =  static_cast<int>   (1000);
- 	
-// 	config["fast_adjuster_max_iterations"] =  static_cast<int>   (10);
-// 	config["surf_adjuster_max_iterations"] =  static_cast<int>   (5);
-// 	config["min_translation_meter"]        =  static_cast<double>(0.1);
-// 	config["min_rotation_degree"]          =  static_cast<int>   (5);
-// 	config["min_time_reported"]            =  static_cast<double>(0.01);
-// 	config["squared_meshing_threshold"]    =  static_cast<double>(0.0009);
-// 	config["use_glwidget"]                 =  static_cast<bool>  (1);
-// 	config["preserve_raster_on_save"]      =  static_cast<bool>  (0);
-// 	config["connectivity"]                 =  static_cast<int>   (10);
-
-// 	config["drop_async_frames"]            =  static_cast<bool>  (1);
 }
 
 Config* Config::instance() {

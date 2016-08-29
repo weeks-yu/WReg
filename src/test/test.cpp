@@ -27,22 +27,6 @@
 #include "Transformation.h"
 
 using namespace std;
-//using namespace srba;
-
-// struct RBA_OPTIONS_GRAPH : public RBA_OPTIONS_DEFAULT
-// {
-// 	//	typedef ecps::local_areas_fixed_size            edge_creation_policy_t;  //!< One of the most important choices: how to construct the relative coordinates graph problem
-// 	//	typedef options::sensor_pose_on_robot_none      sensor_pose_on_robot_t;  //!< The sensor pose coincides with the robot pose
-// 	typedef options::observation_noise_constant_matrix<observations::RelativePoses_3D>   obs_noise_matrix_t;      // The sensor noise matrix is the same for all observations and equal to some given matrix
-// 	//	typedef options::solver_LM_schur_dense_cholesky solver_t;                //!< Solver algorithm (Default: Lev-Marq, with Schur, with dense Cholesky)
-// };
-// 
-// typedef RbaEngine <
-// 	kf2kf_poses::SE3,               // Parameterization  of KF-to-KF poses
-// 	landmarks::RelativePoses3D,     // Parameterization of landmark positions
-// 	observations::RelativePoses_3D, // Type of observations
-// 	RBA_OPTIONS_GRAPH
-// > SrbaGraphT;
 
 typedef boost::shared_ptr<pcl::visualization::PCLVisualizer> ViewerPtr;
 
@@ -97,65 +81,6 @@ int rgb[20][3] = {
 	{ 0, 64, 0 },
 	{ 0, 0, 64 }
 };
-
-// struct bfs_visitor_struct
-// {
-// 	bool visit_filter_feat(const TLandmarkID lm_ID, const topo_dist_t cur_dist)
-// 	{
-// 		return false;
-// 	}
-// 
-// 	void visit_feat(const TLandmarkID lm_ID, const topo_dist_t cur_dist) { }
-// 
-// 	bool visit_filter_kf(const TKeyFrameID kf_ID, const topo_dist_t cur_dist)
-// 	{
-// 		return true;
-// 	}
-// 
-// 	void visit_kf(const TKeyFrameID kf_ID, const topo_dist_t cur_dist) { }
-// 
-// 	bool visit_filter_k2k(
-// 		const TKeyFrameID current_kf,
-// 		const TKeyFrameID next_kf,
-// 		const SrbaGraphT::k2k_edge_t* edge,
-// 		const topo_dist_t cur_dist)
-// 	{
-// 		return true;
-// 	}
-// 
-// 	void visit_k2k(
-// 		const TKeyFrameID current_kf,
-// 		const TKeyFrameID next_kf,
-// 		const SrbaGraphT::k2k_edge_t* edge,
-// 		const topo_dist_t cur_dist)
-// 	{
-// 		if (!is_keyframe_pose_set[next_kf])
-// 		{
-// 			SrbaGraphT::pose_t pose = edge->inv_pose;
-// 			Eigen::Vector3f translation(pose.x(), pose.y(), pose.z());
-// 			mrpt::math::CQuaternionDouble q;
-// 			pose.getAsQuaternion(q);
-// 			Eigen::Quaternionf quaternion(q.r(), q.x(), q.y(), q.z());
-// 			Eigen::Matrix4f rt = transformationFromQuaternionsAndTranslation(quaternion, translation);
-// 
-// 			keyframe_poses[next_kf] = keyframe_poses[current_kf] * rt.inverse();
-// 			is_keyframe_pose_set[next_kf] = true;
-// 		}
-// 	}
-// 
-// 	bool visit_filter_k2f(
-// 		const TKeyFrameID current_kf,
-// 		const SrbaGraphT::k2f_edge_t* edge,
-// 		const topo_dist_t cur_dist)
-// 	{
-// 		return false;
-// 	}
-// 
-// 	void visit_k2f(
-// 		const TKeyFrameID current_kf,
-// 		const SrbaGraphT::k2f_edge_t *edge,
-// 		const topo_dist_t cur_dist) { }
-// };
 
 void draw_feature_point(cv::Mat &img, const vector<cv::KeyPoint> &kp)
 {
@@ -356,6 +281,10 @@ void Ransac_Test()
 	if (feature_type != "ORB")
 		f[0]->f->buildFlannIndex();
 
+	int min_matches = Config::instance()->get<int>("min_matches");
+	float inlier_percent = Config::instance()->get<float>("min_inlier_p");
+	float inlier_dist = Config::instance()->get<float>("max_inlier_dist");
+
 	for (int i = 1; i < icount; i++)
 	{
 		r[i] = cv::imread(rname[i]);
@@ -371,11 +300,9 @@ void Ransac_Test()
 
 		Eigen::Matrix4f tran = Eigen::Matrix4f::Identity();
 		float rmse;
-		int pc, pcorrc;
 		vector<cv::DMatch> inliers;
-		Eigen::Matrix<double, 6, 6> information;
-		Feature::getTransformationByRANSAC(tran, information, pc, pcorrc, rmse, &inliers,
-			f[0]->f, f[i]->f, nullptr, matches);
+		Feature::getTransformationByRANSAC(tran, rmse, &inliers,
+			f[0]->f, f[i]->f, matches, min_matches, inlier_percent, inlier_dist);
 		cout << matches.size() << ", " << inliers.size() << endl;
 
 		pcl::transformPointCloud(*cloud[i], *cloud[i], tran);
@@ -983,10 +910,9 @@ void cudaTest()
 	icpcuda->initICPModel((unsigned short *)d[0].data, 20.0f, Eigen::Matrix4f::Identity());
 	clock_t start = clock();
 	icpcuda->initICP((unsigned short *)d[1].data, 20.0f);
-	cv::Mat vmap, nmap, pmap;
+	cv::Mat vmap, nmap;
 	icpcuda->getVMapCurr(vmap);
 	icpcuda->getNMapCurr(nmap);
-	icpcuda->getPMapCurr(pmap);
 	cout << (clock() - start) / 1000.0 << endl;
 
 	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cc(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
@@ -1026,407 +952,6 @@ void cudaTest()
 		viewer->spinOnce(100);
 		//boost::this_thread::sleep(boost::posix_time::microseconds(100000));
 	}
-}
-
-void plane_icp_test()
-{
-	const int icount = 2;
-	std::string rname[icount], dname[icount];
- 	rname[0] = "G:/kinect data/living_room_1/rgb/00594.jpg";
- 	rname[1] = "G:/kinect data/living_room_1/rgb/00595.jpg";
-//	rname[0] = "E:/lab/pcl/kinect data/living_room_1/rgb/00594.jpg";
-//	rname[1] = "E:/lab/pcl/kinect data/living_room_1/rgb/00595.jpg";
-	// 	rname[2] = "E:/lab/pcl/kinect data/living_room_1/rgb/00592.jpg";
-	// 	rname[3] = "E:/lab/pcl/kinect data/living_room_1/rgb/00593.jpg";
-	// 	rname[4] = "E:/lab/pcl/kinect data/living_room_1/rgb/00594.jpg";
-	// 	rname[5] = "E:/lab/pcl/kinect data/living_room_1/rgb/00595.jpg";
-
- 	dname[0] = "G:/kinect data/living_room_1/depth/00594.png";
- 	dname[1] = "G:/kinect data/living_room_1/depth/00595.png";
-//	dname[0] = "E:/lab/pcl/kinect data/living_room_1/depth/00594.png";
-//	dname[1] = "E:/lab/pcl/kinect data/living_room_1/depth/00595.png";
-	// 	dname[2] = "E:/lab/pcl/kinect data/living_room_1/depth/00592.png";
-	// 	dname[3] = "E:/lab/pcl/kinect data/living_room_1/depth/00593.png";
-	// 	dname[4] = "E:/lab/pcl/kinect data/living_room_1/depth/00594.png";
-	// 	dname[5] = "E:/lab/pcl/kinect data/living_room_1/depth/00595.png";
-
-	cv::Mat r[icount], d[icount];
-	PointCloudPtr cloud[icount];
-
-	for (int i = 0; i < icount; i++)
-	{
-		r[i] = cv::imread(rname[i]);
-		d[i] = cv::imread(dname[i], -1);
-		cloud[i] = ConvertToPointCloudWithoutMissingData(d[i], r[i], i, i);
-	}
-
-	ICPOdometry *icpcuda = nullptr;
-	int threads = Config::instance()->get<int>("icpcuda_threads");
-	int blocks = Config::instance()->get<int>("icpcuda_blocks");
-	int width = Config::instance()->get<int>("image_width");
-	int height = Config::instance()->get<int>("image_height");
-	float cx = Config::instance()->get<float>("camera_cx");
-	float cy = Config::instance()->get<float>("camera_cy");
-	float fx = Config::instance()->get<float>("camera_fx");
-	float fy = Config::instance()->get<float>("camera_fy");
-	float depthFactor = Config::instance()->get<float>("depth_factor");
-	if (icpcuda == nullptr)
-		icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor);
-
-	trans.push_back(Eigen::Matrix4f::Identity());
-
-	srand((unsigned)time(NULL));
-	cv::Mat p[icount];
-	vector<pair<int, int>> initials;
-	int new_id = 0;
-	int move[4][2] = { {1, 0}, {0, 1}, {-1, 0}, {0, -1} };
-	vector<Eigen::Vector4f, Eigen::aligned_allocator<Eigen::Vector4f>> planes[icount];
-
-	for (int i = 0; i < icount; i++)
-	{
-		cout << "frame " << i << " ";
-		p[i] = cv::Mat(480, 640, CV_8SC1);
-		for (int x = 0; x < 480; x++)
-		{
-			for (int y = 0; y < 640; y++)
-			{
-				p[i].at<char>(x, y) = -1;
-			}
-		}
-
-		for (int j = 0; j < 20; j++)
-		{
-			cout << ", " << j;
-			int r, c, count = 0;
-			do 
-			{
-				r = rand() % 480;
-				c = rand() % 640;
-			} while ((p[i].at<char>(r, c) != -1 || d[i].at<ushort>(r, c) == 0) && count++ < 10);
-			
-			if (count >= 10)
-			{
-				continue;
-			}
-
-			int u_st = (r - 50) > 0 ? r - 50 : 0;
-			int u_ed = (r + 50) < 480 ? r + 50 : 479;
-			int v_st = (c - 50) > 0 ? c - 50 : 0;
-			int v_ed = (c + 50) < 640 ? c + 50 : 639;
-			initials.clear();
-			memset(bfs_visited, 0, 480 * 640 * sizeof(bool));
-			for (int x = u_st; x <= u_ed; x++)
-			{
-				for (int y = v_st; y <= v_ed; y++)
-				{
-					if (d[i].at<ushort>(x, y) != 0 && p[i].at<char>(x, y) == -1)
-					{
-						initials.push_back(pair<int, int>(x, y));
-					}
-					bfs_visited[x][y] = true;
-				}
-			}
-
-			if (initials.size() > 10000)
-			{
-				Eigen::Vector4f plane;
-				vector<pair<int, int>> inliers;
-				bool success = Feature::getPlanesByRANSAC(plane, &inliers, d[i], initials);
-
-				if (success && inliers.size() > 10000)
-				{
-					std::queue<pair<int, int>> q;
-					for (int k = 0; k < inliers.size(); k++)
-					{
-						if (inliers[k].first == u_st || inliers[k].first == u_ed ||
-							inliers[k].second == v_st || inliers[k].second == v_ed)
-						{
-							q.push(inliers[k]);
-						}
-						p[i].at<char>(inliers[k].first, inliers[k].second) = new_id;
-					}
-
-					while (!q.empty())
-					{
-						pair<int, int> now = q.front();
-						q.pop();
-						for (int k = 0; k < 4; k++)
-						{
-							int x = now.first + move[k][0];
-							int y = now.second + move[k][1];
-							if (x < 0 || y < 0 || x >= 480 || y >= 640 ||
-								d[i].at<ushort>(x, y) == 0 || p[i].at<char>(x, y) != -1 || bfs_visited[x][y])
-							{
-								continue;
-							}
-							bfs_visited[x][y] = true;
-							Eigen::Vector3f point;
-							point(2) = ((double)d[i].at<ushort>(x, y)) / depthFactor;
-							point(0) = (y - cx) * point(2) / fx;
-							point(1) = (x - cy) * point(2) / fy;
-
-							float dist = fabs(plane(0) * point(0) + plane(1) * point(1) + plane(2) * point(2) + plane(3));
-							if (dist < 0.02)
-							{
-								p[i].at<char>(x, y) = new_id;
-								q.push(pair<int, int>(x, y));
-							}
-						}
-					}
-					planes[i].push_back(plane);
-					new_id++;
-				}
-			}
-		}
-		cout << endl;
-	}
-
-	icpcuda->initICPModel((unsigned short *)d[0].data, 20.0f, Eigen::Matrix4f::Identity());
-	icpcuda->initICP((unsigned short *)d[1].data, 20.0f);
-
-	Eigen::Matrix4f ret_tran = Eigen::Matrix4f::Identity();
-	Eigen::Vector3f ret_t = ret_tran.topRightCorner(3, 1);
-	Eigen::Matrix<float, 3, 3, Eigen::RowMajor> ret_rot = ret_tran.topLeftCorner(3, 3);
-
-	Eigen::Matrix4f estimated_tran = Eigen::Matrix4f::Identity();
-	Eigen::Vector3f t = estimated_tran.topRightCorner(3, 1);
-	Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = estimated_tran.topLeftCorner(3, 3);
-
-	icpcuda->getIncrementalTransformation(ret_t, ret_rot, t, rot, threads, blocks);
-
-	ret_tran.topLeftCorner(3, 3) = ret_rot;
-	ret_tran.topRightCorner(3, 1) = ret_t;
-
-	std::vector<std::pair<int, int>> plane_corr;
-	std::vector<int> plane_id_curr;
-	std::vector<float> planes_lambda_prev;
-	for (int i = 0; i < planes[0].size(); i++)
-	{
-		planes_lambda_prev.push_back(1);
-		for (int j = 0; j < planes[1].size(); j++)
-		{
-			float nm = (ret_tran.transpose() * planes[1][j] - planes[0][i]).norm();
-			if (nm < 0.1)
-			{
-				plane_corr.push_back(pair<int, int>(i, j));
-				for (int x = 0; x < 480; x++)
-				{
-					for (int y = 0; y < 640; y++)
-					{
-						if (p[1].at<char>(x, y) == planes[0].size() + j)
-						{
-							p[1].at<char>(x, y) = i;
-						}
-					}
-				}
-			}
-		}
-	}
-
-	std::vector<std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f>>> plane_inliers_curr;
-	int plane_inlier_count = 10;
-	for (int i = 0; i < plane_corr.size(); i++)
-	{
-		std::vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f>> inliers;
-		for (int j = 0; j < plane_inlier_count; j++)
-		{
-			int r, c;
-			do 
-			{
-				r = rand() % 480;
-				c = rand() % 640;
-			} while (p[1].at<char>(r, c) != plane_corr[i].first);
-			Eigen::Vector3f point;
-			point(2) = ((double)d[1].at<ushort>(r, c)) / depthFactor;
-			point(0) = (c - cx) * point(2) / fx;
-			point(1) = (r - cy) * point(2) / fy;
-			inliers.push_back(point);
-		}
-		plane_inliers_curr.push_back(inliers);
-		planes_lambda_prev.push_back(1);
-	}
-
-	icpcuda->initICPModel((unsigned short *)d[0].data, 20.0f, Eigen::Matrix4f::Identity());
-	icpcuda->initICP((unsigned short *)d[1].data, 20.0f);
-	icpcuda->initPlanes(planes[0], planes_lambda_prev, planes[1], plane_corr, plane_inlier_count, plane_inliers_curr);
-
-	bool *ptmp = new bool[640 * 480];
-	icpcuda->getPlaneMapCurr(ptmp);
-	cv::Mat planemap(480, 640, CV_8UC3);
-	for (int i = 0; i < 480; i++)
-	{
-		for (int j = 0; j < 640; j++)
-		{
-			planemap.at<cv::Vec3b>(i, j)[0] = ptmp[i * 640 + j] ? 255 : 0;
-			planemap.at<cv::Vec3b>(i, j)[1] = 0;
-			planemap.at<cv::Vec3b>(i, j)[2] = 0;
-		}
-	}
-	delete ptmp;
-
-	Eigen::Matrix4f ret_tran2 = Eigen::Matrix4f::Identity();
-	ret_t = ret_tran2.topRightCorner(3, 1);
-	ret_rot = ret_tran2.topLeftCorner(3, 3);
-
-	icpcuda->getIncrementalTransformationWithPlane(ret_t, ret_rot, t, rot, threads, blocks);
-
-	ret_tran2.topLeftCorner(3, 3) = ret_rot;
-	ret_tran2.topRightCorner(3, 1) = ret_t;
-
-	cv::Mat result[icount];
-	for (int i = 0; i < icount; i++)
-	{
-		result[i] = cv::Mat(480, 640, CV_8UC3);
-		for (int x = 0; x < 480; x++)
-		{
-			for (int y = 0; y < 640; y++)
-			{
-				if (p[i].at<char>(x, y) != -1)
-				{
-					result[i].at<cv::Vec3b>(x, y)[0] = rgb[p[i].at<char>(x, y)][0];
-					result[i].at<cv::Vec3b>(x, y)[1] = rgb[p[i].at<char>(x, y)][1];
-					result[i].at<cv::Vec3b>(x, y)[2] = rgb[p[i].at<char>(x, y)][2];
-				}
-				else
-				{
-					result[i].at<cv::Vec3b>(x, y)[0] = r[i].at<cv::Vec3b>(x, y)[0];
-					result[i].at<cv::Vec3b>(x, y)[1] = r[i].at<cv::Vec3b>(x, y)[1];
-					result[i].at<cv::Vec3b>(x, y)[2] = r[i].at<cv::Vec3b>(x, y)[2];
-				}
-			}
-		}
-	}
-
-	cv::imshow("0", result[0]);
-	cv::imshow("1", result[1]);
-	cv::imshow("2", planemap);
-
-	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("test"));
-	viewer->setBackgroundColor(0, 0, 0);
-	viewer->addCoordinateSystem(1.0);
-	viewer->initCameraParameters();
-
-	PointCloudPtr tran_cloud(new PointCloudT);
-	pcl::transformPointCloud(*cloud[1], *tran_cloud, ret_tran);
-	PointCloudPtr cloud_all(new PointCloudT);
-	*cloud_all = *cloud[0] + *tran_cloud;
-
-	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud_all);
-	viewer->addPointCloud<pcl::PointXYZRGB>(cloud_all, rgb, "result");
-	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "result");
-
-	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer2(new pcl::visualization::PCLVisualizer("test2"));
-	viewer2->setBackgroundColor(0, 0, 0);
-	viewer2->addCoordinateSystem(1.0);
-	viewer2->initCameraParameters();
-
-	PointCloudPtr tran_cloud2(new PointCloudT);
-	pcl::transformPointCloud(*cloud[1], *tran_cloud2, ret_tran2);
-	PointCloudPtr cloud_all2(new PointCloudT);
-	*cloud_all2 = *cloud[0] + *tran_cloud2;
-
-	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb2(cloud_all2);
-	viewer2->addPointCloud<pcl::PointXYZRGB>(cloud_all2, rgb2, "result2");
-	viewer2->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "result2");
-
-	while (!viewer->wasStopped() && !viewer2->wasStopped())
-	{
-		viewer->spinOnce(100);
-		//boost::this_thread::sleep (boost::posix_time::microseconds (100000));
-	}
-	
-// 	for (int i = 0; i < icount; i++)
-// 	{
-// 		cout << i << ": " << endl;
-// 		for (int j = 0; j < planes[i].size(); j++)
-// 		{
-// 			cout << "\t" << planes[i][j] << endl;
-// 		}
-// 	}
-}
-
-void corr_test()
-{
-	const int icount = 2;
-	std::string rname[icount], dname[icount];
-	rname[0] = "G:/kinect data/living_room_1/rgb/00594.jpg";
-	rname[1] = "G:/kinect data/living_room_1/rgb/00595.jpg";
-	//rname[0] = "E:/lab/pcl/kinect data/living_room_1/rgb/00594.jpg";
-	//rname[1] = "E:/lab/pcl/kinect data/living_room_1/rgb/00595.jpg";
-	// 	rname[2] = "E:/lab/pcl/kinect data/living_room_1/rgb/00592.jpg";
-	// 	rname[3] = "E:/lab/pcl/kinect data/living_room_1/rgb/00593.jpg";
-	// 	rname[4] = "E:/lab/pcl/kinect data/living_room_1/rgb/00594.jpg";
-	// 	rname[5] = "E:/lab/pcl/kinect data/living_room_1/rgb/00595.jpg";
-
-	dname[0] = "G:/kinect data/living_room_1/depth/00594.png";
-	dname[1] = "G:/kinect data/living_room_1/depth/00595.png";
-	//dname[0] = "E:/lab/pcl/kinect data/living_room_1/depth/00594.png";
-	//dname[1] = "E:/lab/pcl/kinect data/living_room_1/depth/00595.png";
-	// 	dname[2] = "E:/lab/pcl/kinect data/living_room_1/depth/00592.png";
-	// 	dname[3] = "E:/lab/pcl/kinect data/living_room_1/depth/00593.png";
-	// 	dname[4] = "E:/lab/pcl/kinect data/living_room_1/depth/00594.png";
-	// 	dname[5] = "E:/lab/pcl/kinect data/living_room_1/depth/00595.png";
-
-	cv::Mat r[icount], d[icount];
-	PointCloudPtr cloud[icount];
-
-	for (int i = 0; i < icount; i++)
-	{
-		r[i] = cv::imread(rname[i]);
-		d[i] = cv::imread(dname[i], -1);
-		cloud[i] = ConvertToPointCloudWithoutMissingData(d[i], r[i], i, i);
-	}
-
-	ICPOdometry *icpcuda = nullptr;
-	int threads = Config::instance()->get<int>("icpcuda_threads");
-	int blocks = Config::instance()->get<int>("icpcuda_blocks");
-	int width = Config::instance()->get<int>("image_width");
-	int height = Config::instance()->get<int>("image_height");
-	float cx = Config::instance()->get<float>("camera_cx");
-	float cy = Config::instance()->get<float>("camera_cy");
-	float fx = Config::instance()->get<float>("camera_fx");
-	float fy = Config::instance()->get<float>("camera_fy");
-	float depthFactor = Config::instance()->get<float>("depth_factor");
-	if (icpcuda == nullptr)
-		icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor);
-
-	trans.push_back(Eigen::Matrix4f::Identity());
-
-	icpcuda->initICPModel((unsigned short *)d[0].data, 20.0f, Eigen::Matrix4f::Identity());
-	icpcuda->initICP((unsigned short *)d[1].data, 20.0f);
-
-	Eigen::Matrix4f ret_tran = Eigen::Matrix4f::Identity();
-	Eigen::Vector3f ret_t = ret_tran.topRightCorner(3, 1);
-	Eigen::Matrix<float, 3, 3, Eigen::RowMajor> ret_rot = ret_tran.topLeftCorner(3, 3);
-
-	Eigen::Matrix4f estimated_tran = Eigen::Matrix4f::Identity();
-	Eigen::Vector3f t = estimated_tran.topRightCorner(3, 1);
-	Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = estimated_tran.topLeftCorner(3, 3);
-
-	icpcuda->getIncrementalTransformation(ret_t, ret_rot, t, rot, threads, blocks);
-
-	ret_tran.topLeftCorner(3, 3) = ret_rot;
-	ret_tran.topRightCorner(3, 1) = ret_t;
-
-	PointCloudCuda *pcc = nullptr;
-	if (pcc == nullptr)
-		pcc = new PointCloudCuda(width, height, cx, cy, fx, fy, depthFactor);
-	pcc->initPrev((unsigned short *)d[0].data, 20.0f);
-	pcc->initCurr((unsigned short *)d[1].data, 20.0f);
-	int point_count, point_corr_count;
-	Eigen::Matrix<double, 6, 6> information;
-	pcc->getCoresp(ret_t, ret_rot, information, point_count, point_corr_count, threads, blocks);
-
-	cout << point_count << endl << point_corr_count << endl;
-
-	cout << cloud[1]->size() << endl;
-	int tehrjwlkt;
-	cin >> tehrjwlkt;
-}
-
-void FeatureTest()
-{
-
 }
 
 void Statistics()
@@ -1875,9 +1400,13 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 	ICPOdometry *icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor, distThresh, angleThresh);
 	//ICPOdometry *icpcuda = nullptr;
 
-	const float max_dist_m = Config::instance()->get<float>("max_dist_for_inliers");
+	int min_matches = Config::instance()->get<int>("min_matches");
+	float inlier_percent = Config::instance()->get<float>("min_inlier_p");
+	float inlier_dist = Config::instance()->get<float>("max_inlier_dist");
+
+	const float max_dist_m = Config::instance()->get<float>("max_inlier_dist");
 	const float squared_max_dist_m = max_dist_m * max_dist_m;
-	const float min_inlier_percent = Config::instance()->get<float>("min_inliers_percent");
+	const float min_inlier_percent = Config::instance()->get<float>("min_inlier_p");
 
 	keyframe_indices.clear();
 	keyframe_id.clear();
@@ -1975,13 +1504,13 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 			bool ransac;
 			if (FtoKF)
 			{
-				ransac = Feature::getTransformationByRANSAC(tran, information,
-					pc, pcorrc, rmse, &inliers, last_keyframe->f, frame->f, nullptr, matches);
+				ransac = Feature::getTransformationByRANSAC(tran, rmse, &inliers,
+					last_keyframe->f, frame->f, matches, min_matches, inlier_percent, inlier_dist);
 			}
 			else
 			{
-				ransac = Feature::getTransformationByRANSAC(tran, information,
-					pc, pcorrc, rmse, &inliers, last_frame->f, frame->f, nullptr, matches);
+				ransac = Feature::getTransformationByRANSAC(tran, rmse, &inliers,
+					last_frame->f, frame->f, matches, min_matches, inlier_percent, inlier_dist);
 			}
 			time = clock() - start;
 			time_ransac += time;
@@ -2009,7 +1538,7 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 // 						&inliers, last_keyframe->f, frame->f, nullptr, matches);
 					Feature::computeInliersAndError(inliers, rmse, nullptr, matches,
 						ac_tran * relative_tran,
-						last_keyframe->f, frame->f);
+						last_keyframe->f, frame->f, inlier_dist * inlier_dist);
 				}
 
 				float rrr;
@@ -2050,8 +1579,8 @@ void PairwiseRegistration(string feature_type = "SURF", bool FtoKF = true, bool 
 					else
 						last_frame->f->findMatchedPairs(matches, frame->f);
 
-					last_frame_success = Feature::getTransformationByRANSAC(tran2, information,
-						pc, pcorrc, rmse, &inliers, last_frame->f, frame->f, nullptr, matches);
+					last_frame_success = Feature::getTransformationByRANSAC(tran2, rmse, &inliers,
+						last_frame->f, frame->f, matches, min_matches, inlier_percent, inlier_dist);
 				}
 
 				
@@ -2411,9 +1940,7 @@ void GlobalRegistration(string graph_ftype = "SIFT",
 
 	cout << "Global registration" << endl;
  	SlamEngine engine;
-	engine.setUsingHogmanOptimizer(false);
-	engine.setUsingSrbaOptimzier(false);
-	engine.setUsingRobustOptimzier(true);
+	engine.setUsingRobustOptimizer(true);
 	engine.robust_manager.setUsingLineProcess(true);
 	for (int i = 0; i < frame_count; i++)
 	{
@@ -2438,73 +1965,6 @@ void GlobalRegistration(string graph_ftype = "SIFT",
 		total_time += time;
 	}
 
-	if (read_gtloop)
-	{
-		// read gtloop
-		int gtloop_count;
-		*gtloop_in >> gtloop_count;
-		vector<pair<int, int>> gtloops;
-		for (int i = 0; i < gtloop_count; i++)
-		{
-			int a, b;
-			*gtloop_in >> a >> b;
-			gtloops.push_back(pair<int, int>(a, b));
-		}
-
-		// analyze
-		cout << "keyframe to detect loop closure: " << endl;
-		for (int i = 0; i < engine.id_detect_lc.size(); i++)
-		{
-			cout << keyframe_id[engine.id_detect_lc[i]] << " " << engine.id_detect_lc[i] << endl;
-		}
-
-		for (int i = 1; i < keyframe_indices.size(); i++)
-		{
-			int gtc = 0;
-			vector<int> others;
-			for (int j = 0; j < gtloop_count; j++)
-			{
-				if (gtloops[j].second == keyframe_indices[i])
-				{
-					gtc++;
-					others.push_back(gtloops[j].first);
-				}
-			}
-
-			cout << i << " " << keyframe_indices[i];
-			Eigen::Vector3f current_pose =  engine.current_positions[i];
-			vector<Eigen::Vector3f, Eigen::aligned_allocator<Eigen::Vector3f>> position_lists = engine.positions[i];
-			for (int j = 0; j < gtc; j++)
-			{
-				Eigen::Vector3f pose =  position_lists[keyframe_id[others[j]]];
-				cout << ", " << others[j] << " " << (current_pose - pose).norm();
-				bool found = false;
-				for (int k = 0; k < engine.id_detect_lc.size(); k++)
-				{
-					if (others[j] == engine.id_detect_lc[k])
-					{
-						found = true;
-						break;
-					}
-				}
-				cout << " " << (found ? "T" : "F");
-			}
-			cout << endl;
-		}
-	}
-	
-// 	for (int i = 1; i < keyframe_indices.size(); i++)
-// 	{
-// 		for (int j = 0; j < i; j++)
-// 		{
-// 			if ()
-// 			{
-// 			}
-// 		}
-// 	}
-
-	// end
-	
 	if (save_result)
 	{
 		vector<pair<double, Eigen::Matrix4f>> transformations = engine.GetTransformations();
@@ -2559,237 +2019,6 @@ void GlobalRegistration(string graph_ftype = "SIFT",
 //	{
 //		viewer->spinOnce(100);
 //	}
-}
-
-void FindGroundTruthLoop(string directory, string feature_type = "SURF", ofstream *gt_out = nullptr)
-{
-	// ground_truth
-	stringstream ss;
-	ss.clear();
-	ss.str("");
-	ss << directory << "/groundtruth.txt";
-	ifstream g_in(ss.str());
-
-	string line;
-	Eigen::Matrix4f tran;
-
-	for (int i = 0; i < keyframe_indices.size(); i++)
-	{
-		bool gt_found = false;
-		while (getline(g_in, line))
-		{
-			if (line[0] == '#')
-				continue;
-			ss.clear();
-			ss.str("");
-			ss << line;
-			double ts;
-			Eigen::Vector3f t;
-			Eigen::Quaternionf q;
-			ss >> ts >> t(0) >> t(1) >> t(2) >> q.x() >> q.y() >> q.z() >> q.w();
-			if (fabs(ts - timestamps[keyframe_indices[i]]) < 1e-2)
-			{
-				// ground-truth found
-				gt_found = true;
-				tran = transformationFromQuaternionsAndTranslation(q, t);
-				break;
-			}
-			else if (ts > timestamps[keyframe_indices[i]])
-			{
-				// ground-truth not found
-				tran = Eigen::Matrix4f::Identity();
-				break;
-			}
-		}
-
-		if (!gt_found)
-		{
-			continue;
-		}
-
-		gt_trans.push_back(tran);
-	}
-	g_in.close();
-
-	int threads = Config::instance()->get<int>("icpcuda_threads");
-	int blocks = Config::instance()->get<int>("icpcuda_blocks");
-	int width = Config::instance()->get<int>("image_width");
-	int height = Config::instance()->get<int>("image_height");
-	float cx = Config::instance()->get<float>("camera_cx");
-	float cy = Config::instance()->get<float>("camera_cy");
-	float fx = Config::instance()->get<float>("camera_fx");
-	float fy = Config::instance()->get<float>("camera_fy");
-	float depthFactor = Config::instance()->get<float>("depth_factor");
-	float distThrehold = Config::instance()->get<float>("dist_threshold");
-	float angleThrehold = Config::instance()->get<float>("angle_threshold");
-	PointCloudCuda *pcc = new PointCloudCuda(width, height, cx, cy, fx, fy, depthFactor, distThrehold, angleThrehold);
-
-	int point_count, point_corr_count;
-	Eigen::Matrix<double, 6, 6> information;
-	// find ground-truth loop closure, pair-wise
-	for (int i = 0; i < keyframe_indices.size() - 1; i++)
-	{
-		pcc->initPrev((unsigned short *)depths[keyframe_indices[i]].data, 20.0f);
-		for (int j = i + 1; j < keyframe_indices.size(); j++)
-		{
-			pcc->initCurr((unsigned short *)depths[keyframe_indices[j]].data, 20.0f);
-			Eigen::Matrix4f relative_tran = gt_trans[i].inverse() * gt_trans[j];
-			Eigen::Vector3f t = relative_tran.topRightCorner(3, 1);
-			Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = relative_tran.topLeftCorner(3, 3);
-			cv::Mat pairs;
-			pcc->getCorespPairs(t, rot, information, pairs, point_count, point_corr_count, threads, blocks);
-
-			if ((float)point_corr_count / point_count >= 0.3)
-			{
-				gt_loop.push_back(pair<int, int>(i, j));
-				gt_loop_corr.push_back(pairs);
-			}
-		}
-	}
-
-	if (gt_out != nullptr)
-	{
-		*gt_out << gt_loop.size() << endl;
-		for (int i = 0; i < gt_loop.size(); i++)
-		{
-			*gt_out << keyframe_indices[gt_loop[i].first] << " " << keyframe_indices[gt_loop[i].second] << endl;
-		}
-		gt_out->close();
-	}
-	cout << gt_loop.size() << endl;
-
-// 	for (int i = 0; i < gt_loop.size(); i++)
-// 	{
-// 		cv::Mat result(480, 1280, CV_8UC3);
-// 		for (int u = 0; u < 480; u++)
-// 		{
-// 			for (int v = 0; v < 640; v++)
-// 			{
-// 				result.at<cv::Vec3b>(u, v) = rgbs[keyframe_indices[gt_loop[i].first]].at<cv::Vec3b>(u, v);
-// 				result.at<cv::Vec3b>(u, v + 640) = rgbs[keyframe_indices[gt_loop[i].second]].at<cv::Vec3b>(u, v);
-// 			}
-// 		}
-// 
-// 		int show_count = 0;
-// 		for (int u = 0; u < 480; u++)
-// 		{
-// 			for (int v = 0; v < 640; v++)
-// 			{
-// 				int cu, cv;
-// 				cu = gt_loop_corr[i].at<cv::Vec2i>(u, v)[0];
-// 				cv = gt_loop_corr[i].at<cv::Vec2i>(u, v)[1];
-// 				if (cu != -1 && cv != -1)
-// 				{
-// 					if (show_count % 1000 == 0)
-// 					{
-// 						//cout << u << " " << v << ", " << cu << " " << cv << endl;
-// 						cv::circle(result, cv::Point(cv, cu), 3, cv::Scalar(0, 255, 0), 2);
-// 						cv::circle(result, cv::Point(v + 640, u), 3, cv::Scalar(0, 255, 0), 2);
-// 						cv::line(result, cv::Point(cv, cu), cv::Point(v + 640, u), cv::Scalar(0, 255, 0));
-// 					}
-// 					show_count++;
-// 				}
-// 			}
-// 		}
-// 		cv::imshow("result", result);
-// 		cv::waitKey();
-// 	}
-
-	vector<PointCloudPtr> full_key_clouds;
-	for (int i = 0; i < keyframe_indices.size(); i++)
-	{
-		graph[keyframe_indices[i]]->f = new Feature();
-		graph[keyframe_indices[i]]->f->extract(rgbs[keyframe_indices[i]],
-			depths[keyframe_indices[i]], feature_type);
-
-		if (feature_type != "ORB")
-			graph[keyframe_indices[i]]->f->buildFlannIndex();
-		PointCloudPtr cloud = ConvertToPointCloud(depths[keyframe_indices[i]],
-			rgbs[keyframe_indices[i]], timestamps[keyframe_indices[i]], keyframe_indices[i]);
-		full_key_clouds.push_back(cloud);
-	}
-
-	double pp = 0, pq = 0;
-	vector<cv::DMatch> matches;
-	float rmse;
-	int pc, pcorrc;
-	vector<cv::DMatch> inliers;
-	int mleaf = Config::instance()->get<int>("kdtree_max_leaf");
-	for (int i = 0; i < gt_loop.size(); i++)
-	{
-		cout << keyframe_indices[gt_loop[i].first] << " " << keyframe_indices[gt_loop[i].second];
-
-		matches.clear();
-		inliers.clear();
-		if (feature_type == "ORB")
-			graph[keyframe_indices[gt_loop[i].first]]->f->findMatchedPairsBruteForce(matches,
-				graph[keyframe_indices[gt_loop[i].second]]->f);
-		else
-			graph[keyframe_indices[gt_loop[i].first]]->f->findMatchedPairs(matches,
-				graph[keyframe_indices[gt_loop[i].second]]->f);
-
-		cout << " " << matches.size();
-		pcc->initPrev((unsigned short *)depths[keyframe_indices[gt_loop[i].first]].data, 20.0f);
-		pcc->initCurr((unsigned short *)depths[keyframe_indices[gt_loop[i].second]].data, 20.0f);
-		if (Feature::getTransformationByRANSAC(tran, information, pc, pcorrc, rmse, &inliers,
-			graph[keyframe_indices[gt_loop[i].first]]->f,
-			graph[keyframe_indices[gt_loop[i].second]]->f,
-			pcc, matches))
-		{
-			PointCloudPtr cloud_tran(new PointCloudT);
-			pcl::transformPointCloud(*full_key_clouds[gt_loop[i].second], *cloud_tran, tran);
-			double rmse = 0.0;
-			int cov_count = 0;
-			for (int j = 0; j < height; j++)
-			{
-				for (int k = 0; k < width; k++)
-				{
-					int cx, cy;
-					cx = gt_loop_corr[i].at<cv::Vec2i>(j, k)[0];
-					cy = gt_loop_corr[i].at<cv::Vec2i>(j, k)[1];
-					if (cx != -1 && cy != -1)
-					{
-						Eigen::Vector3f a;
-						Eigen::Vector3f b;
-						a(0) = full_key_clouds[gt_loop[i].first]->points[cx * width + cy].x;
-						a(1) = full_key_clouds[gt_loop[i].first]->points[cx * width + cy].y;
-						a(2) = full_key_clouds[gt_loop[i].first]->points[cx * width + cy].z;
-						b(0) = cloud_tran->points[j * width + k].x;
-						b(1) = cloud_tran->points[j * width + k].y;
-						b(2) = cloud_tran->points[j * width + k].z;
-						rmse += (a - b).squaredNorm();
-						cov_count++;
-					}
-				}
-			}
-			rmse /= cov_count;
-			cout << " found";
-			if (rmse < distThrehold * distThrehold)
-			{
-				cout << " true";
-				pp = pp + 1;
-			}
-			pq = pq + 1;
-
-			
-//			*cloud_tran += *full_key_clouds[gt_loop[i].first];		
-// 			boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("3D Viewer"));
-// 			viewer->setBackgroundColor(0, 0, 0);
-// 			//viewer->registerKeyboardCallback(KeyboardEventOccurred, (void*)&viewer);
-// 			viewer->addCoordinateSystem(1.0);
-// 			viewer->initCameraParameters();
-// 			pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud_tran);
-// 			viewer->addPointCloud<pcl::PointXYZRGB>(cloud_tran, rgb, "cloud");
-// 			viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
-// 			while (!viewer->wasStopped())
-// 			{
-// 				viewer->spinOnce(100);
-// 			}
-		}
-		cout << endl;
-	}
-
-	cout << "precision: " << pp / pq << "recall: " << pp / gt_loop.size() << endl;
 }
 
 void LoopAnalysis()
@@ -2859,9 +2088,7 @@ void GlobalWithAll(ofstream *result_out = nullptr, ofstream *log_out = nullptr)
 
 	cout << "Global registration with gt loop(while transformation estimated by ransac)" << endl;
 	SlamEngine engine;
-	engine.setUsingHogmanOptimizer(false);
-	engine.setUsingSrbaOptimzier(false);
-	engine.setUsingRobustOptimzier(true);
+	engine.setUsingRobustOptimizer(true);
 
 	for (int i = 0; i < keyframe_indices.size(); i++)
 	{
@@ -2980,7 +2207,7 @@ void pairwise_results()
 		for (int sd = 0; sd < sdcount; sd++)
 		{
 			cout << "\t dists: " << dists[sd];
-			Config::instance()->set<float>("max_dist_for_inliers", dists[sd]);
+			Config::instance()->set<float>("max_inlier_dist", dists[sd]);
 
 			for (int f = 0; f < fcount; f++)
 			{
@@ -3086,7 +2313,7 @@ void repeat_pairwise_results()
 		for (int sd = 0; sd < sdcount; sd++)
 		{
 			cout << "\t dists: " << dists[dd][sd];
-			Config::instance()->set<float>("max_dist_for_inliers", dists[dd][sd]);
+			Config::instance()->set<float>("max_inlier_dist", dists[dd][sd]);
 
 			for (int f = 0; f < fcount; f++)
 			{
@@ -3195,7 +2422,7 @@ void repeat_global_results()
 		for (int sd = 0; sd < sdcount; sd++)
 		{
 			cout << "\tdists: " << dists[sd] << endl;
-			Config::instance()->set<float>("max_dist_for_inliers", dists[sd]);
+			Config::instance()->set<float>("max_inlier_dist", dists[sd]);
 
 			readPairwiseResult(prs[dd], "SURF");
 
@@ -3324,7 +2551,7 @@ void time_test()
 	for (int dd = 0; dd < dcount; dd++)
 	{
 		readData(directories[dd], st, ed, false);
-		Config::instance()->set<float>("max_dist_for_inliers", dists[dd]);
+		Config::instance()->set<float>("max_inlier_dist", dists[dd]);
 
 		ss.clear();
 		ss.str("");
@@ -3409,7 +2636,7 @@ int main()
 // 	int repeat_time = 10;
 // 
 // 	readData(directories[dd], st, ed);
-// 	Config::instance()->set<float>("max_dist_for_inliers", dist);
+// 	Config::instance()->set<float>("max_inlier_dist", dist);
 // 	Config::instance()->set<int>("ransac_max_iteration", 1000);
 // 
 // 	stringstream ss;
@@ -3462,7 +2689,7 @@ int main()
 // 	string test_name = "E:/desk_ftof_ORB_0.2.txt";
 // 
 // 	readData(directories[dd], st, ed);
-// 	Config::instance()->set<float>("max_dist_for_inliers", dist);
+// 	Config::instance()->set<float>("max_inlier_dist", dist);
 // 	// 	Config::instance()->set<int>("ransac_max_iteration", 2000);
 // 
 // 	for (int i = 0; i < repeat_time; i++)
@@ -3502,7 +2729,7 @@ int main()
 	cout << "2: pairwise registration & global registration & show result" << endl;
 	cout << "3: read pairwise result & global registration & show result" << endl;
 	cout << "4: read pairwise result & loop closure test" << endl;
-	cout << "5: read pairwise result & global registration gt & show result" << endl;
+//	cout << "5: read pairwise result & global registration gt & show result" << endl;
 	cout << "6: show result by trajectory" << endl;
 	cin >> method;
 
@@ -3514,7 +2741,7 @@ int main()
 
 		cout << "max dist for inliers: ";
 		cin >> dist;
-		Config::instance()->set<float>("max_dist_for_inliers", dist);
+		Config::instance()->set<float>("max_inlier_dist", dist);
 
 		string fname;
 		cout << "pairwise filename: ";
@@ -3557,7 +2784,7 @@ int main()
 
 		cout << "max dist for inliers: ";
 		cin >> dist;
-		Config::instance()->set<float>("max_dist_for_inliers", dist);
+		Config::instance()->set<float>("max_inlier_dist", dist);
 
 		string gname;
 		cout << "global filename: ";
@@ -3587,12 +2814,12 @@ int main()
 
 	if (method == 5)
 	{
-		string gname;
-		cout << "global gt filename: ";
-		cin >> gname;
-		ofstream global_result(gname);
-		FindGroundTruthLoop(directories[dd]);
-		GlobalWithAll(&global_result);
+// 		string gname;
+// 		cout << "global gt filename: ";
+// 		cin >> gname;
+// 		ofstream global_result(gname);
+// 		FindGroundTruthLoop(directories[dd]);
+// 		GlobalWithAll(&global_result);
 	}
 
 	if (method == 6)
@@ -3604,100 +2831,3 @@ int main()
 		showResultWithTrajectory(&tr_result);
 	}
 }  
-
-bool getPlanesByRANSACCuda(
-	vector<Eigen::Vector4f, Eigen::aligned_allocator<Eigen::Vector4f>> &result_planes,
-	vector<vector<pair<int, int>>> *matches,
-	const cv::Mat &rgb, const cv::Mat &depth)
-{
-// 	pcl::cuda::PointCloudAOS<pcl::cuda::Device>::Ptr cloud;
-// 	cloud.reset(new pcl::cuda::PointCloudAOS<pcl::cuda::Device>);
-// 	cloud->width = depth.size().width;
-// 	cloud->height = depth.size().height;
-// 	cloud->points.resize(cloud->width * cloud->height);
-// 
-// 	float fx = Config::instance()->get<float>("camera_fx");  // focal length x
-// 	float fy = Config::instance()->get<float>("camera_fy");  // focal length y
-// 	float cx = Config::instance()->get<float>("camera_cx");  // optical center x
-// 	float cy = Config::instance()->get<float>("camera_cy");  // optical center y
-// 
-// 	float factor = Config::instance()->get<float>("depth_factor");	// for the 16-bit PNG files
-// 
-// 	for (int j = 0; j < depth.size().height; j++)
-// 	{
-// 		for (int i = 0; i < depth.size().width; i++)
-// 		{
-// 			ushort temp = depth.at<ushort>(j, i);
-// 			if (depth.at<ushort>(j, i) != 0)
-// 			{
-// 				pcl::cuda::PointXYZRGB pt;
-// 				pt.z = ((double)depth.at<ushort>(j, i)) / factor;
-// 				pt.x = (i - cx) * pt.z / fx;
-// 				pt.y = (j - cy) * pt.z / fy;
-// 				pt.rgb.b = rgb.at<cv::Vec3b>(j, i)[0];
-// 				pt.rgb.g = rgb.at<cv::Vec3b>(j, i)[1];
-// 				pt.rgb.r = rgb.at<cv::Vec3b>(j, i)[2];
-// 				pt.rgb.alpha = 255;
-// 				cloud->points.push_back(pt);
-// 			}
-// 		}
-// 	}
-// 
-// 	boost::shared_ptr<pcl::cuda::Device<float4>::type> normals;
-// 	normals = pcl::cuda::computeFastPointNormals<pcl::cuda::Device>(cloud);
-// 
-// 	pcl::cuda::SampleConsensusModel1PointPlane<pcl::cuda::Device>::Ptr sac_model(
-// 		new pcl::cuda::SampleConsensusModel1PointPlane<pcl::cuda::Device>(cloud));
-// 	sac_model->setNormals(normals);
-// 
-// 	pcl::cuda::MultiRandomSampleConsensus<pcl::cuda::Device> sac(sac_model);
-// 	sac.setMinimumCoverage(0.90); // at least 95% points should be explained by planes
-// 	sac.setMaximumBatches(5);
-// 	sac.setIerationsPerBatch(1000);
-// 	sac.setDistanceThreshold(25 / 100.0);
-// 
-// 	if (!sac.computeModel(0))
-// 	{
-// 		return false;
-// 	}
-// 
-// 	std::vector<pcl::cuda::SampleConsensusModel1PointPlane<pcl::cuda::Device>::IndicesPtr> planes;
-// 	pcl::cuda::Device<int>::type region_mask;
-// 	pcl::cuda::markInliers<pcl::cuda::Device>(cloud, region_mask, planes);
-// 	thrust::host_vector<int> regions_host;
-// 	std::copy(regions_host.begin(), regions_host.end(), std::ostream_iterator<int>(std::cerr, " "));
-// 	planes = sac.getAllInliers();
-// 
-// 	std::vector<int> planes_inlier_counts = sac.getAllInlierCounts();
-// 	std::vector<float4> coeffs = sac.getAllModelCoefficients();
-// 	std::vector<float3> centroids = sac.getAllModelCentroids();
-// 	std::cerr << "Found " << planes_inlier_counts.size() << " planes" << std::endl;
-// 
-// 	if (planes_inlier_counts.size() == 0)
-// 		return false;
-// 
-// 	if (matches)
-// 	{
-// 		matches->clear();
-// 	}
-// 
-// 	for (unsigned int i = 0; i < planes.size(); i++)
-// 	{
-// 		Eigen::Vector4f result_plane(coeffs[i].x, coeffs[i].y, coeffs[i].z, coeffs[i].w);
-// 		result_plane.normalize();
-// 		result_planes.push_back(result_plane);
-// 
-// 		if (matches)
-// 		{
-// 			vector<pair<int, int>> match;
-// 			thrust::device_vector<int> iptr = *planes[i];
-// 			for (unsigned int j = 0; j < iptr.size(); j++)
-// 			{
-// 				match.push_back(pair<int, int>(iptr[j] % 640, iptr[j] / 640));
-// 			}
-// 			matches->push_back(match);
-// 		}
-// 	}
-// 
-	return true;
-}

@@ -12,8 +12,6 @@ PointCloudPtr ConvertToPointCloud(const cv::Mat &depth, const cv::Mat &rgb, doub
 
 PointCloudPtr ConvertToPointCloudWithoutMissingData(const cv::Mat &depth, const cv::Mat &rgb, double timestamp, int frameID);
 
-//PointCloudPtr convertToPointCloud(xn::DepthGenerator& rDepthGen, const XnDepthPixel *dm, const XnRGB24Pixel *im, XnUInt64 timestamp, XnInt32 frameID);
-
 Eigen::Vector3f ConvertPointTo3D(int i, int j, const cv::Mat &depth);
 
 PointCloudPtr DownSamplingByVoxelGrid(PointCloudPtr cloud, float lx, float ly, float lz);

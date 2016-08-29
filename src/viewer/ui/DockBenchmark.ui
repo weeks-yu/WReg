@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>394</width>
-    <height>652</height>
+    <height>697</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,55 +16,29 @@
   <widget class="QWidget" name="dockWidgetContents">
    <layout class="QGridLayout" name="gridLayout">
     <item row="7" column="0" colspan="3">
-     <widget class="QGroupBox" name="groupBoxGICP">
+     <widget class="QGroupBox" name="groupBoxICP">
       <property name="title">
-       <string>GICP</string>
+       <string>ICP</string>
       </property>
       <property name="flat">
        <bool>false</bool>
       </property>
       <layout class="QGridLayout" name="gridLayout_2">
-       <item row="3" column="0">
-        <widget class="QLabel" name="labelGICPCorrDist">
+       <item row="1" column="0">
+        <widget class="QLabel" name="labelICPAngle">
          <property name="text">
-          <string>Max Correspondence Dist</string>
+          <string>Angle Threshold</string>
          </property>
         </widget>
        </item>
-       <item row="4" column="0">
-        <widget class="QLabel" name="labelGICPEpsilon">
-         <property name="text">
-          <string>Transformation Epsilon</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QSpinBox" name="spinBoxGICPIterations">
+       <item row="0" column="1">
+        <widget class="QLineEdit" name="lineEditICPDist">
          <property name="minimumSize">
           <size>
            <width>165</width>
            <height>0</height>
           </size>
          </property>
-         <property name="maximumSize">
-          <size>
-           <width>180</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <property name="minimum">
-          <number>1</number>
-         </property>
-         <property name="maximum">
-          <number>200</number>
-         </property>
-         <property name="value">
-          <number>50</number>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="QLineEdit" name="lineEditGICPCorrDist">
          <property name="maximumSize">
           <size>
            <width>180</width>
@@ -76,53 +50,8 @@
          </property>
         </widget>
        </item>
-       <item row="4" column="1">
-        <widget class="QLineEdit" name="lineEditGICPEpsilon">
-         <property name="maximumSize">
-          <size>
-           <width>180</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <property name="text">
-          <string>1e-4</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="labelGICPIterations">
-         <property name="minimumSize">
-          <size>
-           <width>170</width>
-           <height>0</height>
-          </size>
-         </property>
-         <property name="text">
-          <string>Maximum Iterations</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="label_3">
-         <property name="minimumSize">
-          <size>
-           <width>170</width>
-           <height>0</height>
-          </size>
-         </property>
-         <property name="text">
-          <string>Downsample Rate</string>
-         </property>
-        </widget>
-       </item>
        <item row="1" column="1">
-        <widget class="QLineEdit" name="lineEditDownsampleRate">
-         <property name="minimumSize">
-          <size>
-           <width>165</width>
-           <height>0</height>
-          </size>
-         </property>
+        <widget class="QLineEdit" name="lineEditICPAngle">
          <property name="maximumSize">
           <size>
            <width>180</width>
@@ -130,115 +59,12 @@
           </size>
          </property>
          <property name="text">
-          <string>0.02</string>
+          <string>20</string>
          </property>
         </widget>
        </item>
        <item row="0" column="0">
-        <widget class="QLabel" name="labelDownsampling">
-         <property name="text">
-          <string>Using Downsampling</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QCheckBox" name="checkBoxDownSampling">
-         <property name="minimumSize">
-          <size>
-           <width>180</width>
-           <height>0</height>
-          </size>
-         </property>
-         <property name="text">
-          <string/>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
-    </item>
-    <item row="8" column="0" colspan="3">
-     <widget class="QGroupBox" name="groupBoxGraph">
-      <property name="title">
-       <string>Feature</string>
-      </property>
-      <layout class="QGridLayout" name="gridLayout_3">
-       <item row="0" column="1">
-        <widget class="QComboBox" name="comboBoxFeatureType">
-         <property name="minimumSize">
-          <size>
-           <width>165</width>
-           <height>0</height>
-          </size>
-         </property>
-         <property name="maximumSize">
-          <size>
-           <width>180</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <item>
-          <property name="text">
-           <string>ORB</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>SURF</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>SIFT</string>
-          </property>
-         </item>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="QLineEdit" name="lineEditFeatureInlier">
-         <property name="text">
-          <string>0.3</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QComboBox" name="comboBoxGraphFeatureType">
-         <item>
-          <property name="text">
-           <string>SIFT</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>SURF</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>ORB</string>
-          </property>
-         </item>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="label_4">
-         <property name="text">
-          <string>Graph Feature Type</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label">
-         <property name="text">
-          <string>Min Matches</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="0">
-        <widget class="QLabel" name="labelGraphFeatureType">
+        <widget class="QLabel" name="labelICPDist">
          <property name="minimumSize">
           <size>
            <width>170</width>
@@ -246,48 +72,58 @@
           </size>
          </property>
          <property name="text">
-          <string>Feature Type</string>
+          <string>Dist Threshold</string>
          </property>
         </widget>
        </item>
-       <item row="2" column="1">
-        <widget class="QSpinBox" name="spinBoxFeatureMinMatches">
-         <property name="maximum">
-          <number>1000</number>
-         </property>
-         <property name="value">
-          <number>100</number>
+       <item row="2" column="0">
+        <widget class="QLabel" name="labelICPBlocks">
+         <property name="text">
+          <string>CUDA Blocks</string>
          </property>
         </widget>
        </item>
        <item row="3" column="0">
-        <widget class="QLabel" name="label_2">
+        <widget class="QLabel" name="labelICPThreads">
          <property name="text">
-          <string>Inlier Percentage</string>
+          <string>CUDA Threads</string>
          </property>
         </widget>
        </item>
-       <item row="4" column="0">
-        <widget class="QLabel" name="label_5">
-         <property name="text">
-          <string>Max Inlier Dist</string>
+       <item row="2" column="1">
+        <widget class="QSpinBox" name="spinBoxICPBlocks">
+         <property name="maximum">
+          <number>1024</number>
+         </property>
+         <property name="value">
+          <number>80</number>
          </property>
         </widget>
        </item>
-       <item row="4" column="1">
-        <widget class="QLineEdit" name="lineEditFeatureDist">
-         <property name="text">
-          <string>0.2</string>
+       <item row="3" column="1">
+        <widget class="QSpinBox" name="spinBoxICPThreads">
+         <property name="maximum">
+          <number>4096</number>
+         </property>
+         <property name="value">
+          <number>256</number>
          </property>
         </widget>
        </item>
       </layout>
      </widget>
     </item>
-    <item row="9" column="0" colspan="3">
-     <widget class="QPushButton" name="pushButtonRun">
+    <item row="6" column="0">
+     <widget class="QLabel" name="labelMethod">
       <property name="text">
-       <string>Run</string>
+       <string>Registration Method</string>
+      </property>
+     </widget>
+    </item>
+    <item row="12" column="0" colspan="3">
+     <widget class="QPushButton" name="pushButtonSaveTrajectories">
+      <property name="text">
+       <string>Save Trajectories</string>
       </property>
      </widget>
     </item>
@@ -304,20 +140,6 @@
       </property>
      </widget>
     </item>
-    <item row="3" column="0">
-     <widget class="QLabel" name="labelStartFrame">
-      <property name="text">
-       <string>Start from Frame</string>
-      </property>
-     </widget>
-    </item>
-    <item row="4" column="0">
-     <widget class="QLabel" name="labelStopFrame">
-      <property name="text">
-       <string>Stop at Frame</string>
-      </property>
-     </widget>
-    </item>
     <item row="14" column="0" colspan="3">
      <spacer name="verticalSpacer">
       <property name="orientation">
@@ -331,10 +153,24 @@
       </property>
      </spacer>
     </item>
-    <item row="11" column="0" colspan="3">
-     <widget class="QPushButton" name="pushButtonSave">
+    <item row="3" column="0">
+     <widget class="QLabel" name="labelStartFrame">
       <property name="text">
-       <string>Save Transformations</string>
+       <string>Start from Frame</string>
+      </property>
+     </widget>
+    </item>
+    <item row="13" column="0" colspan="3">
+     <widget class="QPushButton" name="pushButtonSaveLogs">
+      <property name="text">
+       <string>Save Logs</string>
+      </property>
+     </widget>
+    </item>
+    <item row="11" column="0" colspan="3">
+     <widget class="QPushButton" name="pushButtonSaveKeyframes">
+      <property name="text">
+       <string>Save All Keyframes</string>
       </property>
      </widget>
     </item>
@@ -357,108 +193,6 @@
       </property>
      </widget>
     </item>
-    <item row="6" column="1" colspan="2">
-     <widget class="QComboBox" name="comboBoxMethod">
-      <property name="maximumSize">
-       <size>
-        <width>180</width>
-        <height>16777215</height>
-       </size>
-      </property>
-      <item>
-       <property name="text">
-        <string>GICP with HogmanOptimizer</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>GICP only</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>ICPCUDA with HogmanOptimizer</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>ICPCUDA only</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>ICPCUDA with SrbaOptimizer</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>ICPCUDA with RobustOptimizer</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>Feature only</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>Feature with RobustOptimizer</string>
-       </property>
-      </item>
-     </widget>
-    </item>
-    <item row="10" column="0" colspan="3">
-     <widget class="QPushButton" name="pushButtonSaveKeyframes">
-      <property name="text">
-       <string>Save All Keyframes</string>
-      </property>
-     </widget>
-    </item>
-    <item row="2" column="0">
-     <widget class="QLabel" name="labelFrameInterval">
-      <property name="minimumSize">
-       <size>
-        <width>0</width>
-        <height>0</height>
-       </size>
-      </property>
-      <property name="text">
-       <string>Frame Interval</string>
-      </property>
-     </widget>
-    </item>
-    <item row="3" column="1" colspan="2">
-     <widget class="QSpinBox" name="spinBoxStartFrame">
-      <property name="maximumSize">
-       <size>
-        <width>180</width>
-        <height>16777215</height>
-       </size>
-      </property>
-      <property name="minimum">
-       <number>-1</number>
-      </property>
-      <property name="maximum">
-       <number>10000</number>
-      </property>
-      <property name="value">
-       <number>-1</number>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="0">
-     <widget class="QLabel" name="labelDirectory">
-      <property name="minimumSize">
-       <size>
-        <width>180</width>
-        <height>0</height>
-       </size>
-      </property>
-      <property name="text">
-       <string>Benchmark Directory</string>
-      </property>
-     </widget>
-    </item>
     <item row="0" column="2">
      <widget class="QPushButton" name="pushButtonDirectory">
       <property name="maximumSize">
@@ -472,6 +206,13 @@
       </property>
       <property name="flat">
        <bool>false</bool>
+      </property>
+     </widget>
+    </item>
+    <item row="10" column="0" colspan="3">
+     <widget class="QPushButton" name="pushButtonRun">
+      <property name="text">
+       <string>Run</string>
       </property>
      </widget>
     </item>
@@ -497,25 +238,275 @@
       </property>
      </widget>
     </item>
-    <item row="12" column="0" colspan="3">
-     <widget class="QPushButton" name="pushButtonSaveLogs">
+    <item row="4" column="0">
+     <widget class="QLabel" name="labelStopFrame">
       <property name="text">
-       <string>Save Logs</string>
+       <string>Stop at Frame</string>
       </property>
      </widget>
     </item>
-    <item row="6" column="0">
-     <widget class="QLabel" name="labelMethod">
-      <property name="text">
-       <string>Registration Method</string>
+    <item row="6" column="1" colspan="2">
+     <widget class="QComboBox" name="comboBoxMethod">
+      <property name="maximumSize">
+       <size>
+        <width>180</width>
+        <height>16777215</height>
+       </size>
+      </property>
+      <item>
+       <property name="text">
+        <string>ICPCUDA only</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>ICPCUDA with RobustOptimizer</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>Feature only</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>Feature with RobustOptimizer</string>
+       </property>
+      </item>
+     </widget>
+    </item>
+    <item row="3" column="1" colspan="2">
+     <widget class="QSpinBox" name="spinBoxStartFrame">
+      <property name="maximumSize">
+       <size>
+        <width>180</width>
+        <height>16777215</height>
+       </size>
+      </property>
+      <property name="minimum">
+       <number>-1</number>
+      </property>
+      <property name="maximum">
+       <number>10000</number>
+      </property>
+      <property name="value">
+       <number>-1</number>
       </property>
      </widget>
     </item>
-    <item row="13" column="0" colspan="3">
-     <widget class="QPushButton" name="pushButtonRefine">
-      <property name="text">
-       <string>Refine</string>
+    <item row="2" column="0">
+     <widget class="QLabel" name="labelFrameInterval">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>0</height>
+       </size>
       </property>
+      <property name="text">
+       <string>Frame Interval</string>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="0">
+     <widget class="QLabel" name="labelDirectory">
+      <property name="minimumSize">
+       <size>
+        <width>180</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="text">
+       <string>Benchmark Directory</string>
+      </property>
+     </widget>
+    </item>
+    <item row="8" column="0" colspan="3">
+     <widget class="QGroupBox" name="groupBoxFeature">
+      <property name="title">
+       <string>Feature</string>
+      </property>
+      <layout class="QGridLayout" name="gridLayout_3">
+       <item row="0" column="1">
+        <widget class="QComboBox" name="comboBoxFeatureType">
+         <property name="minimumSize">
+          <size>
+           <width>165</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>180</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="currentText">
+          <string>SURF</string>
+         </property>
+         <item>
+          <property name="text">
+           <string>ORB</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>SURF</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>SIFT</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="labelFeatureMinMatches">
+         <property name="text">
+          <string>Min Matches</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QLineEdit" name="lineEditFeatureInlierPercentage">
+         <property name="text">
+          <string>0.3</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QLineEdit" name="lineEditFeatureInlierDist">
+         <property name="text">
+          <string>0.1</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="labelFeatureInlierPercentage">
+         <property name="text">
+          <string>Inlier Percentage</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QSpinBox" name="spinBoxFeatureMinMatches">
+         <property name="maximum">
+          <number>1000</number>
+         </property>
+         <property name="value">
+          <number>40</number>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0">
+        <widget class="QLabel" name="labelFeatureType">
+         <property name="minimumSize">
+          <size>
+           <width>170</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>Feature Type</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="labelFeatureInlierDist">
+         <property name="text">
+          <string>Inlier Dist</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item row="9" column="0" colspan="3">
+     <widget class="QGroupBox" name="groupBoxGraph">
+      <property name="title">
+       <string>Graph</string>
+      </property>
+      <layout class="QGridLayout" name="gridLayout_4">
+       <item row="3" column="2">
+        <widget class="QLineEdit" name="lineEditGraphInlierDist">
+         <property name="text">
+          <string>0.1</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="2">
+        <widget class="QComboBox" name="comboBoxGraphFeatureType">
+         <property name="minimumSize">
+          <size>
+           <width>165</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="currentText">
+          <string>SURF</string>
+         </property>
+         <item>
+          <property name="text">
+           <string>SIFT</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>SURF</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>ORB</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QLabel" name="labelGraphFeatureType">
+         <property name="minimumSize">
+          <size>
+           <width>170</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>Graph Feature Type</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QLabel" name="labelGraphInlierDist">
+         <property name="text">
+          <string>Graph Inlier Dist</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QLabel" name="labelGraphMinMatches">
+         <property name="text">
+          <string>Min Matches</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QLabel" name="labelGraphInlierPercentage">
+         <property name="text">
+          <string>Inlier Percentage</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="2">
+        <widget class="QSpinBox" name="spinBoxGraphMinMatches"/>
+       </item>
+       <item row="2" column="2">
+        <widget class="QLineEdit" name="lineEditGraphInlierPercentage">
+         <property name="text">
+          <string>0.3</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </widget>
     </item>
    </layout>

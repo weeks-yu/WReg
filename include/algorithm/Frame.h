@@ -9,7 +9,6 @@ class Frame
 public:
 
 	Feature *f;
-	cv::Mat *depth;
 	Eigen::Matrix4f tran;
 	Eigen::Matrix4f relative_tran;
 	bool ransac_failed;
@@ -20,7 +19,6 @@ public:
 	{
 		tran = Eigen::Matrix4f::Identity();
 		f = nullptr;
-		depth = nullptr;
 		ransac_failed = false;
 	}
 
@@ -28,10 +26,6 @@ public:
 	{
 		f = new Feature();
 		f->extract(imgRGB, imgDepth, type);
-		//this->f->updateFeaturePoints3DReal(tran);
-		//this->depth = new cv::Mat();
-		//imgDepth.copyTo(*this->depth);
-		depth = nullptr;
 		ransac_failed = false;
 		this->tran = tran;
 	}
@@ -41,11 +35,6 @@ public:
 		if (f)
 		{
 			delete f;
-		}
-
-		if (depth)
-		{
-			delete depth;
 		}
 	}
 };
