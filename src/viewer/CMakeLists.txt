@@ -85,5 +85,3 @@ target_link_libraries(WReg
 	icpcuda
 	algorithm)
 qt5_use_modules(WReg Core Gui Widgets)
-
-message(${G2O_LIBRARIES})
