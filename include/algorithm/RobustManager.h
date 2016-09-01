@@ -1,7 +1,6 @@
 #pragma once
 //#include "QuadTree.h"
 #include "Frame.h"
-#include "ActiveWindow.h"
 
 #include <g2o/types/slam3d/se3quat.h>
 #include <g2o/types/slam3d/edge_se3.h>

@@ -21,10 +21,12 @@
 #include "Config.h"
 #include "ICPOdometry.h"
 #include "ICPSlowdometry.h"
-#include "PointCloudCuda.h"
+//#include "PointCloudCuda.h"
 
 #include "Frame.h"
 #include "Transformation.h"
+
+#include "OniReader.h"
 
 using namespace std;
 
@@ -2565,6 +2567,87 @@ void time_test()
 
 int main()
 {
+	std::string filename;
+	cout << "Oni file: ";
+	cin >> filename;
+
+// 	Status result = STATUS_OK;
+// 
+// 	result = OpenNI::initialize();
+// 	if (result != STATUS_OK) return false;
+// 
+// 	Device oniDevice;
+// 	VideoStream depthStream, colorStream;
+// 
+// 	result = oniDevice.open(filename.c_str());
+// 	if (result != STATUS_OK) return false;
+// 
+// 	// depthstream and color stream
+// 	result = depthStream.create(oniDevice, SENSOR_DEPTH);
+// 	if (result != STATUS_OK) return false;
+// 	unsigned short max_depth = (unsigned short)depthStream.getMaxPixelValue();
+// 
+// 	result = oniDevice.setImageRegistrationMode(IMAGE_REGISTRATION_DEPTH_TO_COLOR);
+// 	if (result != STATUS_OK) return false;
+// 
+// 	result = colorStream.create(oniDevice, SENSOR_COLOR);
+// 	if (result != STATUS_OK) return false;
+// 
+// 
+// 	// playback control
+// 	PlaybackControl *control = oniDevice.getPlaybackControl();
+// 	control->setSpeed(-1);
+// 
+// 	result = depthStream.start();
+// 	if (result != STATUS_OK) return false;
+// 
+// 	result = colorStream.start();
+// 	if (result != STATUS_OK) return false;
+// 
+// 	VideoFrameRef oniDepth, oniColor;
+// 
+// 	for (int i = 0; i < control->getNumberOfFrames(colorStream); i++)
+// 	{
+// 		if (colorStream.readFrame(&oniColor) == STATUS_OK)
+// 		{
+// 			cv::Mat r(oniColor.getHeight(), oniColor.getWidth(), CV_8UC3, (void *)oniColor.getData());
+// 			cv::cvtColor(r, r, CV_RGB2BGR);
+// 			cv::imshow("rgb", r);
+// 		}
+// 
+// 		if (depthStream.readFrame(&oniDepth) == STATUS_OK)
+// 		{
+// 			cv::Mat d(oniDepth.getHeight(), oniDepth.getWidth(), CV_16UC1, (void *)oniDepth.getData());
+// 			cv::imshow("depth", d);
+// 		}
+// 		cv::waitKey(30);
+// 	}
+// 
+// 	return 0;
+
+	RGBDReader *reader = new OniReader();
+	reader->create(filename.c_str());
+	reader->start();
+	cv::Mat r, d, t;
+	unsigned short max_depth = reader->getMaxDepth();
+	deque<cv::Mat> rs = reader->color_frames;
+	deque<cv::Mat> ds = reader->depth_frames;
+
+	for (deque<cv::Mat>::iterator it = rs.begin(); it != rs.end(); it++)
+	{
+		cv::imshow("rgb", *it);
+		cv::waitKey(30);
+	}
+
+// 	while (reader->getNextColorFrame(r) && reader->getNextDepthFrame(d))
+// 	{
+// 		d.convertTo(t, CV_8U, 255.0 / max_depth);
+// 		cv::imshow("rgb", r);
+// 		cv::imshow("depth", d);
+// 		cv::waitKey(30);
+// 	}
+
+	return 0;
 	//keyframe_test();
 	//something();
 	//icp_test();
@@ -2800,16 +2883,16 @@ int main()
 
 	if (method == 4)
 	{
-		string gftype;
-		cout << "graph feature type(SURF, SIFT, ORB): ";
-		cin >> gftype;
-
-		string gtname;
-		cout << "ground-truth loop closure filename: ";
-		cin >> gtname;
-		ofstream gt_loop_result(gtname);
-		FindGroundTruthLoop(directories[dd], gftype, &gt_loop_result);
-		LoopAnalysis();
+// 		string gftype;
+// 		cout << "graph feature type(SURF, SIFT, ORB): ";
+// 		cin >> gftype;
+// 
+// 		string gtname;
+// 		cout << "ground-truth loop closure filename: ";
+// 		cin >> gtname;
+// 		ofstream gt_loop_result(gtname);
+// 		FindGroundTruthLoop(directories[dd], gftype, &gt_loop_result);
+// 		LoopAnalysis();
 	}
 
 	if (method == 5)
