@@ -2630,22 +2630,14 @@ int main()
 	reader->start();
 	cv::Mat r, d, t;
 	unsigned short max_depth = reader->getMaxDepth();
-	deque<cv::Mat> rs = reader->color_frames;
-	deque<cv::Mat> ds = reader->depth_frames;
 
-	for (deque<cv::Mat>::iterator it = rs.begin(); it != rs.end(); it++)
+	while (reader->getNextColorFrame(r) && reader->getNextDepthFrame(d))
 	{
-		cv::imshow("rgb", *it);
+		d.convertTo(t, CV_8U, 255.0 / max_depth);
+		cv::imshow("rgb", r);
+		cv::imshow("depth", d);
 		cv::waitKey(30);
 	}
-
-// 	while (reader->getNextColorFrame(r) && reader->getNextDepthFrame(d))
-// 	{
-// 		d.convertTo(t, CV_8U, 255.0 / max_depth);
-// 		cv::imshow("rgb", r);
-// 		cv::imshow("depth", d);
-// 		cv::waitKey(30);
-// 	}
 
 	return 0;
 	//keyframe_test();

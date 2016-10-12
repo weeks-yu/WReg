@@ -1,37 +1,36 @@
-#include "OniReader.h"
+#include "KinectReader.h"
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
-OniReader::OniReader()
+KinectReader::KinectReader()
 {
 	filename = "";
 }
 
-OniReader::~OniReader()
+KinectReader::~KinectReader()
 {
 
 }
 
-bool OniReader::create(const char* filename_)
+bool KinectReader::create()
 {
-	filename = std::string(filename_);
 	Status result = STATUS_OK;
 
 	result = OpenNI::initialize();
 	if (result != STATUS_OK) return false;
 
-	result = oniDevice.open(filename_);
+	result = kinectDevice.open(openni::ANY_DEVICE);
 	if (result != STATUS_OK) return false;
 
 	// depthstream and color stream
-	result = depthStream.create(oniDevice, SENSOR_DEPTH);
+	result = depthStream.create(kinectDevice, SENSOR_DEPTH);
 	if (result != STATUS_OK) return false;
 	max_depth = (unsigned short)depthStream.getMaxPixelValue();
 
-	result = oniDevice.setImageRegistrationMode(IMAGE_REGISTRATION_DEPTH_TO_COLOR);
+	result = kinectDevice.setImageRegistrationMode(IMAGE_REGISTRATION_DEPTH_TO_COLOR);
 	if (result != STATUS_OK) return false;
 
-	result = colorStream.create(oniDevice, SENSOR_COLOR);
+	result = colorStream.create(kinectDevice, SENSOR_COLOR);
 	if (result != STATUS_OK) return false;
 
 	// Intrinsic
@@ -55,10 +54,6 @@ bool OniReader::create(const char* filename_)
 		break;
 	}
 
-	// playback control
-	control = oniDevice.getPlaybackControl();
-	control->setSpeed(-1);
-
 	while (!color_frames.empty())
 		color_frames.pop();
 	while (!depth_frames.empty())
@@ -67,44 +62,50 @@ bool OniReader::create(const char* filename_)
 	return true;
 }
 
-bool OniReader::start()
+bool KinectReader::start()
 {
 	Status result;
+
+	depthStream.addNewFrameListener(this);
+	colorStream.addNewFrameListener(this);
 
 	result = depthStream.start();
 	if (result != STATUS_OK) return false;
 
 	result = colorStream.start();
 	if (result != STATUS_OK) return false;
-	
-	VideoFrameRef oniDepth, oniColor;
-	
-	for (int i = 0; i < control->getNumberOfFrames(colorStream); i++)
-	{
-		if (colorStream.readFrame(&oniColor) == STATUS_OK)
-		{
-			cv::Mat r(oniColor.getHeight(), oniColor.getWidth(), CV_8UC3, (void *)oniColor.getData());
-			cv::Mat r2;
-			cv::cvtColor(r, r2, CV_RGB2BGR);
-			color_frames.push(r2);
-		}
-	}
 
-	for (int i = 0; i < control->getNumberOfFrames(depthStream); i++)
+	return true;
+}
+
+void KinectReader::stop()
+{
+	
+}
+
+void KinectReader::onNewFrame(VideoStream &vs)
+{
+	SensorType st = vs.getSensorInfo().getSensorType();
+	if (st == SENSOR_DEPTH)
 	{
-		if (depthStream.readFrame(&oniDepth) == STATUS_OK)
+		VideoFrameRef vfr;
+		if (vs.readFrame(&vfr) == STATUS_OK)
 		{
-			cv::Mat d(oniDepth.getHeight(), oniDepth.getWidth(), CV_16UC1, (void *)oniDepth.getData());
+			cv::Mat d(vfr.getHeight(), vfr.getWidth(), CV_16UC1, (void *)vfr.getData());
 			cv::Mat d2;
 			d.copyTo(d2);
 			depth_frames.push(d2);
 		}
 	}
-
-	return true;
-}
-
-void OniReader::stop()
-{
-	
+	else if (st == SENSOR_COLOR)
+	{
+		VideoFrameRef vfr;
+		if (colorStream.readFrame(&vfr) == STATUS_OK)
+		{
+			cv::Mat r(vfr.getHeight(), vfr.getWidth(), CV_8UC3, (void *)vfr.getData());
+			cv::Mat r2;
+			cv::cvtColor(r, r2, CV_RGB2BGR);
+			color_frames.push(r2);
+		}
+	}
 }

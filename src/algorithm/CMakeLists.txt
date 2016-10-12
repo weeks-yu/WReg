@@ -29,30 +29,8 @@ set(CUDA_ARCH_PTX "" CACHE STRING "Specify 'virtual' PTX arch to build PTX inter
 include(${PROJECT_SOURCE_DIR}/cudalib/CudaComputeTargetFlags.cmake)                  
 APPEND_TARGET_ARCH_FLAGS()
 
-<<<<<<< HEAD
 file(GLOB ALGORITHM_HEADER ../../include/algorithm/*.h ../../include/algorithm/*.hpp)
 file(GLOB ALGORITHM_SRC *.cpp)
-=======
-set(ALGORITHM_HEADER
-	../../include/algorithm/Config.h
-	../../include/algorithm/Feature.h
-	../../include/algorithm/Frame.h
-	../../include/algorithm/ActiveWindow.h
-	../../include/algorithm/RobustManager.h
-	../../include/algorithm/PointCloud.h
-#	../../include/algorithm/QuadTree.h
-	../../include/algorithm/Transformation.h
-	../../include/algorithm/SlamEngine.h)
-	
-set(ALGORITHM_SRC
-	Config.cpp
-	Feature.cpp
-	ActiveWindow.cpp
-	RobustManager.cpp
-	PointCloud.cpp
-	Transformation.cpp
-	SlamEngine.cpp)
->>>>>>> origin/simplified
 	
 add_library(algorithm STATIC ${ALGORITHM_HEADER} ${ALGORITHM_SRC})
 target_link_libraries(algorithm

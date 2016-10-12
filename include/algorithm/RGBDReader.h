@@ -1,7 +1,7 @@
 #pragma once
 
 #include <opencv2/core/core.hpp>
-#include <deque>
+#include <queue>
 
 struct Intrinsic
 {
@@ -44,6 +44,6 @@ public:
 	Intrinsic intr;
 
 public:
-	std::deque<cv::Mat> color_frames, depth_frames;
+	std::queue<cv::Mat> color_frames, depth_frames;
 	unsigned short max_depth;
 };

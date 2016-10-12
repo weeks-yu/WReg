@@ -16,7 +16,7 @@ bool RGBDReader::getNextColorFrame(cv::Mat &rgb)
 	{
 		cv::Mat r = color_frames.front();
 		r.copyTo(rgb);
-		color_frames.pop_front();
+		color_frames.pop();
 		return true;
 	}
 	return false;
@@ -28,7 +28,7 @@ bool RGBDReader::getNextDepthFrame(cv::Mat &depth)
 	{
 		cv::Mat d = depth_frames.front();
 		d.copyTo(depth);
-		depth_frames.pop_front();
+		depth_frames.pop();
 		return true;
 	}
 	return false;

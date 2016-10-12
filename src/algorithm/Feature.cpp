@@ -423,7 +423,6 @@ void Feature::computeInliersAndError(vector<cv::DMatch> &inliers, float &mean_er
 		if (error > squaredInlierDist)
 			continue; //ignore outliers
 
-		error = sqrt(error);
 		inliers.push_back(matches[j]);
 
 		mean_error += error;
@@ -438,7 +437,7 @@ void Feature::computeInliersAndError(vector<cv::DMatch> &inliers, float &mean_er
 	}
 	else
 	{
-		mean_error /= inliers.size();
+		mean_error = sqrt(mean_error / inliers.size());
 	}
 }
 
@@ -466,7 +465,6 @@ void Feature::computeInliersAndError(vector<cv::DMatch> &inliers, float &rmse, v
 		if (error > squaredInlierDist)
 			continue; //ignore outliers
 
-		error = sqrt(error);
 		inliers.push_back(matches[j]);
 
 		rmse += error;
@@ -481,7 +479,7 @@ void Feature::computeInliersAndError(vector<cv::DMatch> &inliers, float &rmse, v
 	}
 	else
 	{
-		rmse /= inliers.size();
+		rmse = sqrt(rmse / inliers.size());
 	}
 }
 
