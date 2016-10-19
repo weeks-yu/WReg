@@ -21,6 +21,10 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 find_package(G2O REQUIRED)
 include_directories(${G2O_INCLUDE_DIR})
 
+#Find KinectSDK2
+find_package(KinectSDK2 REQUIRED)
+include_directories(${KinectSDK2_INCLUDE_DIRS})
+
 #Find CUDA
 find_package(CUDA REQUIRED)
 include_directories(${CUDA_INCLUDE_DIRS})
@@ -44,5 +48,6 @@ target_link_libraries(Test
 	${PCL_LIBRARIES}
 	${CUDA_LIBRARIES}
 	${G2O_LIBRARIES}
+	${KinectSDK2_LIBRARIES}
 	icpcuda
 	algorithm)

@@ -5,12 +5,12 @@
 
 struct Intrinsic
 {
-	float rx, ry;
+	int rx, ry;
 	float fx, fy;
 	float cx, cy;
 	float zFactor;
 	Intrinsic() : rx(0), ry(0), fx(0), fy(0), cx(0), cy(0), zFactor(1.0) {}
-	Intrinsic(float rx_, float ry_, float fx_, float fy_, float cx_, float cy_, float zFactor_) 
+	Intrinsic(int rx_, int ry_, float fx_, float fy_, float cx_, float cy_, float zFactor_) 
 		: rx(rx_), ry(ry_)
 		, fx(fx_), fy(fy_)
 		, cx(cx_), cy(cy_)
@@ -32,18 +32,17 @@ public:
 	RGBDReader();
 	virtual ~RGBDReader();
 
-	virtual bool getNextColorFrame(cv::Mat &rgb);
-	virtual bool getNextDepthFrame(cv::Mat &depth);
-	virtual unsigned short getMaxDepth();
+	virtual bool getNextColorFrame(cv::Mat &rgb) = 0;
+	virtual bool getNextDepthFrame(cv::Mat &depth) = 0;
+	virtual bool getNextFrame(cv::Mat &rgb, cv::Mat &depth) = 0;
+/*	virtual unsigned short getMaxDepth();*/
 
 	virtual bool create(const char* mode) = 0;
-	virtual bool start() = 0;
+	virtual void start() = 0;
 	virtual void stop() = 0;
 
 public:
-	Intrinsic intr;
-
-public:
-	std::queue<cv::Mat> color_frames, depth_frames;
+	Intrinsic intrDepth;
+	Intrinsic intrColor;
 	unsigned short max_depth;
 };

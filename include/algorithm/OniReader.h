@@ -11,8 +11,12 @@ public:
 	OniReader();
 	virtual ~OniReader();
 
+	virtual bool getNextColorFrame(cv::Mat &rgb);
+	virtual bool getNextDepthFrame(cv::Mat &depth);
+	virtual bool getNextFrame(cv::Mat &rgb, cv::Mat &depth);
+
 	virtual bool create(const char* filename);
-	virtual bool start();
+	virtual void start();
 	virtual void stop();
 
 private:

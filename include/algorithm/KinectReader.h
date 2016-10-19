@@ -1,25 +1,63 @@
 #pragma once;
 
 #include "RGBDReader.h"
-#include <OpenNI.h>
+#include <Kinect.h>
+/*#include <OpenNI.h>*/
+#include <boost/thread/thread.hpp>
 
-using namespace openni;
+/*using namespace openni;*/
 
-class KinectReader : public RGBDReader, public VideoStream::NewFrameListener
+class KinectReader : public RGBDReader/*, public VideoStream::NewFrameListener*/
 {
 public:
 	KinectReader();
 	virtual ~KinectReader();
 
-	virtual bool create();
-	virtual bool start();
+	virtual bool getNextColorFrame(cv::Mat &rgb);
+	virtual bool getNextDepthFrame(cv::Mat &depth);
+	virtual bool getNextFrame(cv::Mat &rgb, cv::Mat &depth);
+
+	virtual bool create(const char* mode);
+	virtual void start();
 	virtual void stop();
-	virtual void onNewFrame(VideoStream &vs);
+//	virtual void onNewFrame(VideoStream &vs);
+	virtual bool isRunning();
+//	virtual void threadFunction();
 
-private:
-	std::string filename;
+	static void shutdown();
 
-	Device kinectDevice;
-	VideoStream depthStream;
-	VideoStream colorStream;
+protected:
+	template<class Interface>
+	inline void SafeRelease(Interface *& IRealese)
+	{
+		if (IRealese != NULL)
+		{
+			IRealese->Release();
+			IRealese = NULL;
+		}
+	}
+
+protected:
+// 	Device kinectDevice;
+// 	VideoStream depthStream;
+// 	VideoStream colorStream;
+
+	IKinectSensor *sensor;
+	ICoordinateMapper *mapper;
+	IColorFrameSource *colorSource;
+	IColorFrameReader *colorReader;
+	IDepthFrameSource *depthSource;
+	IDepthFrameReader *depthReader;
+	IInfraredFrameSource *infraredSource;
+	IInfraredFrameReader *infraredReader;
+// 	std::vector<RGBQUAD> colorBuffer;
+// 	std::vector<UINT16> depthBuffer;
+// 	std::vector<UINT16> infraredBuffer;
+
+	Intrinsic intrInfrared;
+ 	bool running;
+// 	bool quit;
+
+// 	boost::thread thread;
+// 	mutable boost::mutex mutex;
 };

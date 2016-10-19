@@ -27,6 +27,7 @@
 #include "Transformation.h"
 
 #include "OniReader.h"
+#include "KinectReader.h"
 
 using namespace std;
 
@@ -2567,9 +2568,9 @@ void time_test()
 
 int main()
 {
-	std::string filename;
-	cout << "Oni file: ";
-	cin >> filename;
+// 	std::string filename;
+// 	cout << "Oni file: ";
+// 	cin >> filename;
 
 // 	Status result = STATUS_OK;
 // 
@@ -2625,19 +2626,27 @@ int main()
 // 
 // 	return 0;
 
-	RGBDReader *reader = new OniReader();
-	reader->create(filename.c_str());
+	RGBDReader *reader = new KinectReader();
+	reader->create(NULL);
 	reader->start();
 	cv::Mat r, d, t;
-	unsigned short max_depth = reader->getMaxDepth();
 
-	while (reader->getNextColorFrame(r) && reader->getNextDepthFrame(d))
+	cout << reader->intrColor.fx << "\t" << reader->intrColor.fy << "\t" << reader->intrColor.cx << "\t" << reader->intrColor.cy << endl;
+	cout << reader->intrDepth.fx << "\t" << reader->intrDepth.fy << "\t" << reader->intrDepth.cx << "\t" << reader->intrDepth.cy << endl;
+	int key = 0;
+	while (key != 27)
 	{
-		d.convertTo(t, CV_8U, 255.0 / max_depth);
-		cv::imshow("rgb", r);
-		cv::imshow("depth", d);
-		cv::waitKey(30);
+		if (reader->getNextFrame(r, d))
+		{
+			d.convertTo(t, CV_8U, 255.0 / 1000.0);
+			cv::imshow("rgb", r);
+			cv::imshow("depth", t);
+		}
+		key = cv::waitKey(15);
 	}
+
+	reader->stop();
+	KinectReader::shutdown();
 
 	return 0;
 	//keyframe_test();

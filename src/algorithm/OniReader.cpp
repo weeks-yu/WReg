@@ -12,6 +12,45 @@ OniReader::~OniReader()
 
 }
 
+bool OniReader::getNextColorFrame(cv::Mat &rgb)
+{
+	VideoFrameRef oniColor;
+	if (colorStream.readFrame(&oniColor) == STATUS_OK)
+	{
+		cv::Mat r(oniColor.getHeight(), oniColor.getWidth(), CV_8UC3, (void *)oniColor.getData());
+		cv::cvtColor(r, rgb, CV_RGB2BGR);
+		return true;
+	}
+	return false;
+}
+
+bool OniReader::getNextDepthFrame(cv::Mat &depth)
+{
+	VideoFrameRef oniDepth;
+	if (depthStream.readFrame(&oniDepth) == STATUS_OK)
+	{
+		cv::Mat d(oniDepth.getHeight(), oniDepth.getWidth(), CV_16UC1, (void *)oniDepth.getData());
+		d.copyTo(depth);
+		return true;
+	}
+	return false;
+}
+
+bool OniReader::getNextFrame(cv::Mat &rgb, cv::Mat &depth)
+{
+	VideoFrameRef oniColor, oniDepth;
+	if (colorStream.readFrame(&oniColor) == STATUS_OK && depthStream.readFrame(&oniDepth) == STATUS_OK)
+	{
+		cv::Mat r(oniColor.getHeight(), oniColor.getWidth(), CV_8UC3, (void *)oniColor.getData());
+		cv::cvtColor(r, rgb, CV_RGB2BGR);
+
+		cv::Mat d(oniDepth.getHeight(), oniDepth.getWidth(), CV_16UC1, (void *)oniDepth.getData());
+		d.copyTo(depth);
+		return true;
+	}
+	return false;
+}
+
 bool OniReader::create(const char* filename_)
 {
 	filename = std::string(filename_);
@@ -39,19 +78,19 @@ bool OniReader::create(const char* filename_)
 	float hFov = depthStream.getHorizontalFieldOfView();
 	float vFov = depthStream.getVerticalFieldOfView();
 
-	intr.rx = videoMode.getResolutionX();
-	intr.ry = videoMode.getResolutionY();
-	intr.fx = intr.rx / 2 / tan(hFov / 2);
-	intr.fy = intr.ry / 2 / tan(vFov / 2);
-	intr.cx = 0.5 * intr.rx;
-	intr.cy = 0.5 * intr.ry;
+	intrDepth.rx = videoMode.getResolutionX();
+	intrDepth.ry = videoMode.getResolutionY();
+	intrDepth.fx = intrDepth.rx / 2 / tan(hFov / 2);
+	intrDepth.fy = intrDepth.ry / 2 / tan(vFov / 2);
+	intrDepth.cx = 0.5 * intrDepth.rx;
+	intrDepth.cy = 0.5 * intrDepth.ry;
 	switch (videoMode.getPixelFormat())
 	{
 	case ONI_PIXEL_FORMAT_DEPTH_1_MM:
-		intr.zFactor = 1.0f;
+		intrDepth.zFactor = 1.0f;
 		break;
 	case ONI_PIXEL_FORMAT_DEPTH_100_UM:
-		intr.zFactor = 0.1f;
+		intrDepth.zFactor = 0.1f;
 		break;
 	}
 
@@ -59,49 +98,20 @@ bool OniReader::create(const char* filename_)
 	control = oniDevice.getPlaybackControl();
 	control->setSpeed(-1);
 
-	while (!color_frames.empty())
-		color_frames.pop();
-	while (!depth_frames.empty())
-		depth_frames.pop();
-
 	return true;
 }
 
-bool OniReader::start()
+void OniReader::start()
 {
 	Status result;
 
 	result = depthStream.start();
-	if (result != STATUS_OK) return false;
+	if (result != STATUS_OK) return;
 
 	result = colorStream.start();
-	if (result != STATUS_OK) return false;
-	
-	VideoFrameRef oniDepth, oniColor;
-	
-	for (int i = 0; i < control->getNumberOfFrames(colorStream); i++)
-	{
-		if (colorStream.readFrame(&oniColor) == STATUS_OK)
-		{
-			cv::Mat r(oniColor.getHeight(), oniColor.getWidth(), CV_8UC3, (void *)oniColor.getData());
-			cv::Mat r2;
-			cv::cvtColor(r, r2, CV_RGB2BGR);
-			color_frames.push(r2);
-		}
-	}
+	if (result != STATUS_OK) return;
 
-	for (int i = 0; i < control->getNumberOfFrames(depthStream); i++)
-	{
-		if (depthStream.readFrame(&oniDepth) == STATUS_OK)
-		{
-			cv::Mat d(oniDepth.getHeight(), oniDepth.getWidth(), CV_16UC1, (void *)oniDepth.getData());
-			cv::Mat d2;
-			d.copyTo(d2);
-			depth_frames.push(d2);
-		}
-	}
-
-	return true;
+	return;
 }
 
 void OniReader::stop()
