@@ -2,6 +2,7 @@
 #define SLAMTHREAD_H
 
 #include "SlamEngine.h"
+#include "RGBDReader.h"
 #include <QThread>
 #include <QTextStream>
 
@@ -9,7 +10,14 @@ class SlamThread : public QThread
 {
 	Q_OBJECT
 public:
-	SlamThread(const QString &dir, SlamEngine *eng, int interval = 1, int start = -1, int stop = -1);
+	typedef enum
+	{
+		SENSOR_IMAGE = 0,
+		SENSOR_KINECT,
+		SENSOR_ONI
+	} SensorType;
+public:
+	SlamThread(SensorType st, const QString &dir, SlamEngine *eng, int *parameters);
 	~SlamThread();
 
 signals:
@@ -21,12 +29,18 @@ protected:
 
 private:
 	bool shouldStop;
+
+	SensorType sensorType;
+
+	//image or oni
 	QString directory;
-	ifstream *fileInput;
 	int frameInterval;
 	int frameStart;
 	int frameStop;
+
 	SlamEngine *engine;
+
+	RGBDReader *reader;
 };
 
 #endif

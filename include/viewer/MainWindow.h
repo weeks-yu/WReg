@@ -15,14 +15,14 @@
 
 #include <vtkRenderWindow.h>
 
-#include "BenchmarkViewer.h"
+#include "RegistrationViewer.h"
 
 typedef pcl::PointXYZRGB PointT;
 typedef pcl::PointCloud<PointT> PointCloudT;
 
 namespace Ui {
 	class MainWindow;
-	class DockBenchmark;
+	class DockRegistration;
 }
 
 class MainWindow : public QMainWindow
@@ -34,21 +34,24 @@ public:
 
 private:
 	void ShowPointCloudFiles(const QString &filename);
-	void ShowBenchmarkTest(const QString &directory);
-	void ShowBenchmarkResult(const QString &filename, int fi, int fst, int fed);
+// 	void ShowBenchmarkTest(const QString &directory);
+// 	void ShowBenchmarkResult(const QString &filename, int fi, int fst, int fed);
+	void ShowRegistration();
 
 private slots:
 	void onActionOpenTriggered();
 	void onActionSaveTriggered();
-	void onActionOpenReadTxtTriggered();
-	void onActionShowResultFromFileTriggered();
+// 	void onActionOpenReadTxtTriggered();
+// 	void onActionShowResultFromFileTriggered();
+	void onActionRegistrationTriggered();
 
 	// benchmark
-	void onBenchmarkPushButtonRunClicked(bool checked);
-	void onBenchmarkPushButtonDirectoryClicked(bool checked);
-	void onBenchmarkPushButtonSaveTrajectoriesClicked(bool checked);
-	void onBenchmarkPushButtonSaveKeyframesClicked(bool checked);
-	void onBenchmarkPushButtonSaveLogsClicked(bool checked);
+	void onRegistrationPushButtonRunClicked(bool checked);
+	void onRegistrationPushButtonDirectoryClicked(bool checked);
+	void onRegistrationPushButtonSaveTrajectoriesClicked(bool checked);
+	void onRegistrationPushButtonSaveKeyframesClicked(bool checked);
+	void onRegistrationPushButtonSaveLogsClicked(bool checked);
+	void onRegistrationComboBoxSensorTypeCurrentIndexChanged(int index);
 
 	void onBenchmarkOneIterationDone(const cv::Mat &rgb, const cv::Mat &depth);
 	void onBenchmarkRegistrationDone();
@@ -59,15 +62,15 @@ protected:
 	
 private:
     Ui::MainWindow *ui;
-	Ui::DockBenchmark *uiDockBenchmark;
+	Ui::DockRegistration *uiDockRegistration;
 
-	QDockWidget *dockBenchmark;
+	QDockWidget *dockRegistration;
 	QMdiArea *mdiArea;
-	BenchmarkViewer *benchmarkViewer;
+	RegistrationViewer *registrationViewer;
 
 	SlamEngine *engine;
 
-	bool inBenchmarkMode;
+	bool inRegistrationMode;
 };
 
 #endif // MAINWINDOW_H

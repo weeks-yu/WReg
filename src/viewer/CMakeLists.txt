@@ -24,6 +24,10 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 find_package(G2O REQUIRED)
 include_directories(${G2O_INCLUDE_DIR})
 
+#Find KinectSDK2
+find_package(KinectSDK2 REQUIRED)
+include_directories(${KinectSDK2_INCLUDE_DIRS})
+
 #Find CUDA
 find_package(CUDA REQUIRED)
 include_directories(${CUDA_INCLUDE_DIRS})
@@ -50,7 +54,7 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(VIEWER_HEADERS
 	../../include/viewer/MainWindow.h
 	../../include/viewer/PclViewer.h
-	../../include/viewer/BenchmarkViewer.h
+	../../include/viewer/RegistrationViewer.h
 	../../include/viewer/Parser.h
 	../../include/viewer/SlamThread.h)
 	
@@ -58,15 +62,15 @@ set(VIEWER_SOURCES
 	main.cpp
 	MainWindow.cpp
 	PclViewer.cpp
-	BenchmarkViewer.cpp
+	RegistrationViewer.cpp
 	Parser.cpp
 	SlamThread.cpp)
 	
 set(VIEWER_FORMS
 	ui/MainWindow.ui
 	ui/PclViewer.ui
-	ui/BenchmarkViewer.ui
-	ui/DockBenchmark.ui)
+	ui/RegistrationViewer.ui
+	ui/DockRegistration.ui)
 
 #uic
 qt5_wrap_ui(VIEWER_UIS ${VIEWER_FORMS})
@@ -81,6 +85,7 @@ target_link_libraries(WReg
 	${VTK_LIBRARIES}
 	${CUDA_LIBRARIES}
 	${G2O_LIBRARIES}
+	${KinectSDK2_LIBRARIES}
 	vtkGUISupportQt
 	icpcuda
 	algorithm)

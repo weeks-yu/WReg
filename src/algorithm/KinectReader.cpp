@@ -21,77 +21,6 @@ KinectReader::~KinectReader()
 	SafeRelease(infraredReader);
 }
 
-bool KinectReader::getNextColorFrame(cv::Mat &rgb)
-{
-	IColorFrame* colorFrame = nullptr;
-	HRESULT result = colorReader->AcquireLatestFrame(&colorFrame);
-	if (FAILED(result))
-	{
-		return false;
-	}
-	// Retrieved Color Data
-	std::vector<RGBQUAD> data(intrColor.rx * intrColor.ry);
-	result = colorFrame->CopyConvertedFrameDataToArray(intrColor.rx * intrColor.ry * sizeof(RGBQUAD),
-		reinterpret_cast<BYTE*>(&data[0]), ColorImageFormat::ColorImageFormat_Bgra);
-	if (FAILED(result))
-	{
-		throw std::exception("Exception : IColorFrame::CopyConvertedFrameDataToArray()");
-		return false;
-	}
-	cv::Mat r(intrColor.ry, intrColor.rx, CV_8UC4, (void *)data.data());
-	r.copyTo(rgb);
-	SafeRelease(colorFrame);
-	return true;
-
-// 	VideoFrameRef oniColor;
-// 	if (colorStream.readFrame(&oniColor) == STATUS_OK)
-// 	{
-// 		ICoordinateMapper *cMapper = 
-// 		cv::Mat r(oniColor.getHeight(), oniColor.getWidth(), CV_8UC3, (void *)oniColor.getData());
-// 		cv::cvtColor(r, rgb, CV_RGB2BGR);
-// // 		if (intrDepth.rx != intrColor.rx && intrDepth.ry != intrColor.ry)
-// // 		{
-// // 			//cv::resize(rgb, rgb, cv::Size(intrDepth.rx, intrDepth.ry));
-// // 		}
-// 		return true;
-// 	}
-// 	return false;
-}
-
-bool KinectReader::getNextDepthFrame(cv::Mat &depth)
-{
-	IDepthFrame* depthFrame = nullptr;
-	HRESULT result = depthReader->AcquireLatestFrame(&depthFrame);
-	if (FAILED(result))
-	{
-		return false;
-	}
-	// Retrieved Depth Data
-	std::vector<UINT16> data(intrDepth.rx * intrDepth.ry);
-	result = depthFrame->CopyFrameDataToArray(intrDepth.rx * intrDepth.ry, &data[0]);
-	if (FAILED(result))
-	{
-		throw std::exception("Exception : IDepthFrame::CopyFrameDataToArray()");
-		return false;
-	}
-	cv::Mat d(intrDepth.ry, intrDepth.rx, CV_16UC1, (void *)data.data());
-	d.copyTo(depth);
-	SafeRelease(depthFrame);
-	return true;
-// 	VideoFrameRef oniDepth;
-// 	if (depthStream.readFrame(&oniDepth) == STATUS_OK)
-// 	{
-// 		cv::Mat d(oniDepth.getHeight(), oniDepth.getWidth(), CV_16UC1, (void *)oniDepth.getData());
-// 		d.copyTo(depth);
-// // 		if (intrDepth.rx != intrColor.rx && intrDepth.ry != intrColor.ry)
-// // 		{
-// // 			cv::resize(depth, depth, cv::Size(intrColor.rx, intrColor.ry));
-// // 		}
-// 		return true;
-// 	}
-// 	return false;
-}
-
 bool KinectReader::getNextFrame(cv::Mat &rgb, cv::Mat &depth)
 {
 	std::vector<RGBQUAD> colorData;
@@ -137,30 +66,43 @@ bool KinectReader::getNextFrame(cv::Mat &rgb, cv::Mat &depth)
 	cv::Mat d(intrDepth.ry, intrDepth.rx, CV_16UC1, (void *)depthData.data());
 	d.copyTo(depth);
 
-	// registration
+	rgb = cv::Mat::zeros(intrColor.ry, intrColor.rx, CV_8UC3);
+	for (int i = 0; i < intrColor.ry; i++)
+	{
+		for (int j = 0; j < intrColor.rx; j++)
+		{
+			rgb.at<cv::Vec3b>(i, j)[0] = colorData[i * intrColor.rx + j].rgbBlue;
+			rgb.at<cv::Vec3b>(i, j)[1] = colorData[i * intrColor.rx + j].rgbGreen;
+			rgb.at<cv::Vec3b>(i, j)[2] = colorData[i * intrColor.rx + j].rgbRed;
+		}
+	}
+
+	return true;
+}
+
+void KinectReader::registerColorToDepth(const cv::Mat &rgb, const cv::Mat &depth, cv::Mat &rgbRegistered)
+{
 	std::vector<DepthSpacePoint> mappedData(intrColor.rx * intrColor.ry);
-	mapper->MapColorFrameToDepthSpace(intrDepth.rx * intrDepth.ry, depthData.data(), intrColor.rx * intrColor.ry, mappedData.data());
-	cv::Mat r = cv::Mat::zeros(intrDepth.ry, intrDepth.rx, CV_8UC3);
+	mapper->MapColorFrameToDepthSpace(intrDepth.rx * intrDepth.ry, (UINT16 *)(depth.data), intrColor.rx * intrColor.ry, mappedData.data());
+	cv::Mat rr = cv::Mat::zeros(intrDepth.ry, intrDepth.rx, CV_8UC3);
 	for (int i = 0; i < intrColor.ry; i++)
 	{
 		for (int j = 0; j < intrColor.rx; j++)
 		{
 			float u = mappedData[intrColor.rx * i + j].X;
 			float v = mappedData[intrColor.rx * i + j].Y;
-			if (u >= 0 &&  u < intrDepth.rx && v >= 0 && v < intrDepth.ry)
+			if (u >= 0 && u < intrDepth.rx && v >= 0 && v < intrDepth.ry)
 			{
-				r.at<cv::Vec3b>(v, u)[0] = colorData[intrColor.rx * i + j].rgbBlue;
-				r.at<cv::Vec3b>(v, u)[1] = colorData[intrColor.rx * i + j].rgbGreen;
-				r.at<cv::Vec3b>(v, u)[2] = colorData[intrColor.rx * i + j].rgbRed;
+				rr.at<cv::Vec3b>(v, u) = rgb.at<cv::Vec3b>(i, j);
 			}
 		}
 	}
-	r.copyTo(rgb);
+	rr.copyTo(rgbRegistered);
+}
 
-	SafeRelease(colorFrame);
-	SafeRelease(depthFrame);
-
-	return true;
+void KinectReader::registerDepthToColor(const cv::Mat &rgb, const cv::Mat &depth, cv::Mat &depthRegistered)
+{
+	throw std::exception("Exception : not implemented.");
 }
 
 bool KinectReader::create(const char* mode)

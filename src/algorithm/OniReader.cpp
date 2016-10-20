@@ -12,30 +12,6 @@ OniReader::~OniReader()
 
 }
 
-bool OniReader::getNextColorFrame(cv::Mat &rgb)
-{
-	VideoFrameRef oniColor;
-	if (colorStream.readFrame(&oniColor) == STATUS_OK)
-	{
-		cv::Mat r(oniColor.getHeight(), oniColor.getWidth(), CV_8UC3, (void *)oniColor.getData());
-		cv::cvtColor(r, rgb, CV_RGB2BGR);
-		return true;
-	}
-	return false;
-}
-
-bool OniReader::getNextDepthFrame(cv::Mat &depth)
-{
-	VideoFrameRef oniDepth;
-	if (depthStream.readFrame(&oniDepth) == STATUS_OK)
-	{
-		cv::Mat d(oniDepth.getHeight(), oniDepth.getWidth(), CV_16UC1, (void *)oniDepth.getData());
-		d.copyTo(depth);
-		return true;
-	}
-	return false;
-}
-
 bool OniReader::getNextFrame(cv::Mat &rgb, cv::Mat &depth)
 {
 	VideoFrameRef oniColor, oniDepth;
@@ -49,6 +25,16 @@ bool OniReader::getNextFrame(cv::Mat &rgb, cv::Mat &depth)
 		return true;
 	}
 	return false;
+}
+
+void OniReader::registerColorToDepth(const cv::Mat &rgb, const cv::Mat &depth, cv::Mat &rgbRegistered)
+{
+	throw std::exception("Exception : not implemented.");
+}
+
+void OniReader::registerDepthToColor(const cv::Mat &rgb, const cv::Mat &depth, cv::Mat &depthRegistered)
+{
+	depth.copyTo(depthRegistered);
 }
 
 bool OniReader::create(const char* filename_)

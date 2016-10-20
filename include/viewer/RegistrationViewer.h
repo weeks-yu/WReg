@@ -14,16 +14,16 @@
 #include "PointCloud.h"
 
 namespace Ui {
-	class BenchmarkViewer;
+	class RegistrationViewer;
 }
 
-class BenchmarkViewer : public QWidget
+class RegistrationViewer : public QWidget
 {
     Q_OBJECT
 
 public:
-	explicit BenchmarkViewer(QWidget *parent = 0);
-	~BenchmarkViewer();
+	explicit RegistrationViewer(QWidget *parent = 0);
+	~RegistrationViewer();
 
 	void ShowRGBImage(QImage *rgb);
 	void ShowDepthImage(QImage *depth);
@@ -45,7 +45,7 @@ protected:
 	PointCloudPtr cloud;
 
 private:
-	Ui::BenchmarkViewer *ui;
+	Ui::RegistrationViewer *ui;
 	QImage currRGB;
 	QImage currDepth;
 };

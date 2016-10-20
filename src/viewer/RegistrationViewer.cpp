@@ -1,11 +1,11 @@
-#include "BenchmarkViewer.h"
-#include "ui_BenchmarkViewer.h"
+#include "RegistrationViewer.h"
+#include "ui_RegistrationViewer.h"
 
 #include <QPainter>
 
-BenchmarkViewer::BenchmarkViewer(QWidget *parent) :
+RegistrationViewer::RegistrationViewer(QWidget *parent) :
 	QWidget(parent),
-	ui(new Ui::BenchmarkViewer)
+	ui(new Ui::RegistrationViewer)
 {
 	ui->setupUi(this);
 	this->setAutoFillBackground(true);
@@ -21,12 +21,12 @@ BenchmarkViewer::BenchmarkViewer(QWidget *parent) :
 	cloud = PointCloudPtr(new PointCloudT);
 }
 
-BenchmarkViewer::~BenchmarkViewer()
+RegistrationViewer::~RegistrationViewer()
 {
 	delete ui;
 }
 
-void BenchmarkViewer::ShowRGBImage(QImage *rgb)
+void RegistrationViewer::ShowRGBImage(QImage *rgb)
 {
 	if (rgb == nullptr)
 		return;
@@ -35,7 +35,7 @@ void BenchmarkViewer::ShowRGBImage(QImage *rgb)
 	ui->labelRGB->setPixmap(getPixmap(currRGB, ui->labelRGB->size()));
 }
 
-void BenchmarkViewer::ShowDepthImage(QImage *depth)
+void RegistrationViewer::ShowDepthImage(QImage *depth)
 {
 	if (depth == nullptr)
 		return;
@@ -44,7 +44,7 @@ void BenchmarkViewer::ShowDepthImage(QImage *depth)
 	ui->labelDepth->setPixmap(getPixmap(currDepth, ui->labelDepth->size()));
 }
 
-void BenchmarkViewer::ShowPointCloud(PointCloudPtr result)
+void RegistrationViewer::ShowPointCloud(PointCloudPtr result)
 {
 	*cloud = *result;
 	viewer->removeAllPointClouds();
@@ -53,12 +53,12 @@ void BenchmarkViewer::ShowPointCloud(PointCloudPtr result)
 	ui->qvtkWidget->update();
 }
 
-PointCloudPtr BenchmarkViewer::GetPointCloud()
+PointCloudPtr RegistrationViewer::GetPointCloud()
 {
 	return cloud;
 }
 
-void BenchmarkViewer::resizeEvent(QResizeEvent *event)
+void RegistrationViewer::resizeEvent(QResizeEvent *event)
 {
 	if (!currRGB.isNull())
 	{
@@ -70,7 +70,7 @@ void BenchmarkViewer::resizeEvent(QResizeEvent *event)
 	}
 }
 
-QPixmap BenchmarkViewer::getPixmap(QImage image, QSize size, bool keepAspectRatio /* = true */)
+QPixmap RegistrationViewer::getPixmap(QImage image, QSize size, bool keepAspectRatio /* = true */)
 {
 	QPixmap pix(size);
 	QPainter painter(&pix);
@@ -80,7 +80,7 @@ QPixmap BenchmarkViewer::getPixmap(QImage image, QSize size, bool keepAspectRati
 	return pix;
 }
 
-void BenchmarkViewer::onSplitterVerticalMoved(int pos, int index)
+void RegistrationViewer::onSplitterVerticalMoved(int pos, int index)
 {
 	if (!currRGB.isNull())
 		ui->labelRGB->setPixmap(getPixmap(currRGB, ui->labelRGB->size()));
@@ -88,7 +88,7 @@ void BenchmarkViewer::onSplitterVerticalMoved(int pos, int index)
 		ui->labelDepth->setPixmap(getPixmap(currDepth, ui->labelDepth->size()));
 }
 
-void BenchmarkViewer::onSplitterHorizontalMoved(int pos, int index)
+void RegistrationViewer::onSplitterHorizontalMoved(int pos, int index)
 {
 	if (!currRGB.isNull())
 		ui->labelRGB->setPixmap(getPixmap(currRGB, ui->labelRGB->size()));

@@ -30,15 +30,14 @@
     <addaction name="actionOpen"/>
     <addaction name="actionSave"/>
    </widget>
-   <widget class="QMenu" name="menuBenchmark">
+   <widget class="QMenu" name="menuKinect">
     <property name="title">
-     <string>Benchmark</string>
+     <string>Indoor</string>
     </property>
-    <addaction name="actionOpen_read_txt"/>
-    <addaction name="actionShow_Result_from_File"/>
+    <addaction name="actionRegistration"/>
    </widget>
    <addaction name="menuOpen"/>
-   <addaction name="menuBenchmark"/>
+   <addaction name="menuKinect"/>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
    <attribute name="toolBarArea">
@@ -50,8 +49,6 @@
    <addaction name="actionOpen"/>
    <addaction name="actionSave"/>
    <addaction name="separator"/>
-   <addaction name="actionOpen_read_txt"/>
-   <addaction name="actionShow_Result_from_File"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
   <action name="actionOpen">
@@ -72,18 +69,9 @@
     <string>Save</string>
    </property>
   </action>
-  <action name="actionOpen_read_txt">
-   <property name="icon">
-    <iconset resource="main.qrc">
-     <normaloff>:/icon/res/txt.png</normaloff>:/icon/res/txt.png</iconset>
-   </property>
+  <action name="actionRegistration">
    <property name="text">
-    <string>Open read.txt</string>
-   </property>
-  </action>
-  <action name="actionShow_Result_from_File">
-   <property name="text">
-    <string>Show Result from File</string>
+    <string>Registration</string>
    </property>
   </action>
  </widget>
@@ -125,26 +113,10 @@
    </hints>
   </connection>
   <connection>
-   <sender>actionOpen_read_txt</sender>
+   <sender>actionRegistration</sender>
    <signal>triggered()</signal>
    <receiver>MainWindow</receiver>
-   <slot>onActionOpenReadTxtTriggered()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>199</x>
-     <y>149</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>actionShow_Result_from_File</sender>
-   <signal>triggered()</signal>
-   <receiver>MainWindow</receiver>
-   <slot>onActionShowResultFromFileTriggered()</slot>
+   <slot>onActionRegistrationTriggered()</slot>
    <hints>
     <hint type="sourcelabel">
      <x>-1</x>
@@ -162,5 +134,6 @@
   <slot>onActionSaveTriggered()</slot>
   <slot>onActionOpenReadTxtTriggered()</slot>
   <slot>onActionShowResultFromFileTriggered()</slot>
+  <slot>onActionRegistrationTriggered()</slot>
  </slots>
 </ui>

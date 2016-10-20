@@ -5,16 +5,51 @@
 #include <opencv2/highgui/highgui.hpp>
 
 #include <fstream>
+#include "ImageReader.h"
+#include "OniReader.h"
+#include "KinectReader.h"
 
-SlamThread::SlamThread(const QString &dir, SlamEngine *eng, int interval /* = 1 */, int start /* = -1 */, int stop /* = -1 */)
+SlamThread::SlamThread(SensorType st, const QString &dir, SlamEngine *eng, int *parameters)
+	// for SENSOR_IMAGE and SENSOR_ONI:
+	//		parameters[0] is frameInterval
+	//		parameters[1] is frameStart
+	//		parameters[2] is frameStop
 {
-	directory = dir;
 	shouldStop = false;
-	fileInput = new ifstream((directory + "/read.txt").toStdString());
+	directory = dir;
 	engine = eng;
-	frameInterval = interval;
-	frameStart = start;
-	frameStop = stop;
+	frameInterval = 1;
+	frameStart = -1;
+	frameStop = -1;
+
+	sensorType = st;
+	switch (sensorType)
+	{
+	case SENSOR_IMAGE:
+		frameInterval = parameters[0];
+		frameStart = parameters[1];
+		frameStop = parameters[2];
+
+		reader = new ImageReader();
+		reader->create(dir.toStdString().c_str());
+		reader->start();
+		break;
+	case SENSOR_ONI:
+		frameInterval = parameters[0];
+		frameStart = parameters[1];
+		frameStop = parameters[2];
+
+		reader = new OniReader();
+		reader->create(dir.toStdString().c_str());
+		reader->start();
+		break;
+	case SENSOR_KINECT:
+		reader = new KinectReader();
+		reader->create(NULL);
+		reader->start();
+		break;
+	}
+
 	engine->setFrameInterval(frameInterval);
 	engine->setFrameStart(frameStart);
 	engine->setFrameStop(frameStop);
@@ -28,9 +63,11 @@ SlamThread::~SlamThread()
 void SlamThread::run()
 {
 	int k = 0;
-	string line;
-	while (!shouldStop && fileInput != nullptr && getline(*fileInput, line))
+	while (!shouldStop)
 	{
+		cv::Mat r, d;
+		reader->getNextFrame(r, d);
+
 		if (frameStart > -1 && k < frameStart)
 		{
 			k++;
@@ -46,17 +83,22 @@ void SlamThread::run()
 			continue;
 		}
 
-		QStringList lists = QString(line.data()).split(' ');
-		cv::Mat rgb = cv::imread((directory + "/" + lists[0]).toStdString());
-		cv::Mat depth = cv::imread((directory + "/" + lists[1]).toStdString(), -1);
-
-		QFileInfo fi(lists[1]);
-		engine->RegisterNext(rgb, depth, fi.completeBaseName().toDouble());
-		emit OneIterationDone(rgb, depth);
+		switch (sensorType)
+		{
+		case SENSOR_KINECT:
+			reader->registerColorToDepth(r, d, r);
+			break;
+		case SENSOR_IMAGE:
+			break;
+		case SENSOR_ONI:
+			break;
+		}
+		engine->RegisterNext(r, d, k);
+		emit OneIterationDone(r, d);
 		k++;
 	}
-	if (fileInput)
-		fileInput->close();
+	
+	reader->stop();
 	engine->ShowStatistics();
 	//engine->SaveTestInfo();
 	emit RegistrationDone();

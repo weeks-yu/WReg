@@ -5,11 +5,11 @@
 
 using namespace openni;
 
-class OniReader : public RGBDReader
+class ImageReader : public RGBDReader
 {
 public:
-	OniReader();
-	virtual ~OniReader();
+	ImageReader();
+	virtual ~ImageReader();
 
 	virtual bool getNextFrame(cv::Mat &rgb, cv::Mat &depth);
 	virtual void registerColorToDepth(const cv::Mat &rgb, const cv::Mat &depth, cv::Mat &rgbRegistered);
@@ -19,11 +19,12 @@ public:
 	virtual void start();
 	virtual void stop();
 
+	void setIntrinsic(int rx, int ry, float fx, float fy, float cx, float cy);
+	void setIntrinsic(Intrinsic intr_);
+
 private:
 	std::string filename;
 
-	Device oniDevice;
-	VideoStream depthStream;
-	VideoStream colorStream;
-	PlaybackControl *control;
+	std::ifstream *fileInput;
+	std::queue<std::string> rgbStream, depthStream;
 };

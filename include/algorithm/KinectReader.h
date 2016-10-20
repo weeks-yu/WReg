@@ -13,11 +13,13 @@ public:
 	KinectReader();
 	virtual ~KinectReader();
 
-	virtual bool getNextColorFrame(cv::Mat &rgb);
-	virtual bool getNextDepthFrame(cv::Mat &depth);
+// 	virtual bool getNextColorFrame(cv::Mat &rgb);
+// 	virtual bool getNextDepthFrame(cv::Mat &depth);
 	virtual bool getNextFrame(cv::Mat &rgb, cv::Mat &depth);
+	virtual void registerColorToDepth(const cv::Mat &rgb, const cv::Mat &depth, cv::Mat &rgbRegistered);
+	virtual void registerDepthToColor(const cv::Mat &rgb, const cv::Mat &depth, cv::Mat &depthRegistered);
 
-	virtual bool create(const char* mode);
+	virtual bool create(const char* mode = NULL);
 	virtual void start();
 	virtual void stop();
 //	virtual void onNewFrame(VideoStream &vs);
