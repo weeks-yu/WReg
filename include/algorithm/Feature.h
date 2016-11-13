@@ -48,7 +48,7 @@ public:
 		this->multiple = multiple;
 	}
 
-	Feature(const cv::Mat &imgRGB, const cv::Mat &imgDepth, string type = "SURF")
+	Feature(const cv::Mat &imgRGB, const cv::Mat &imgDepth, string type = "surf")
 	{
 		this->extract(imgRGB, imgDepth, type);
 		this->multiple = false;
@@ -63,7 +63,7 @@ public:
 
 	void setMultiple(int frame_index = 0);
 
-	void extract(const cv::Mat &imgRGB, const cv::Mat &imgDepth, string type = "SURF");
+	void extract(const cv::Mat &imgRGB, const cv::Mat &imgDepth, string type = "surf");
 
 	void buildFlannIndex();
 

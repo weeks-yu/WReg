@@ -5,8 +5,8 @@ using namespace std;
 Config* Config::_instance = nullptr;
 
 Config::Config() {
-	config["feature_type"]			= static_cast<std::string>("SURF");
-	config["graph_feature_type"]    = static_cast<std::string>("SURF");
+	config["feature_type"]			= static_cast<std::string>("surf");
+	config["graph_feature_type"]    = static_cast<std::string>("surf");
 	config["downsample_rate"]		= static_cast<float>  (0.01);
 
 	// RANSAC
@@ -24,8 +24,8 @@ Config::Config() {
 	config["graph_knn_k"]			= static_cast<int> (30);
 
 	// Keyframe
-	config["max_keyframe_interval"] = static_cast<int>    (15);
-	config["keyframe_rational"]		= static_cast<float>  (0.4);
+	config["max_keyframe_interval"] = static_cast<int>    (30);
+	config["keyframe_rational"]		= static_cast<float>  (0.5);
 	config["min_translation_meter"] = static_cast<float>  (0.25);
 	config["min_rotation_degree"]	= static_cast<float>  (15.0);
 

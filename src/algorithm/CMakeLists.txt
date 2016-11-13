@@ -43,6 +43,6 @@ target_link_libraries(algorithm
 	${CUDA_LIBRARIES}
 	${G2O_LIBRARIES}
 	${KinectSDK2_LIBRARIES}
-	icpcuda
+	cudalib
 	robustoptimizer
 	)

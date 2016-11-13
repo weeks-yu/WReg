@@ -32,7 +32,6 @@ RobustManager::RobustManager(bool use_lp)
 	total_lc_detect_time = 0;
 
 	clousureCount = 0;
-
 	min_matches = Config::instance()->get<int>("graph_min_matches");
 	inlier_percentage = Config::instance()->get<float>("graph_min_inlier_p");
 	inlier_dist = Config::instance()->get<float>("graph_max_inlier_dist");
@@ -46,6 +45,11 @@ RobustManager::RobustManager(bool use_lp)
 	aw_Size = Config::instance()->get<float>("active_window_size");
 
 	using_line_process = true;
+}
+
+RobustManager::~RobustManager()
+{
+
 }
 
 bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/)
@@ -345,7 +349,9 @@ Eigen::Matrix4f RobustManager::getLastKeyframeTransformation()
 	return graph[keyframe_indices[keyframe_indices.size() - 1]]->tran;
 }
 
-int RobustManager::size()
+void RobustManager::setParameters(void **params)
 {
-	return graph.size();
+	min_matches = *static_cast<int *>(params[0]);
+	inlier_percentage = *static_cast<float *>(params[1]);
+	inlier_dist = *static_cast<float *>(params[2]);
 }

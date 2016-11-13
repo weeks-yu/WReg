@@ -31,7 +31,7 @@ CUDA_COMPILE(cuda_objs ${cuda})
 
 set(CMAKE_CXX_FLAGS "-O3 -msse2 -msse3 -Wall")
 
-add_library(icpcuda STATIC
+add_library(cudalib STATIC
             ${hdrs}
             ${srcs}
             ${cuda} 
@@ -39,7 +39,7 @@ add_library(icpcuda STATIC
             ${containers}
 )
 
-target_link_libraries(icpcuda
+target_link_libraries(cudalib
                       ${Boost_LIBRARIES}
                       ${OpenCV_LIBS}
                       ${Eigen_LIBRARIES}

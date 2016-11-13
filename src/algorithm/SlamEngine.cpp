@@ -15,17 +15,35 @@ SlamEngine::SlamEngine()
 
 	using_optimizer = true;
 	using_robust_optimizer = true;
-	feature_type = Config::instance()->get<std::string>("feature_type");
-	min_matches = Config::instance()->get<int>("min_matches");
-	inlier_percentage = Config::instance()->get<float>("min_inlier_p");
-	inlier_dist = Config::instance()->get<float>("max_inlier_dist");
 
-	graph_feature_type = Config::instance()->get<std::string>("graph_feature_type");
+	int min_matches = Config::instance()->get<int>("min_matches");
+	float inlier_percentage = Config::instance()->get<float>("min_inlier_p");
+	float inlier_dist = Config::instance()->get<float>("max_inlier_dist");
 
-	using_icpcuda = true;
+	pairwise_register_type = Config::instance()->get<std::string>("feature_type");
+	if (pairwise_register_type == "sift")
+		pairwise_register = new SiftRegister(min_matches, inlier_percentage, inlier_dist);
+	else if (pairwise_register_type == "surf")
+		pairwise_register = new SurfRegister(min_matches, inlier_percentage, inlier_dist);
+	else if (pairwise_register_type == "orb")
+		pairwise_register = new OrbRegister(min_matches, inlier_percentage, inlier_dist);
+
+	using_second_register = false;
+	pairwise_register_2 = nullptr;
+
+	graph_register_type = Config::instance()->get<std::string>("graph_feature_type");
+	graph_manager_type = "robust";
+	if (graph_manager_type == "robust")
+	{
+		graph_manager = new RobustManager(true);
+		void *params[3];
+		params[0] = static_cast<void *>(&min_matches);
+		params[1] = static_cast<void *>(&inlier_percentage);
+		params[2] = static_cast<void *>(&inlier_dist);
+		graph_manager->setParameters(params);
+	}
+
 	icpcuda = nullptr;
-	threads = Config::instance()->get<int>("icpcuda_threads");
-	blocks = Config::instance()->get<int>("icpcuda_blocks");
 
 	// statistics
 	min_ftof_time = numeric_limits<float>::max();
@@ -46,42 +64,179 @@ SlamEngine::~SlamEngine()
 	}
 }
 
-void SlamEngine::setUsingIcpcuda(bool use)
+void SlamEngine::setPairwiseRegister(string type)
 {
-	using_icpcuda = use;
-	if (use)
+	if (pairwise_register)
+		delete pairwise_register;
+	pairwise_register = nullptr;
+
+	transform(type.begin(), type.end(), type.begin(), tolower);
+	pairwise_register_type = type;
+	if (type == "sift")
 	{
-		int width = Config::instance()->get<int>("image_width");
-		int height = Config::instance()->get<int>("image_height");
-		float cx = Config::instance()->get<float>("camera_cx");
-		float cy = Config::instance()->get<float>("camera_cy");
-		float fx = Config::instance()->get<float>("camera_fx");
-		float fy = Config::instance()->get<float>("camera_fy");
-		float depthFactor = Config::instance()->get<float>("depth_factor");
-		float distThresh = Config::instance()->get<float>("dist_threshold");
-		float angleThresh = Config::instance()->get<float>("angle_threshold");
-		if (icpcuda == nullptr)
-			icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor, distThresh, angleThresh);
+		pairwise_register = new SiftRegister();
+	}
+	else if (type == "surf")
+	{
+		pairwise_register = new SurfRegister();
+	}
+	else if (type == "orb")
+	{
+		pairwise_register = new OrbRegister();
+	}
+	else if (type == "icpcuda")
+	{
+		pairwise_register = new IcpcudaRegister();
 	}
 }
 
-void SlamEngine::setUsingFeature(bool use)
+void SlamEngine::setSecondPairwiseRegister(string type)
 {
-	using_feature = use;
-	if (using_feature)
+	if (pairwise_register_2)
+		delete pairwise_register_2;
+	pairwise_register_2 = nullptr;
+
+	transform(type.begin(), type.end(), type.begin(), tolower);
+	pairwise_register_type_2 = type;
+	if (type == "sift")
 	{
-		int width = Config::instance()->get<int>("image_width");
-		int height = Config::instance()->get<int>("image_height");
-		float cx = Config::instance()->get<float>("camera_cx");
-		float cy = Config::instance()->get<float>("camera_cy");
-		float fx = Config::instance()->get<float>("camera_fx");
-		float fy = Config::instance()->get<float>("camera_fy");
-		float depthFactor = Config::instance()->get<float>("depth_factor");
-		float distThresh = Config::instance()->get<float>("dist_threshold");
-		float angleThresh = Config::instance()->get<float>("angle_threshold");
-		if (icpcuda == nullptr)
-			icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor, distThresh, angleThresh);
+		pairwise_register_2 = new SiftRegister();
 	}
+	else if (type == "surf")
+	{
+		pairwise_register_2 = new SurfRegister();
+	}
+	else if (type == "orb")
+	{
+		pairwise_register_2 = new OrbRegister();
+	}
+	else if (type == "icpcuda")
+	{
+		pairwise_register_2 = new IcpcudaRegister();
+	}
+	using_second_register = true;
+}
+
+void SlamEngine::setGraphRegister(string type)
+{
+	transform(type.begin(), type.end(), type.begin(), tolower);
+	graph_register_type = type;
+}
+
+void SlamEngine::setPairwiseParametersFeature(int min_matches, float inlier_percentage, float inlier_dist)
+{
+	if (pairwise_register_type != "sift" && pairwise_register_type != "surf" && pairwise_register_type != "orb")
+	{
+		return;
+	}
+
+	void *params[3];
+	params[0] = static_cast<void *>(&min_matches);
+	params[1] = static_cast<void *>(&inlier_percentage);
+	params[2] = static_cast<void *>(&inlier_dist);
+	
+	pairwise_register->setParameters(params);
+}
+
+void SlamEngine::setPairwiseParametersIcpcuda(float dist, float angle, int threads, int blocks)
+{
+	if (pairwise_register_type != "icpcuda")
+	{
+		return;
+	}
+
+	if (icpcuda)
+		delete icpcuda;
+	icpcuda = nullptr;
+
+	float depthCutOff = 20.f;
+
+	int width = Config::instance()->get<int>("image_width");
+	int height = Config::instance()->get<int>("image_height");
+	float cx = Config::instance()->get<float>("camera_cx");
+	float cy = Config::instance()->get<float>("camera_cy");
+	float fx = Config::instance()->get<float>("camera_fx");
+	float fy = Config::instance()->get<float>("camera_fy");
+	float depthFactor = Config::instance()->get<float>("depth_factor");
+	icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor, dist, angle);
+
+	void *params[4];
+	params[0] = static_cast<void *>(icpcuda);
+	params[1] = static_cast<void *>(&threads);
+	params[2] = static_cast<void *>(&blocks);
+	params[3] = static_cast<void *>(&depthCutOff);
+	pairwise_register->setParameters(params);
+}
+
+void SlamEngine::setSecondPairwiseParametersFeature(int min_matches, float inlier_percentage, float inlier_dist)
+{
+	if (pairwise_register_type_2 != "sift" && pairwise_register_type_2 != "surf" && pairwise_register_type_2 != "orb")
+	{
+		return;
+	}
+
+	void *params[3];
+	params[0] = static_cast<void *>(&min_matches);
+	params[1] = static_cast<void *>(&inlier_percentage);
+	params[2] = static_cast<void *>(&inlier_dist);
+
+	pairwise_register_2->setParameters(params);
+}
+
+void SlamEngine::setSecondPairwiseParametersIcpcuda(float dist, float angle, int threads, int blocks)
+{
+	if (pairwise_register_type_2 != "icpcuda")
+	{
+		return;
+	}
+
+	if (icpcuda)
+		delete icpcuda;
+	icpcuda = nullptr;
+
+	float depthCutOff = 20.f;
+
+	int width = Config::instance()->get<int>("image_width");
+	int height = Config::instance()->get<int>("image_height");
+	float cx = Config::instance()->get<float>("camera_cx");
+	float cy = Config::instance()->get<float>("camera_cy");
+	float fx = Config::instance()->get<float>("camera_fx");
+	float fy = Config::instance()->get<float>("camera_fy");
+	float depthFactor = Config::instance()->get<float>("depth_factor");
+	icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor, dist, angle);
+
+	void *params[4];
+	params[0] = static_cast<void *>(icpcuda);
+	params[1] = static_cast<void *>(&threads);
+	params[2] = static_cast<void *>(&blocks);
+	params[3] = static_cast<void *>(&depthCutOff);
+	pairwise_register_2->setParameters(params);
+}
+
+void SlamEngine::setGraphManager(string type)
+{
+	transform(type.begin(), type.end(), type.begin(), tolower);
+	graph_manager_type = type;
+	if (type == "robust")
+	{
+		graph_manager = new RobustManager(true);
+		using_optimizer = true;
+	}
+}
+
+void SlamEngine::setGraphParametersFeature(int min_matches, float inlier_percentage, float inlier_dist)
+{
+	if (graph_register_type != "sift" && graph_register_type != "surf" && graph_register_type != "orb")
+	{
+		return;
+	}
+
+	void *params[3];
+	params[0] = static_cast<void *>(&min_matches);
+	params[1] = static_cast<void *>(&inlier_percentage);
+	params[2] = static_cast<void *>(&inlier_dist);
+
+	graph_manager->setParameters(params);
 }
 
 void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, double timestamp)
@@ -100,48 +255,56 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 	if (frame_id == 0)
 	{
 		total_start = clock();
-		last_cloud = cloud_new;
 		point_clouds.push_back(cloud_downsampled);
 
-		if (using_icpcuda || using_feature)
+		if (pairwise_register_type == "icpcuda" || pairwise_register_type_2 == "icpcuda")
 		{
 			imgDepth.copyTo(last_depth);
 		}
 
-		Frame *frame;
-		if (using_feature)
+		Frame *f_frame, *g_frame;
+		if (pairwise_register_type == "sift" || pairwise_register_type == "surf" || pairwise_register_type == "orb")
 		{
-			frame = new Frame(imgRGB, imgDepth, feature_type, Eigen::Matrix4f::Identity());
-			frame->relative_tran = Eigen::Matrix4f::Identity();
-			if (feature_type != "ORB")
-				frame->f->buildFlannIndex();
-			last_feature_frame = frame;
-			last_feature_keyframe = frame;
-			last_feature_frame_is_keyframe = true;
+			f_frame = new Frame(imgRGB, imgDepth, pairwise_register_type, Eigen::Matrix4f::Identity());
+			f_frame->relative_tran = Eigen::Matrix4f::Identity();
+			if (pairwise_register_type != "orb")
+				f_frame->f->buildFlannIndex();
+			last_frame = f_frame;
+			last_keyframe = f_frame;
+			is_last_frame_keyframe = true;
 		}
 
 		if (using_optimizer)
 		{
-			frame = new Frame(imgRGB, imgDepth, graph_feature_type, Eigen::Matrix4f::Identity());
-			frame->relative_tran = Eigen::Matrix4f::Identity();
-			frame->tran = frame->relative_tran;
-	
-			bool is_in_quadtree = false;
-			if (using_robust_optimizer)
+			if (graph_register_type == "sift" || graph_register_type == "surf" || graph_register_type == "orb")
 			{
-				is_in_quadtree = robust_manager.addNode(frame, true);
-			}
-			if (!is_in_quadtree)
-			{
-				delete frame->f;
-				frame->f = nullptr;
+				if (graph_register_type != pairwise_register_type)
+				{
+					g_frame = new Frame(imgRGB, imgDepth, graph_register_type, Eigen::Matrix4f::Identity());
+					g_frame->relative_tran = Eigen::Matrix4f::Identity();
+				}
+				else
+				{
+					g_frame = f_frame;
+				}
+				g_frame->tran = f_frame->relative_tran;
+				bool is_candidate = graph_manager->addNode(g_frame, true);
+
+				is_last_frame_candidate = is_candidate;
+				is_last_keyframe_candidate = is_candidate;
+
+				if (pairwise_register_type != graph_register_type && !is_candidate)
+				{
+					delete g_frame->f;
+					g_frame->f = nullptr;
+				}
 			}
 
 #ifdef SAVE_TEST_INFOS
 			keyframe_candidates_id.push_back(frame_id);
 			keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 
-			if (last_keyframe_detect_lc)
+			if (is_last_frame_candidate)
 			{
 				keyframes_id.push_back(frame_id);
 				keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
@@ -154,8 +317,8 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 		}
 		accumulated_frame_count = 0;
 		accumulated_transformation = Eigen::Matrix4f::Identity();
-		last_transformation = Eigen::Matrix4f::Identity();
-		last_keyframe_transformation = Eigen::Matrix4f::Identity();
+		last_tran = Eigen::Matrix4f::Identity();
+		last_keyframe_tran = Eigen::Matrix4f::Identity();
 	}
 	else
 	{
@@ -163,73 +326,28 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 		PointCloudPtr cloud_transformed(new PointCloudT);
 		Eigen::Matrix4f relative_tran = Eigen::Matrix4f::Identity();
 		Eigen::Matrix4f global_tran = Eigen::Matrix4f::Identity();
-		clock_t step_start = 0;
-		float step_time;
+		bool isKeyframe = false;
+		bool is_candidate = false;
+		bool ransac_failed = false;
+		Frame *f_frame;
 
 		point_clouds.push_back(cloud_downsampled);
 
-		if (using_icpcuda)
+		if (pairwise_register_type == "icpcuda")
 		{
-			step_start = clock();
-			icpcuda->initICPModel((unsigned short *)last_depth.data, 20.0f, Eigen::Matrix4f::Identity());
-			icpcuda->initICP((unsigned short *)imgDepth.data, 20.0f);
-
-			Eigen::Vector3f t = relative_tran.topRightCorner(3, 1);
-			Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = relative_tran.topLeftCorner(3, 3);
-
-			Eigen::Matrix4f estimated_tran = Eigen::Matrix4f::Identity();
-			Eigen::Vector3f estimated_t = estimated_tran.topRightCorner(3, 1);
-			Eigen::Matrix<float, 3, 3, Eigen::RowMajor> estimated_rot = estimated_tran.topLeftCorner(3, 3);
-
-			icpcuda->getIncrementalTransformation(t, rot, estimated_t, estimated_rot, threads, blocks);
-
-			step_time = (clock() - step_start) / 1000.0;
-			if (step_time < min_ftof_time) min_ftof_time = step_time;
-			if (step_time > max_ftof_time) max_ftof_time = step_time;
-			total_ftof_time += step_time;
-			std::cout << ", icpcuda time: " << fixed << setprecision(3) << step_time;
-
-			relative_tran.topLeftCorner(3, 3) = rot;
-			relative_tran.topRightCorner(3, 1) = t;
+			pairwise_register->getTransformation(last_depth.data, imgDepth.data, relative_tran);
 		}
 
-		bool isKeyframe = false;
-		bool ransac_failed = false;
-
-		Frame *f_frame;
-		if (using_feature)
+		if (pairwise_register_type == "sift" || pairwise_register_type == "surf" || pairwise_register_type == "orb")
 		{
-			f_frame = new Frame(imgRGB, imgDepth, feature_type, Eigen::Matrix4f::Identity());
-			
-			vector<cv::DMatch> matches, inliers;
+			f_frame = new Frame(imgRGB, imgDepth, pairwise_register_type, Eigen::Matrix4f::Identity());
 			Eigen::Matrix4f tran;
-			Eigen::Matrix<double, 6, 6> information;
-			float rmse;
-			int pc, pcorrc;
-
-			if (feature_type == "ORB")
-				last_feature_frame->f->findMatchedPairsBruteForce(matches, f_frame->f);
-			else
-				last_feature_frame->f->findMatchedPairs(matches, f_frame->f);
-			if (Feature::getTransformationByRANSAC(tran, rmse, &inliers,
-				last_feature_frame->f, f_frame->f, matches, min_matches, inlier_percentage, inlier_dist))
+			if (pairwise_register->getTransformation(last_frame, f_frame, tran))
 			{
 				relative_tran = tran;
-				cout << ", " << matches.size() << ", " << inliers.size();
-
-				matches.clear();
-				inliers.clear();
-				if (feature_type == "ORB")
-					last_feature_keyframe->f->findMatchedPairsBruteForce(matches, f_frame->f);
-				else
-					last_feature_keyframe->f->findMatchedPairs(matches, f_frame->f);
-
-				Feature::computeInliersAndError(inliers, rmse, nullptr, matches,
-					accumulated_transformation * relative_tran,
-					last_feature_keyframe->f, f_frame->f, inlier_dist * inlier_dist);
-
-				float rrr = (float)inliers.size() / matches.size();
-				if (last_feature_frame_is_keyframe)
+				Eigen::Matrix4f estimated_tran = accumulated_transformation * relative_tran;
+				float rrr = pairwise_register->getCorrespondencePercent(last_keyframe, f_frame, estimated_tran);
+				if (is_last_frame_keyframe)
 				{
 					last_rational = rrr;
 				}
@@ -245,27 +363,23 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				ransac_failed = true;
 				isKeyframe = true;
 
-				icpcuda->initICPModel((unsigned short *)last_depth.data, 20.0f, Eigen::Matrix4f::Identity());
-				icpcuda->initICP((unsigned short *)imgDepth.data, 20.0f);
-
-				Eigen::Matrix4f tran2;
-				Eigen::Vector3f t = tran2.topRightCorner(3, 1);
-				Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = tran2.topLeftCorner(3, 3);
-
-				Eigen::Matrix4f estimated_tran = Eigen::Matrix4f::Identity();
-				Eigen::Vector3f estimated_t = estimated_tran.topRightCorner(3, 1);
-				Eigen::Matrix<float, 3, 3, Eigen::RowMajor> estimated_rot = estimated_tran.topLeftCorner(3, 3);
-
-				icpcuda->getIncrementalTransformation(t, rot, estimated_t, estimated_rot, threads, blocks);
-
-				tran2.topLeftCorner(3, 3) = rot;
-				tran2.topRightCorner(3, 1) = t;
-
-				relative_tran = tran2;
+				if (using_second_register)
+				{
+					Eigen::Matrix4f tran2 = Eigen::Matrix4f::Identity();
+					if (pairwise_register_type_2 == "icpcuda")
+					{
+						pairwise_register_2->getTransformation(last_depth.data, imgDepth.data, tran2);
+					}
+					relative_tran = tran2;
+				}
+				else
+				{
+					relative_tran = last_tran;
+				}
 			}
 		}
 
-		last_transformation = relative_tran;
+		last_tran = relative_tran;
 		accumulated_frame_count++;
 		accumulated_transformation = accumulated_transformation * relative_tran;
 		relative_tran = accumulated_transformation;
@@ -283,30 +397,28 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 		Frame *g_frame;
 		if (using_optimizer)
 		{
-			if (using_robust_optimizer)
-			{
-				global_tran = robust_manager.getLastKeyframeTransformation() * relative_tran;
-			}
+			global_tran = graph_manager->getLastKeyframeTransformation() * relative_tran;
 			if (isKeyframe)
 			{
-				g_frame = new Frame(imgRGB, imgDepth, graph_feature_type, global_tran);
+				if (pairwise_register_type != graph_register_type)
+				{
+					g_frame = new Frame(imgRGB, imgDepth, graph_register_type, global_tran);
+				}
+				else
+				{
+					g_frame = f_frame;
+				}
 				g_frame->relative_tran = relative_tran;
 				g_frame->tran = global_tran;
 				g_frame->ransac_failed = ransac_failed;
 
-				bool is_in_quadtree = false;
-				if (using_robust_optimizer)
-				{
-					is_in_quadtree = robust_manager.addNode(g_frame, true);
-				}
+				is_candidate = graph_manager->addNode(g_frame, true);
 
-				last_keyframe_detect_lc = is_in_quadtree;
-				if (!is_in_quadtree)
+				if (graph_register_type != pairwise_register_type && !is_candidate)
 				{
 					delete g_frame->f;
 					g_frame->f = nullptr;
 				}
-					
 
 #ifdef SAVE_TEST_INFOS
 				keyframe_candidates_id.push_back(frame_id);
@@ -325,44 +437,58 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 				g_frame->relative_tran = relative_tran;
 				g_frame->tran = global_tran;
 
-				if (using_robust_optimizer)
-				{
-					robust_manager.addNode(g_frame, false);
-				}
+				graph_manager->addNode(g_frame, false);
 			}
 		}
 		else
 		{
-			transformation_matrix.push_back(last_keyframe_transformation * relative_tran);
+			transformation_matrix.push_back(last_keyframe_tran * relative_tran);
 			if (isKeyframe)
-				last_keyframe_transformation = last_keyframe_transformation * relative_tran;
+				last_keyframe_tran = last_keyframe_tran * relative_tran;
 		}
 
-		last_cloud = cloud_for_registration;
-		if (using_icpcuda || using_feature)
+		if (pairwise_register_type == "icpcuda" || pairwise_register_type_2 == "icpcuda")
 			imgDepth.copyTo(last_depth);
-		if (using_feature)
+
+		if (pairwise_register_type == "sift" || pairwise_register_type == "surf" || pairwise_register_type == "orb")
 		{
-			if (!last_feature_frame_is_keyframe)
+			if (!is_last_frame_keyframe)
 			{
-				delete last_feature_frame->f;
-				last_feature_frame->f = nullptr;
+				if (pairwise_register_type != graph_register_type)
+				{
+					delete last_frame;
+					last_frame = nullptr;
+				}
+				else
+				{
+					delete last_frame->f;
+					last_frame->f = nullptr;
+				}
 			}
 				
-			if (feature_type != "ORB")
+			if (pairwise_register_type != "orb")
 				f_frame->f->buildFlannIndex();
-			last_feature_frame = f_frame;
+			last_frame = f_frame;
 
 			if (isKeyframe)
 			{
-				delete last_feature_keyframe->f;
-				last_feature_keyframe->f = nullptr;
-				last_feature_keyframe = f_frame;
-				last_feature_frame_is_keyframe = true;
+				if (pairwise_register_type != graph_register_type)
+				{
+					delete last_keyframe;
+					last_keyframe = nullptr;
+				}
+				else if (!is_last_keyframe_candidate)
+				{
+					delete last_keyframe->f;
+					last_keyframe->f = nullptr;
+				}
+				last_keyframe = f_frame;
+				is_last_frame_keyframe = true;
+				is_last_keyframe_candidate = is_candidate;
 			}
 			else
 			{
-				last_feature_frame_is_keyframe = false;
+				is_last_frame_keyframe = false;
 			}
 		}
 	}
@@ -379,31 +505,31 @@ void SlamEngine::AddGraph(Frame *frame, PointCloudPtr cloud, bool keyframe, doub
 	{
 		cout << "Frame " << frame_id;
 		frame->tran = frame->relative_tran;
-		last_keyframe_detect_lc = robust_manager.addNode(frame, true);
-		if (!last_keyframe_detect_lc)
-		{
-			delete frame->f;
-			frame->f = nullptr;
-		}
+		bool is_candidate = graph_manager->addNode(frame, true);
+// 		if (!is_candidate)
+// 		{
+// 			delete frame->f;
+// 			frame->f = nullptr;
+// 		}
 		std::cout << endl;
 	}
 	else
 	{
-		frame->tran = robust_manager.getLastKeyframeTransformation() * frame->relative_tran;
+		frame->tran = graph_manager->getLastKeyframeTransformation() * frame->relative_tran;
 		if (keyframe)
 		{
 			cout << "Frame " << frame_id;
-			last_keyframe_detect_lc = robust_manager.addNode(frame, true);
-			if (!last_keyframe_detect_lc)
-			{
-				delete frame->f;
-				frame->f = nullptr;
-			}
+			bool is_candidate = graph_manager->addNode(frame, true);
+// 			if (!is_candidate)
+// 			{
+// 				delete frame->f;
+// 				frame->f = nullptr;
+// 			}
 			std::cout << endl;
 		}
 		else
 		{
-			robust_manager.addNode(frame, false);
+			graph_manager->addNode(frame, false);
 		}
 	}
 	frame_id++;
@@ -417,23 +543,10 @@ void SlamEngine::AddGraph(Frame *frame, PointCloudPtr cloud, bool keyframe, bool
 	if (frame_id == 0)
 	{
 		frame->tran = frame->relative_tran;
-		if (!last_keyframe_detect_lc)
-		{
-			delete frame->f;
-			frame->f = nullptr;
-		}
 	}
 	else
 	{
-		frame->tran = robust_manager.getLastKeyframeTransformation() * frame->relative_tran;
-		if (keyframe)
-		{
-			if (!last_keyframe_detect_lc)
-			{
-				delete frame->f;
-				frame->f = nullptr;
-			}
-		}
+		frame->tran = graph_manager->getLastKeyframeTransformation() * frame->relative_tran;
 	}
 	std::cout << endl;
 	frame_id++;
@@ -458,7 +571,7 @@ PointCloudPtr SlamEngine::GetScene()
 	{
 		PointCloudPtr tc(new PointCloudT);
 		if (using_robust_optimizer)
-			pcl::transformPointCloud(*point_clouds[i], *tc, robust_manager.getTransformation(i));
+			pcl::transformPointCloud(*point_clouds[i], *tc, graph_manager->getTransformation(i));
 		else
 			pcl::transformPointCloud(*point_clouds[i], *tc, transformation_matrix[i]);
 		
@@ -484,8 +597,8 @@ vector<pair<double, Eigen::Matrix4f>> SlamEngine::GetTransformations()
 
 	for (int i = 0; i < frame_id; i++)
 	{
-		if (using_robust_optimizer)
-			ret.push_back(pair<double, Eigen::Matrix4f>(timestamps[i], robust_manager.getTransformation(i)));
+		if (using_optimizer)
+			ret.push_back(pair<double, Eigen::Matrix4f>(timestamps[i], graph_manager->getTransformation(i)));
 		else
 			ret.push_back(pair<double, Eigen::Matrix4f>(timestamps[i], transformation_matrix[i]));
 	}
@@ -497,16 +610,17 @@ void SlamEngine::SaveLogs(ofstream &outfile)
 #ifdef SAVE_TEST_INFOS
 	if (using_robust_optimizer)
 	{
+		RobustManager *robust_manager = static_cast<RobustManager *>(graph_manager);
 		//outfile << "base\ttarget\trmse\tmatches\tinliers\ttransformation" << endl;
-		outfile << robust_manager.baseid.size() << endl;
-		for (int i = 0; i < robust_manager.baseid.size(); i++)
+		outfile << robust_manager->baseid.size() << endl;
+		for (int i = 0; i < robust_manager->baseid.size(); i++)
 		{
-			outfile << robust_manager.baseid[i] << "\t"
-				<< robust_manager.targetid[i] << "\t"
-				<< robust_manager.rmses[i] << "\t"
-				<< robust_manager.matchescount[i] << "\t"
-				<< robust_manager.inlierscount[i] << endl;
-			outfile << robust_manager.ransactrans[i] << endl;
+			outfile << robust_manager->baseid[i] << "\t"
+				<< robust_manager->targetid[i] << "\t"
+				<< robust_manager->rmses[i] << "\t"
+				<< robust_manager->matchescount[i] << "\t"
+				<< robust_manager->inlierscount[i] << endl;
+			outfile << robust_manager->ransactrans[i] << endl;
 		}
 	}
 #endif
@@ -520,7 +634,7 @@ void SlamEngine::ShowStatistics()
 	cout << "Total frames          : " << frame_id << endl;
 	cout << "Number of keyframes   : ";
 	if (using_robust_optimizer)
-		cout << robust_manager.keyframe_for_lc.size() << endl;
+		cout << ((RobustManager *)graph_manager)->keyframe_for_lc.size() << endl;
 	else
 		cout << 0 << endl;
 	cout << "-------------------------------------------------------------------------------" << endl;
@@ -529,11 +643,11 @@ void SlamEngine::ShowStatistics()
 	cout << "-------------------------------------------------------------------------------" << endl;
 	if (using_robust_optimizer)
 	{
-		cout << "Min Closure Time      : " << fixed << setprecision(3) << robust_manager.min_lc_detect_time << ",\t\tMax Closure Time: " << robust_manager.max_lc_detect_time << endl;
-		cout << "Avg Closure Time      : " << robust_manager.total_lc_detect_time / robust_manager.clousureCount << endl;
+		cout << "Min Closure Time      : " << fixed << setprecision(3) << ((RobustManager *)graph_manager)->min_lc_detect_time << ",\t\tMax Closure Time: " << ((RobustManager *)graph_manager)->max_lc_detect_time << endl;
+		cout << "Avg Closure Time      : " << ((RobustManager *)graph_manager)->total_lc_detect_time / ((RobustManager *)graph_manager)->clousureCount << endl;
 		cout << "-------------------------------------------------------------------------------" << endl;
-		cout << "Min Graph Time        : " << robust_manager.min_graph_opt_time << "\t\tMax Graph Time: " << robust_manager.max_graph_opt_time << endl;
-		cout << "Avg Graph Time        : " << robust_manager.total_graph_opt_time / frame_id << endl;
+		cout << "Min Graph Time        : " << ((RobustManager *)graph_manager)->min_graph_opt_time << "\t\tMax Graph Time: " << ((RobustManager *)graph_manager)->max_graph_opt_time << endl;
+		cout << "Avg Graph Time        : " << ((RobustManager *)graph_manager)->total_graph_opt_time / frame_id << endl;
 	}
 	cout << endl;
 }

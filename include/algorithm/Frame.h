@@ -22,7 +22,7 @@ public:
 		ransac_failed = false;
 	}
 
-	Frame(const cv::Mat &imgRGB, const cv::Mat &imgDepth, string type = "SURF", const Eigen::Matrix4f &tran = Eigen::Matrix4f::Identity())
+	Frame(const cv::Mat &imgRGB, const cv::Mat &imgDepth, string type = "surf", const Eigen::Matrix4f &tran = Eigen::Matrix4f::Identity())
 	{
 		f = new Feature();
 		f->extract(imgRGB, imgDepth, type);
