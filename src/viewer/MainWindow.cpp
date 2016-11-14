@@ -29,6 +29,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	registrationViewer = nullptr;
 
 	engine = nullptr;
+	thread = nullptr;
 }
 
 MainWindow::~MainWindow()
@@ -196,6 +197,7 @@ void MainWindow::ShowRegistration()
 		static_cast<void (QComboBox::*)(int index)>(&QComboBox::currentIndexChanged),
 		this,
 		&MainWindow::onRegistrationComboBoxSensorTypeCurrentIndexChanged);
+	connect(uiDockRegistration->pushButtonConnectKinect, &QPushButton::clicked, this, &MainWindow::onRegistrationPushButtonConnectKinectClicked);
 
 	// center
 	registrationViewer = new RegistrationViewer(this);
@@ -290,6 +292,16 @@ void MainWindow::onActionRegistrationTriggered()
 
 void MainWindow::onRegistrationPushButtonRunClicked(bool checked)
 {
+	// sensor type
+	// 0 - image
+	// 1 - ONI
+	// 2 - Kinect
+	SlamThread::SensorType sensorType = static_cast<SlamThread::SensorType>(uiDockRegistration->comboBoxSensorType->currentIndex());
+	int method = uiDockRegistration->comboBoxMethod->currentIndex();
+	bool usingICPCUDA = (method == 0 || method == 1) && (sensorType == 0 || sensorType == 1);
+	bool usingFeature = (method == 2 || method == 3) && (sensorType == 0 || sensorType == 1);
+	bool usingRobustOptimizer = (method == 1 || method == 3) && (sensorType == 0 || sensorType == 1);
+
 	if (!Parser::isFloat(uiDockRegistration->lineEditICPDist->text()))
 	{
 		QMessageBox::warning(this, "Parameter Error", "Group ICP: Parameter \"Dist Threshold\" should be float.");
@@ -316,15 +328,46 @@ void MainWindow::onRegistrationPushButtonRunClicked(bool checked)
 		return;
 	}
 
+	int *p = nullptr;
+
+	switch (sensorType)
+	{
+	case SlamThread::SENSOR_IMAGE:
+		p = new int[3];
+		p[0] = uiDockRegistration->spinBoxFrameInterval->value();
+		p[1] = uiDockRegistration->spinBoxStartFrame->value();
+		p[2] = uiDockRegistration->spinBoxStopFrame->value();
+		break;
+	case SlamThread::SENSOR_ONI:
+		p = new int[3];
+		p[0] = uiDockRegistration->spinBoxFrameInterval->value();
+		p[1] = uiDockRegistration->spinBoxStartFrame->value();
+		p[2] = uiDockRegistration->spinBoxStopFrame->value();
+		break;
+	case SlamThread::SENSOR_KINECT:
+		break;
+	}
+
 	// run benchmark test
-	if (engine != nullptr)
-		delete engine;
-	engine = new SlamEngine();
-	int method = uiDockRegistration->comboBoxMethod->currentIndex();
-	bool usingICPCUDA = method == 0 || method == 1;
-	bool usingFeature = method == 2 || method == 3;
-	bool usingRobustOptimizer = method == 1 || method == 3;
-	
+	if (thread != nullptr)
+	{
+		engine = thread->getEngine();
+		if (engine == nullptr)
+		{
+			engine = new SlamEngine();
+			thread->setEngine(engine);
+		}
+		thread->setParameters(p);
+	}
+	else
+	{
+		engine = new SlamEngine();
+		thread = new SlamThread(sensorType, uiDockRegistration->lineEditDirectory->text(), engine, p);
+		qRegisterMetaType<cv::Mat>("cv::Mat");
+		connect(thread, &SlamThread::OneIterationDone, this, &MainWindow::onBenchmarkOneIterationDone);
+		connect(thread, &SlamThread::RegistrationDone, this, &MainWindow::onBenchmarkRegistrationDone);
+	}
+
 	engine->setUsingIcpcuda(usingICPCUDA);
 	engine->setUsingFeature(usingFeature);
 	if (usingFeature)
@@ -345,15 +388,11 @@ void MainWindow::onRegistrationPushButtonRunClicked(bool checked)
 		engine->setGraphInlierDist(uiDockRegistration->lineEditGraphInlierDist->text().toFloat());
 	}
 
-	int p[3];
-	p[0] = uiDockRegistration->spinBoxFrameInterval->value();
-	p[1] = uiDockRegistration->spinBoxStartFrame->value();
-	p[2] = uiDockRegistration->spinBoxStopFrame->value();
-	SlamThread *thread = new SlamThread(SlamThread::SENSOR_IMAGE, uiDockRegistration->lineEditDirectory->text(), engine, p);
-	qRegisterMetaType<cv::Mat>("cv::Mat");
-	connect(thread, &SlamThread::OneIterationDone, this, &MainWindow::onBenchmarkOneIterationDone);
-	connect(thread, &SlamThread::RegistrationDone, this, &MainWindow::onBenchmarkRegistrationDone);
-	thread->start();
+	thread->setShouldRegister(true);
+	if (!thread->isRunning())
+	{
+		thread->start();
+	}
 	uiDockRegistration->pushButtonRun->setDisabled(true);
 	uiDockRegistration->pushButtonSaveTrajectories->setDisabled(true);
 }
@@ -465,6 +504,8 @@ void MainWindow::onRegistrationComboBoxSensorTypeCurrentIndexChanged(int index)
 	{
 		uiDockRegistration->groupBoxImageOni->setEnabled(true);
 		uiDockRegistration->groupBoxImageOni->setVisible(true);
+		uiDockRegistration->groupBoxKinect->setEnabled(false);
+		uiDockRegistration->groupBoxKinect->setVisible(false);
 		uiDockRegistration->groupBoxMethodImageOni->setEnabled(true);
 		uiDockRegistration->groupBoxMethodImageOni->setVisible(true);
 		uiDockRegistration->groupBoxMethodKinect->setEnabled(false);
@@ -474,6 +515,8 @@ void MainWindow::onRegistrationComboBoxSensorTypeCurrentIndexChanged(int index)
 	{
 		uiDockRegistration->groupBoxImageOni->setEnabled(false);
 		uiDockRegistration->groupBoxImageOni->setVisible(false);
+		uiDockRegistration->groupBoxKinect->setEnabled(true);
+		uiDockRegistration->groupBoxKinect->setVisible(true);
 		uiDockRegistration->groupBoxMethodImageOni->setEnabled(false);
 		uiDockRegistration->groupBoxMethodImageOni->setVisible(false);
 		uiDockRegistration->groupBoxMethodKinect->setEnabled(true);
@@ -481,7 +524,12 @@ void MainWindow::onRegistrationComboBoxSensorTypeCurrentIndexChanged(int index)
 	}
 }
 
-void MainWindow::onBenchmarkOneIterationDone(const cv::Mat &rgb, const cv::Mat &depth)
+void MainWindow::onRegistrationPushButtonConnectKinectClicked(bool checked)
+{
+
+}
+
+void MainWindow::onBenchmarkOneIterationDone(const cv::Mat &rgb, const cv::Mat &depth, bool showPointCloud)
 {
 	cv::Mat tempRgb, tempDepth;
 	QImage *rgbImage, *depthImage;
@@ -500,10 +548,11 @@ void MainWindow::onBenchmarkOneIterationDone(const cv::Mat &rgb, const cv::Mat &
 		tempDepth.cols * tempDepth.channels(),
 		QImage::Format_RGB888);
 	registrationViewer->ShowDepthImage(depthImage);
-// 	if (engine->GetFrameID() % 30 == 0)
-// 	{
-// 		benchmarkViewer->ShowPointCloud(engine->GetScene());
-// 	}
+
+	if (showPointCloud)
+	{
+		registrationViewer->ShowPointCloud(engine->GetScene());
+	}
 }
 
 void MainWindow::onBenchmarkRegistrationDone()

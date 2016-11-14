@@ -44,6 +44,10 @@ SlamThread::SlamThread(SensorType st, const QString &dir, SlamEngine *eng, int *
 		reader->start();
 		break;
 	case SENSOR_KINECT:
+		frameInterval = 1;
+		frameStart = -1;
+		frameStop = -1;
+
 		reader = new KinectReader();
 		reader->create(NULL);
 		reader->start();
@@ -60,6 +64,28 @@ SlamThread::~SlamThread()
 	engine = nullptr;
 }
 
+void SlamThread::setParameters(int *parameters)
+{
+	switch (sensorType)
+	{
+	case SENSOR_IMAGE:
+		frameInterval = parameters[0];
+		frameStart = parameters[1];
+		frameStop = parameters[2];
+		break;
+	case SENSOR_ONI:
+		frameInterval = parameters[0];
+		frameStart = parameters[1];
+		frameStop = parameters[2];
+		break;
+	case SENSOR_KINECT:
+		frameInterval = 1;
+		frameStart = -1;
+		frameStop = -1;
+		break;
+	}
+}
+
 void SlamThread::run()
 {
 	int k = 0;
@@ -68,19 +94,22 @@ void SlamThread::run()
 		cv::Mat r, d;
 		reader->getNextFrame(r, d);
 
-		if (frameStart > -1 && k < frameStart)
+		if (shouldRegister)
 		{
-			k++;
-			continue;
-		}
+			if (frameStart > -1 && k < frameStart)
+			{
+				k++;
+				continue;
+			}
 
-		if (frameStop > -1 && k > frameStop)
-			break;
+			if (frameStop > -1 && k > frameStop)
+				break;
 
-		if ((k - frameStart > -1 ? frameStart : 0) % frameInterval != 0)
-		{
-			k++;
-			continue;
+			if ((k - frameStart > -1 ? frameStart : 0) % frameInterval != 0)
+			{
+				k++;
+				continue;
+			}
 		}
 
 		switch (sensorType)
@@ -93,9 +122,13 @@ void SlamThread::run()
 		case SENSOR_ONI:
 			break;
 		}
-		engine->RegisterNext(r, d, k);
+
+		if (shouldRegister)
+		{
+			engine->RegisterNext(r, d, k);
+			k++;
+		}
 		emit OneIterationDone(r, d);
-		k++;
 	}
 	
 	reader->stop();

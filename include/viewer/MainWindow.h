@@ -52,8 +52,9 @@ private slots:
 	void onRegistrationPushButtonSaveKeyframesClicked(bool checked);
 	void onRegistrationPushButtonSaveLogsClicked(bool checked);
 	void onRegistrationComboBoxSensorTypeCurrentIndexChanged(int index);
+	void onRegistrationPushButtonConnectKinectClicked(bool checked);
 
-	void onBenchmarkOneIterationDone(const cv::Mat &rgb, const cv::Mat &depth);
+	void onBenchmarkOneIterationDone(const cv::Mat &rgb, const cv::Mat &depth, const bool showPointCloud = false);
 	void onBenchmarkRegistrationDone();
 
 protected:
@@ -69,6 +70,7 @@ private:
 	RegistrationViewer *registrationViewer;
 
 	SlamEngine *engine;
+	SlamThread *thread;
 
 	bool inRegistrationMode;
 };

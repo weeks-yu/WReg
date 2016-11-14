@@ -20,8 +20,13 @@ public:
 	SlamThread(SensorType st, const QString &dir, SlamEngine *eng, int *parameters);
 	~SlamThread();
 
+	void setParameters(int *parameters);
+	void setShouldRegister(bool reg) { shouldRegister = reg; }
+	SlamEngine* getEngine() { return engine; }
+	void setEngine(SlamEngine* eng) { engine = eng; }
+
 signals:
-	void OneIterationDone(const cv::Mat &rgb, const cv::Mat &depth);
+	void OneIterationDone(const cv::Mat &rgb, const cv::Mat &depth, const bool showPointCloud = false);
 	void RegistrationDone();
 
 protected:
@@ -29,6 +34,7 @@ protected:
 
 private:
 	bool shouldStop;
+	bool shouldRegister;
 
 	SensorType sensorType;
 
