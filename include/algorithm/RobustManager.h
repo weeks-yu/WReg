@@ -1,6 +1,6 @@
 #pragma once
-//#include "QuadTree.h"
-#include "Frame.h"
+
+#include "GraphManager.h"
 
 #include <g2o/types/slam3d/se3quat.h>
 #include <g2o/types/slam3d/edge_se3.h>
@@ -12,7 +12,7 @@
 #include "vertigo/edge_switchPrior.h"
 #include "vertigo/edge_se3Switchable.h"
 
-class RobustManager
+class RobustManager : public GraphManager
 {
 public:
 	struct SwitchableEdge {
@@ -22,6 +22,19 @@ public:
 		EdgeSE3Switchable * e_;
 		int id0, id1;
 	};
+
+public:
+
+	RobustManager(bool use_lp = true);
+	virtual ~RobustManager();
+
+	void setUsingLineProcess(bool use) { using_line_process = use; }
+
+	virtual bool addNode(Frame* frame, bool keyframe = false);
+	virtual Eigen::Matrix4f getTransformation(int k);
+	virtual Eigen::Matrix4f getLastTransformation();
+	virtual Eigen::Matrix4f getLastKeyframeTransformation();
+	virtual void setParameters(void **params);
 
 public:
 
@@ -56,8 +69,6 @@ public:
 
 	g2o::SparseOptimizer* optimizer;
 
-	vector<Frame*> graph;
-
 private:
 
 	int iteration_count;
@@ -70,33 +81,14 @@ private:
 
 	int switchable_id;
 
+	int min_matches;
+	float inlier_percentage, inlier_dist;
 	int aw_N, aw_M, aw_F, width, height;
 	float aw_P, aw_Size;
 
 	bool using_line_process;
 
-	int min_matches;
-	float inlier_percentage;
-	float inlier_dist;
 	int knn_k;
-
-public:
-
-	RobustManager(bool use_lp = true);
-
-	void setUsingLineProcess(bool use) { using_line_process = use; }
-
-	bool addNode(Frame* frame, bool keyframe = false);
-
-	Eigen::Matrix4f getTransformation(int k);
-
-	Eigen::Matrix4f getLastTransformation();
-
-	Eigen::Matrix4f getLastKeyframeTransformation();
-
-	int size();
-
-	vector<Frame*> getGraph() { return graph; }
 
 public:
 	static Eigen::Matrix4f G2O2Matrix4f(const g2o::SE3Quat se3) {

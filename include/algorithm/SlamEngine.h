@@ -5,7 +5,11 @@
 #include <opencv2/core/core.hpp>
 #include "RobustManager.h"
 #include "PointCloud.h"
-#include "ICPOdometry.h"
+
+#include "SiftRegister.h"
+#include "SurfRegister.h"
+#include "OrbRegister.h"
+#include "IcpcudaRegister.h"
 
 class SlamEngine
 {
@@ -20,34 +24,18 @@ public:
 	void setFrameStop(int frameStop) { frame_stop = frameStop; }
 	int getFrameStop() { return frame_stop; }
 
-	void setUsingIcpcuda(bool use);
-	bool isUsingIcpcuda() { return using_icpcuda; }
+	void setPairwiseRegister(string type);
+	void setSecondPairwiseRegister(string type);
+	void setGraphRegister(string type);
 
-	void setUsingFeature(bool use);
-	bool isUsingFeature() { return using_feature; }
+	void setPairwiseParametersFeature(int min_matches, float inlier_percentage, float inlier_dist);
+	void setPairwiseParametersIcpcuda(float dist, float angle, int threads, int blocks);
 
-	void updateUsingOptimizer() { using_optimizer = using_robust_optimizer; }
+	void setSecondPairwiseParametersFeature(int min_matches, float inlier_percentage, float inlier_dist);
+	void setSecondPairwiseParametersIcpcuda(float dist, float angle, int threads, int blocks);
 
-	void setUsingRobustOptimizer(bool use)
-	{
-		using_robust_optimizer = use;
-		updateUsingOptimizer();
-	}
-	bool isUsingRobustOptimizer() { return using_robust_optimizer; }
-
-	void setGraphFeatureType(string type) { graph_feature_type = type; }
-	string getGraphFeatureType() { return graph_feature_type; }
-
-	void setFeatureType(string type) { feature_type = type; }
-	string getFeatureType() { return feature_type; }
-
-	void setFeatureMinMatches(int matches) { min_matches = matches; }
-	void setFeatureInlierPercentage(float percent) { inlier_percentage = percent; }
-	void setFeatureInlierDist(float dist) { inlier_dist = dist; }
-
-	void setGraphMinMatches(int min_macthes) { Config::instance()->set<int>("graph_min_matches", min_macthes); }
-	void setGraphInlierPercentage(float percent) { Config::instance()->set<float>("graph_min_inlier_p", percent); }
-	void setGraphInlierDist(float dist) { Config::instance()->set<float>("graph_max_inlier_dist", dist); }
+	void setGraphManager(string type);
+	void setGraphParametersFeature(int min_matches, float inlier_percentage, float inlier_dist);
 
 	void RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, double timestamp);
 	void AddGraph(Frame *frame, PointCloudPtr cloud, bool keyframe, double timestamp);
@@ -60,12 +48,6 @@ public:
 	void SaveLogs(ofstream &outfile);
 	void ShowStatistics();
 
-	int getLCCandidate()
-	{
-		if (using_robust_optimizer)
-			return robust_manager.keyframe_for_lc.size();
-	}
-
 #ifdef SAVE_TEST_INFOS
 public:
 	vector<int> keyframe_candidates_id;
@@ -77,7 +59,19 @@ public:
 #endif
 
 public:
-	RobustManager robust_manager;
+	string pairwise_register_type;
+	PairwiseRegister *pairwise_register;
+
+	string pairwise_register_type_2;
+	PairwiseRegister *pairwise_register_2;
+
+	string graph_manager_type;
+	string graph_register_type;
+	int graph_min_matches;
+	float graph_inlier_percentage;
+	float graph_inlier_dist;
+
+	GraphManager *graph_manager;
 
 private:
 	int frame_id;
@@ -86,8 +80,8 @@ private:
 	int frame_stop;
 
 	// results
-	Eigen::Matrix4f last_transformation;
-	Eigen::Matrix4f last_keyframe_transformation;
+	Eigen::Matrix4f last_tran;
+	Eigen::Matrix4f last_keyframe_tran;
 	Eigen::Matrix4f accumulated_transformation;
 	int accumulated_frame_count;
 	vector<Eigen::Matrix4f> transformation_matrix;
@@ -102,35 +96,26 @@ private:
 
 	// temporary variables
 	vector<PointCloudPtr> cloud_temp;
-	PointCloudPtr last_cloud;
 	cv::Mat last_depth;
 
-	Frame *last_feature_keyframe;
-	Frame *last_feature_frame;
-	bool last_keyframe_detect_lc;
-	bool last_feature_frame_is_keyframe;
+	Frame *last_keyframe;
+	Frame *last_frame;
+	bool is_last_frame_candidate;
+	bool is_last_frame_keyframe;
+	bool is_last_keyframe_candidate;
 	float last_rational;
+
+	bool using_second_register;
 
 	// parameters - downsampling
 	double downsample_rate;
 
 	// parameters - icpcuda
-	bool using_icpcuda;
 	ICPOdometry *icpcuda;
-	int threads;
-	int blocks;
-
-	// parameters - feature
-	bool using_feature;
-	string feature_type;
-	int min_matches;
-	float inlier_percentage;
-	float inlier_dist;
 
 	// parameters - optimizer
 	bool using_optimizer;
 
 	// parameters - robust optimizer
 	bool using_robust_optimizer;
-	string graph_feature_type;
 };

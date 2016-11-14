@@ -367,25 +367,39 @@ void MainWindow::onRegistrationPushButtonRunClicked(bool checked)
 		connect(thread, &SlamThread::OneIterationDone, this, &MainWindow::onBenchmarkOneIterationDone);
 		connect(thread, &SlamThread::RegistrationDone, this, &MainWindow::onBenchmarkRegistrationDone);
 	}
+	
+	if (usingICPCUDA)
+	{
+		engine->setPairwiseRegister("icpcuda");
+		engine->setPairwiseParametersIcpcuda(uiDockRegistration->lineEditICPDist->text().toFloat(),
+			uiDockRegistration->lineEditICPAngle->text().toFloat(),
+			uiDockRegistration->spinBoxICPThreads->value(),
+			uiDockRegistration->spinBoxICPBlocks->value());
+	}
 
-	engine->setUsingIcpcuda(usingICPCUDA);
-	engine->setUsingFeature(usingFeature);
 	if (usingFeature)
 	{
 		QString type = uiDockRegistration->comboBoxFeatureType->currentText();
-		engine->setFeatureType(type.toStdString());
-		engine->setFeatureMinMatches(uiDockRegistration->spinBoxFeatureMinMatches->text().toInt());
-		engine->setFeatureInlierPercentage(uiDockRegistration->lineEditFeatureInlierPercentage->text().toFloat());
-		engine->setFeatureInlierDist(uiDockRegistration->lineEditFeatureInlierDist->text().toFloat());
+		engine->setPairwiseRegister(type.toStdString());
+		engine->setPairwiseParametersFeature(uiDockRegistration->spinBoxFeatureMinMatches->text().toInt(),
+			uiDockRegistration->lineEditFeatureInlierPercentage->text().toFloat(),
+			uiDockRegistration->lineEditFeatureInlierDist->text().toFloat());
+
+		engine->setSecondPairwiseRegister("icpcuda");
+		engine->setSecondPairwiseParametersIcpcuda(uiDockRegistration->lineEditICPDist->text().toFloat(),
+			uiDockRegistration->lineEditICPAngle->text().toFloat(),
+			uiDockRegistration->spinBoxICPThreads->value(),
+			uiDockRegistration->spinBoxICPBlocks->value());
 	}
-	engine->setUsingRobustOptimizer(usingRobustOptimizer);
+
 	if (usingRobustOptimizer)
 	{
 		QString type = uiDockRegistration->comboBoxGraphFeatureType->currentText();
-		engine->setGraphFeatureType(type.toStdString());
-		engine->setGraphMinMatches(uiDockRegistration->spinBoxGraphMinMatches->text().toInt());
-		engine->setGraphInlierPercentage(uiDockRegistration->lineEditGraphInlierPercentage->text().toFloat());
-		engine->setGraphInlierDist(uiDockRegistration->lineEditGraphInlierDist->text().toFloat());
+		engine->setGraphManager("robust");
+		engine->setGraphRegister(type.toStdString());
+		engine->setGraphParametersFeature(uiDockRegistration->spinBoxGraphMinMatches->text().toInt(),
+			uiDockRegistration->lineEditGraphInlierPercentage->text().toFloat(),
+			uiDockRegistration->lineEditGraphInlierDist->text().toFloat());
 	}
 
 	thread->setShouldRegister(true);

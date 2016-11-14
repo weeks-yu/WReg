@@ -92,7 +92,10 @@ void SlamThread::run()
 	while (!shouldStop)
 	{
 		cv::Mat r, d;
-		reader->getNextFrame(r, d);
+		if (!reader->getNextFrame(r, d))
+		{
+			break;
+		}
 
 		if (shouldRegister)
 		{

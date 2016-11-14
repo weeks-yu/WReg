@@ -139,16 +139,16 @@ void Feature::setMultiple(int frame_index)
 void Feature::extract(const cv::Mat &imgRGB, const cv::Mat &imgDepth, string type)
 {
 	this->type = type;
-	if (type == "SIFT")
+	if (type == "sift")
 	{
 		Feature::SIFTExtractor(feature_pts, feature_pts_3d, feature_descriptors, imgRGB, imgDepth);
 	}
-	else if (type == "SURF")
+	else if (type == "surf")
 	{
 		Feature::SURFExtractor(feature_pts, feature_pts_3d, feature_descriptors, imgRGB, imgDepth);
 		//Feature::SURFExtractor_GPU(feature_pts, feature_pts_3d, feature_descriptors, imgRGB, imgDepth);
 	}
-	else if (type == "ORB")
+	else if (type == "orb")
 	{
 		Feature::ORBExtractor(feature_pts, feature_pts_3d, feature_descriptors, imgRGB, imgDepth);
 	}
@@ -157,7 +157,7 @@ void Feature::extract(const cv::Mat &imgRGB, const cv::Mat &imgDepth, string typ
 
 void Feature::buildFlannIndex()
 {
-	if (this->type != "SIFT" && this->type != "SURF")
+	if (this->type != "sift" && this->type != "surf")
 	{
 		return;
 	}
@@ -203,7 +203,6 @@ int Feature::findMatched(vector<cv::DMatch> &matches, const cv::Mat &descriptor)
 	this->flann_matcher->knnMatch(descriptor, matches_, 2);
 	float ratio = Config::instance()->get<float>("matches_criterion");
 
-	cv::DMatch match;
 	for (int i = 0; i < matches_.size(); i++)
 	{
 		if (matches_[i][0].distance < ratio * matches_[i][1].distance)

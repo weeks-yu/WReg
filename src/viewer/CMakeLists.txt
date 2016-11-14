@@ -87,6 +87,6 @@ target_link_libraries(WReg
 	${G2O_LIBRARIES}
 	${KinectSDK2_LIBRARIES}
 	vtkGUISupportQt
-	icpcuda
+	cudalib
 	algorithm)
 qt5_use_modules(WReg Core Gui Widgets)
