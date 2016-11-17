@@ -30,14 +30,13 @@ bool IcpcudaRegister::getTransformation(void *prev, void *now, Eigen::Matrix4f &
 	Eigen::Vector3f t = tran.topRightCorner(3, 1);
 	Eigen::Matrix<float, 3, 3, Eigen::RowMajor> rot = tran.topLeftCorner(3, 3);
 
-	Eigen::Matrix4f estimated_tran = Eigen::Matrix4f::Identity();
-	Eigen::Vector3f estimated_t = estimated_tran.topRightCorner(3, 1);
-	Eigen::Matrix<float, 3, 3, Eigen::RowMajor> estimated_rot = estimated_tran.topLeftCorner(3, 3);
+	icpcuda->getIncrementalTransformation(t, rot, threads, blocks);
 
-	icpcuda->getIncrementalTransformation(t, rot, estimated_t, estimated_rot, threads, blocks);
-
+/*	Eigen::Matrix4f tt;*/
 	tran.topLeftCorner(3, 3) = rot;
 	tran.topRightCorner(3, 1) = t;
+
+/*	tran = tran * tt;*/
 
 	return true;
 }

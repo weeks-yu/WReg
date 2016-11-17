@@ -55,6 +55,7 @@ public:
 	double total_lc_detect_time;
 	
 	int clousureCount;
+	map<int, int> loopClousres;
 
 #ifdef SAVE_TEST_INFOS
 	vector<int> baseid;

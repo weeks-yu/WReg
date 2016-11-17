@@ -216,12 +216,14 @@ bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/
 				ransactrans.push_back(tran);
 #endif
 
+
+
 				count++;
 				
-				if (k - keyframe_for_lc[frames[i]] > 90)
-				{
-					continue;
-				}
+// 				if (k - keyframe_for_lc[frames[i]] > 90)
+// 				{
+// 					continue;
+// 				}
 				for (int j = 0; j < inliers.size(); j++)
 				{
 					cv::KeyPoint keypoint = this->graph[k]->f->feature_pts[inliers[j].queryIdx];
