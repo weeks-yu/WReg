@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 
 include_directories(../../include/algorithm)
 include_directories(../../cudalib)
+include_directories(../../tsdflib)
 include_directories(../../robustoptimizer)
 link_directories(${PROJECT_BINARY_DIR}/lib)
 
@@ -34,7 +35,7 @@ include(${PROJECT_SOURCE_DIR}/cudalib/CudaComputeTargetFlags.cmake)
 APPEND_TARGET_ARCH_FLAGS()
 
 file(GLOB ALGORITHM_HEADER ../../include/algorithm/*.h ../../include/algorithm/*.hpp)
-file(GLOB ALGORITHM_SRC *.cpp)
+file(GLOB ALGORITHM_SRC *.cpp *.cc)
 	
 add_library(algorithm STATIC ${ALGORITHM_HEADER} ${ALGORITHM_SRC})
 target_link_libraries(algorithm
@@ -44,5 +45,6 @@ target_link_libraries(algorithm
 	${G2O_LIBRARIES}
 	${KinectSDK2_LIBRARIES}
 	cudalib
+	tsdflib
 	robustoptimizer
 	)

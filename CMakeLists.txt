@@ -8,4 +8,5 @@ LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR})
 
 add_subdirectory(src)
 add_subdirectory(cudalib)
+add_subdirectory(tsdflib)
 add_subdirectory(robustoptimizer)

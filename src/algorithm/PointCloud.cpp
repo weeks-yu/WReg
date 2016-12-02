@@ -1,5 +1,6 @@
 #include "PointCloud.h"
 #include "Config.h"
+#include "CommonFunction.h"
 
 #ifdef SHOW_Z_INDEX
 float now_max_z, now_min_z;
@@ -51,6 +52,55 @@ PointCloudPtr ConvertToPointCloudWithoutMissingData(const cv::Mat &depth, const 
 	now_max_z = max_z;
 #endif
 	return cloud;
+}
+
+void ConvertToPointCloudWithNormalCuda(PointCloudPtr &cloud, PointCloudNormalPtr &normal,
+	const cv::Mat &depth, const cv::Mat &rgb, double timestamp, int frameID)
+{
+	cloud = PointCloudPtr(new PointCloudT);
+	cloud->width = rgb.size().width;
+	cloud->height = rgb.size().height;
+	cloud->resize(cloud->height * cloud->width);
+
+	normal = PointCloudNormalPtr(new PointCloudNormalT);
+	normal->width = rgb.size().width;
+	normal->height = rgb.size().height;
+	normal->resize(cloud->height * cloud->width);
+	
+	float fx = Config::instance()->get<float>("camera_fx");  // focal length x
+	float fy = Config::instance()->get<float>("camera_fy");  // focal length y
+	float cx = Config::instance()->get<float>("camera_cx");  // optical center x
+	float cy = Config::instance()->get<float>("camera_cy");  // optical center y
+
+	float factor = Config::instance()->get<float>("depth_factor");	// for the 16-bit PNG files
+
+	PointCloudCuda *pcc = new PointCloudCuda(rgb.size().width, rgb.size().height,
+		cx, cy, fx, fy, factor);
+	pcc->init((unsigned short *)depth.data);
+	cv::Mat vmap, nmap;
+	pcc->getVMap(vmap, 20.0f);
+	pcc->getNMap(nmap);
+
+	for (int j = 0; j < cloud->height; j++)
+	{
+		for (int i = 0; i < cloud->width; i++)
+		{
+			PointT& pt = cloud->points[j * cloud->width + i];
+			pt.z = vmap.at<cv::Vec3f>(j, i)[2];
+			pt.x = vmap.at <cv::Vec3f>(j, i)[0];
+			pt.y = vmap.at <cv::Vec3f>(j, i)[1];
+			pt.b = rgb.at<cv::Vec3b>(j, i)[0];
+			pt.g = rgb.at<cv::Vec3b>(j, i)[1];
+			pt.r = rgb.at<cv::Vec3b>(j, i)[2];
+
+			NormalT& nm = normal->points[j * cloud->width + i];
+			nm.normal_x = nmap.at<cv::Vec3f>(j, i)[0];
+			nm.normal_y = nmap.at<cv::Vec3f>(j, i)[1];
+			nm.normal_z = nmap.at<cv::Vec3f>(j, i)[2];
+			normal->push_back(nm);
+		}
+	}
+	delete pcc;
 }
 
 Eigen::Vector3f ConvertPointTo3D(int i, int j, const cv::Mat &depth)

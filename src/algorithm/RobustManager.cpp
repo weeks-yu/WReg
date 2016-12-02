@@ -116,128 +116,253 @@ bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/
 		}
 
 		// one kd-tree multiple match
-		start = clock();
+// 		start = clock();
+// 		// get translation of current tran
+// 		// move active window
+// 		Eigen::Vector3f current_pose = TranslationFromMatrix4f(graph[k]->tran);
+// 		float r = Config::instance()->get<float>("candidate_radius");
+// 		r *= r;
+// 		Feature* feature_pool = new Feature(true);
+// 		feature_pool->type = graph[0]->f->type;
+// 		count = 0;
+// 		for (int i = 0; i < keyframe_for_lc.size(); i++)
+// 		{
+// 			Eigen::Vector3f pose = TranslationFromMatrix4f(graph[keyframe_for_lc[i]]->tran);
+// 			if ((current_pose - pose).squaredNorm() <= r)
+// 			{
+// 				count++;
+// 				Frame *now_f = graph[keyframe_for_lc[i]];
+// 				for (int j = 0; j < now_f->f->feature_pts_3d.size(); j++)
+// 				{
+// 					feature_pool->feature_pts.push_back(now_f->f->feature_pts[j]);
+// 					feature_pool->feature_pts_3d.push_back(now_f->f->feature_pts_3d[j]);
+// 					feature_pool->feature_descriptors.push_back(now_f->f->feature_descriptors.row(j));
+// 					feature_pool->feature_frame_index.push_back(i);
+// 				}
+// 			}
+// 		}
+// 		feature_pool->buildFlannIndex();
+// 		time = clock() - start;
+// 		total_kdtree_build += time;
+// 
+// 		std::cout << ", KD-tree: " << time << "ms";
+// 		std::cout << ", RN: " << count;
+// 
+// 		start = clock();
+// 		vector<int> frames;
+// 		vector<vector<cv::DMatch>> matches;
+// 		feature_pool->findMatchedPairsMultiple(frames, matches, this->graph[k]->f, knn_k, min_matches);
+// 		time = clock() - start;
+// 		total_kdtree_match += time;
+// 		std::cout << ", MM: " << time << "ms";
+// 
+// 		count = 0;
+// 		g2o::VertexSE3 * v = new g2o::VertexSE3();
+// 		v->setId(keyframe_indices.size() - 1);
+// 		v->setEstimate(Eigen2G2O(graph[k]->tran));
+// 		optimizer->addVertex(v);
+// 
+// 		start = clock();
+// 		for (int i = 0; i < frames.size(); i++)
+// 		{
+// 			Eigen::Matrix4f tran;
+// 			float rmse;
+// 			vector<cv::DMatch> inliers;
+// 
+// 			// find edges
+// 			if (Feature::getTransformationByRANSAC(tran, rmse, &inliers,
+// 				feature_pool, graph[k]->f, matches[i], min_matches, inlier_percentage, inlier_dist))
+// 			{
+// 				if (using_line_process)
+// 				{
+// 					SwitchableEdge edge;
+// 					edge.id0 = keyframe_id[keyframe_for_lc[frames[i]]];
+// 					edge.id1 = keyframe_indices.size() - 1;
+// 
+// 					edge.v_ = new VertexSwitchLinear();
+// 					edge.v_->setId(switchable_id++);
+// 					edge.v_->setEstimate(1.0);
+// 					optimizer->addVertex(edge.v_);
+// 
+// 					edge.ep_ = new EdgeSwitchPrior();
+// 					edge.ep_->vertices()[0] = edge.v_;
+// 					edge.ep_->setMeasurement(1.0);
+// 					edge.ep_->setInformation(Eigen::Matrix<double, 1, 1>::Identity() * 1.0);
+// 					optimizer->addEdge(edge.ep_);
+// 
+// 					edge.e_ = new EdgeSE3Switchable();
+// 					edge.e_->vertices()[0] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(edge.id0));
+// 					edge.e_->vertices()[1] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(edge.id1));
+// 					edge.e_->vertices()[2] = edge.v_;
+// 					edge.e_->setMeasurement(g2o::internal::fromSE3Quat(Eigen2G2O(tran)));
+// 					edge.e_->setInformation(InformationMatrix::Identity());
+// 					optimizer->addEdge(edge.e_);
+// 				}
+// 				else
+// 				{
+// 					g2o::EdgeSE3* g2o_edge = new g2o::EdgeSE3();
+// 					g2o_edge->vertices()[0] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(keyframe_id[keyframe_for_lc[frames[i]]]));
+// 					g2o_edge->vertices()[1] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(keyframe_indices.size() - 1));
+// 					g2o_edge->setMeasurement(g2o::internal::fromSE3Quat(Eigen2G2O(tran)));
+// 					g2o_edge->setInformation(InformationMatrix::Identity());
+// 					optimizer->addEdge(g2o_edge);
+// 				}
+// #ifdef SAVE_TEST_INFOS
+// 				baseid.push_back(k);
+// 				targetid.push_back(keyframe_for_lc[frames[i]]);
+// 				rmses.push_back(rmse);
+// 				matchescount.push_back(matches[i].size());
+// 				inlierscount.push_back(inliers.size());
+// 				ransactrans.push_back(tran);
+// #endif
+// 
+// 
+// 
+// 				count++;
+// 				
+// // 				if (k - keyframe_for_lc[frames[i]] > 90)
+// // 				{
+// // 					continue;
+// // 				}
+// 				for (int j = 0; j < inliers.size(); j++)
+// 				{
+// 					cv::KeyPoint keypoint = this->graph[k]->f->feature_pts[inliers[j].queryIdx];
+// 					int tN = aw_N * keypoint.pt.x / width;
+// 					int tM = aw_M * keypoint.pt.y / height;
+// 					tN = tN < 0 ? 0 : (tN >= aw_N ? aw_N - 1 : tN);
+// 					tM = tM < 0 ? 0 : (tM >= aw_M ? aw_M - 1 : tM);
+// 
+// 					keyframeTest[tM * aw_N + tN]++;
+// 				}
+// 			}
+// 		}
+// 		
+// 		delete feature_pool;
+// 
+// 		if (keyframe_indices.size() > 1)
+// 		{
+// 			Eigen::Matrix4f tran = graph[k]->relative_tran;
+// 			g2o::EdgeSE3* g2o_edge = new g2o::EdgeSE3();
+// 			g2o_edge->vertices()[0] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(keyframe_indices.size() - 2));
+// 			g2o_edge->vertices()[1] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(keyframe_indices.size() - 1));
+// 			g2o_edge->setMeasurement(g2o::internal::fromSE3Quat(Eigen2G2O(tran)));
+// 			g2o_edge->setInformation(InformationMatrix::Identity());
+// 			optimizer->addEdge(g2o_edge);
+// 
+// #ifdef SAVE_TEST_INFOS
+// 			baseid.push_back(k);
+// 			targetid.push_back(keyframe_indices[keyframe_indices.size() - 2]);
+// 			rmses.push_back(0.0);
+// 			matchescount.push_back(0);
+// 			inlierscount.push_back(0);
+// 			ransactrans.push_back(tran);
+// #endif
+// 
+// 			count++;
+// 		}
+// 
+// 		time = clock() - start;
+// 		total_loop_ransac += time;
+// 		cout << ", oberservation: " << count << endl;
+
+		// multiple kdtree multiple matches
 		// get translation of current tran
 		// move active window
 		Eigen::Vector3f current_pose = TranslationFromMatrix4f(graph[k]->tran);
 		float r = Config::instance()->get<float>("candidate_radius");
 		r *= r;
-		Feature* feature_pool = new Feature(true);
-		feature_pool->type = graph[0]->f->type;
 		count = 0;
+		int o_count = 0;
+
+		g2o::VertexSE3 * v = new g2o::VertexSE3();
+		v->setId(keyframe_indices.size() - 1);
+		v->setEstimate(Eigen2G2O(graph[k]->tran));
+		optimizer->addVertex(v);
+
+		double current_kdtree_match = 0, current_ransac = 0;
+
 		for (int i = 0; i < keyframe_for_lc.size(); i++)
 		{
 			Eigen::Vector3f pose = TranslationFromMatrix4f(graph[keyframe_for_lc[i]]->tran);
 			if ((current_pose - pose).squaredNorm() <= r)
 			{
 				count++;
-				Frame *now_f = graph[keyframe_for_lc[i]];
-				for (int j = 0; j < now_f->f->feature_pts_3d.size(); j++)
+				
+				start = clock();
+				vector<cv::DMatch> matches;
+				graph[keyframe_for_lc[i]]->f->findMatchedPairs(matches, this->graph[k]->f);
+				time = clock() - start;
+				current_kdtree_match += time;
+
+				Eigen::Matrix4f tran;
+				float rmse;
+				vector<cv::DMatch> inliers;
+
+				start = clock();
+				// find edges
+				if (Feature::getTransformationByRANSAC(tran, rmse, &inliers,
+					graph[keyframe_for_lc[i]]->f, graph[k]->f, matches, min_matches, inlier_percentage, inlier_dist))
 				{
-					feature_pool->feature_pts.push_back(now_f->f->feature_pts[j]);
-					feature_pool->feature_pts_3d.push_back(now_f->f->feature_pts_3d[j]);
-					feature_pool->feature_descriptors.push_back(now_f->f->feature_descriptors.row(j));
-					feature_pool->feature_frame_index.push_back(i);
-				}
-			}
-		}
-		feature_pool->buildFlannIndex();
-		time = clock() - start;
-		total_kdtree_build += time;
+					if (using_line_process)
+					{
+						SwitchableEdge edge;
+						edge.id0 = keyframe_id[keyframe_for_lc[i]];
+						edge.id1 = keyframe_indices.size() - 1;
 
-		std::cout << ", KD-tree: " << time << "ms";
-		std::cout << ", RN: " << count;
+						edge.v_ = new VertexSwitchLinear();
+						edge.v_->setId(switchable_id++);
+						edge.v_->setEstimate(1.0);
+						optimizer->addVertex(edge.v_);
 
-		start = clock();
-		vector<int> frames;
-		vector<vector<cv::DMatch>> matches;
-		feature_pool->findMatchedPairsMultiple(frames, matches, this->graph[k]->f, knn_k, min_matches);
-		time = clock() - start;
-		total_kdtree_match += time;
-		std::cout << ", MM: " << time << "ms";
+						edge.ep_ = new EdgeSwitchPrior();
+						edge.ep_->vertices()[0] = edge.v_;
+						edge.ep_->setMeasurement(1.0);
+						edge.ep_->setInformation(Eigen::Matrix<double, 1, 1>::Identity() * 1.0);
+						optimizer->addEdge(edge.ep_);
 
-		count = 0;
-		g2o::VertexSE3 * v = new g2o::VertexSE3();
-		v->setId(keyframe_indices.size() - 1);
-		v->setEstimate(Eigen2G2O(graph[k]->tran));
-		optimizer->addVertex(v);
-
-		start = clock();
-		for (int i = 0; i < frames.size(); i++)
-		{
-			Eigen::Matrix4f tran;
-			float rmse;
-			vector<cv::DMatch> inliers;
-
-			// find edges
-			if (Feature::getTransformationByRANSAC(tran, rmse, &inliers,
-				feature_pool, graph[k]->f, matches[i], min_matches, inlier_percentage, inlier_dist))
-			{
-				if (using_line_process)
-				{
-					SwitchableEdge edge;
-					edge.id0 = keyframe_id[keyframe_for_lc[frames[i]]];
-					edge.id1 = keyframe_indices.size() - 1;
-
-					edge.v_ = new VertexSwitchLinear();
-					edge.v_->setId(switchable_id++);
-					edge.v_->setEstimate(1.0);
-					optimizer->addVertex(edge.v_);
-
-					edge.ep_ = new EdgeSwitchPrior();
-					edge.ep_->vertices()[0] = edge.v_;
-					edge.ep_->setMeasurement(1.0);
-					edge.ep_->setInformation(Eigen::Matrix<double, 1, 1>::Identity() * 1.0);
-					optimizer->addEdge(edge.ep_);
-
-					edge.e_ = new EdgeSE3Switchable();
-					edge.e_->vertices()[0] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(edge.id0));
-					edge.e_->vertices()[1] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(edge.id1));
-					edge.e_->vertices()[2] = edge.v_;
-					edge.e_->setMeasurement(g2o::internal::fromSE3Quat(Eigen2G2O(tran)));
-					edge.e_->setInformation(InformationMatrix::Identity());
-					optimizer->addEdge(edge.e_);
-				}
-				else
-				{
-					g2o::EdgeSE3* g2o_edge = new g2o::EdgeSE3();
-					g2o_edge->vertices()[0] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(keyframe_id[keyframe_for_lc[frames[i]]]));
-					g2o_edge->vertices()[1] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(keyframe_indices.size() - 1));
-					g2o_edge->setMeasurement(g2o::internal::fromSE3Quat(Eigen2G2O(tran)));
-					g2o_edge->setInformation(InformationMatrix::Identity());
-					optimizer->addEdge(g2o_edge);
-				}
+						edge.e_ = new EdgeSE3Switchable();
+						edge.e_->vertices()[0] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(edge.id0));
+						edge.e_->vertices()[1] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(edge.id1));
+						edge.e_->vertices()[2] = edge.v_;
+						edge.e_->setMeasurement(g2o::internal::fromSE3Quat(Eigen2G2O(tran)));
+						edge.e_->setInformation(InformationMatrix::Identity());
+						optimizer->addEdge(edge.e_);
+					}
+					else
+					{
+						g2o::EdgeSE3* g2o_edge = new g2o::EdgeSE3();
+						g2o_edge->vertices()[0] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(keyframe_id[keyframe_for_lc[i]]));
+						g2o_edge->vertices()[1] = dynamic_cast<g2o::VertexSE3*>(optimizer->vertex(keyframe_indices.size() - 1));
+						g2o_edge->setMeasurement(g2o::internal::fromSE3Quat(Eigen2G2O(tran)));
+						g2o_edge->setInformation(InformationMatrix::Identity());
+						optimizer->addEdge(g2o_edge);
+					}
 #ifdef SAVE_TEST_INFOS
-				baseid.push_back(k);
-				targetid.push_back(keyframe_for_lc[frames[i]]);
-				rmses.push_back(rmse);
-				matchescount.push_back(matches[i].size());
-				inlierscount.push_back(inliers.size());
-				ransactrans.push_back(tran);
+					baseid.push_back(k);
+					targetid.push_back(keyframe_for_lc[i]);
+					rmses.push_back(rmse);
+					matchescount.push_back(matches.size());
+					inlierscount.push_back(inliers.size());
+					ransactrans.push_back(tran);
 #endif
 
+					o_count++;
 
+					for (int j = 0; j < inliers.size(); j++)
+					{
+						cv::KeyPoint keypoint = this->graph[k]->f->feature_pts[inliers[j].queryIdx];
+						int tN = aw_N * keypoint.pt.x / width;
+						int tM = aw_M * keypoint.pt.y / height;
+						tN = tN < 0 ? 0 : (tN >= aw_N ? aw_N - 1 : tN);
+						tM = tM < 0 ? 0 : (tM >= aw_M ? aw_M - 1 : tM);
 
-				count++;
-				
-// 				if (k - keyframe_for_lc[frames[i]] > 90)
-// 				{
-// 					continue;
-// 				}
-				for (int j = 0; j < inliers.size(); j++)
-				{
-					cv::KeyPoint keypoint = this->graph[k]->f->feature_pts[inliers[j].queryIdx];
-					int tN = aw_N * keypoint.pt.x / width;
-					int tM = aw_M * keypoint.pt.y / height;
-					tN = tN < 0 ? 0 : (tN >= aw_N ? aw_N - 1 : tN);
-					tM = tM < 0 ? 0 : (tM >= aw_M ? aw_M - 1 : tM);
-
-					keyframeTest[tM * aw_N + tN]++;
+						keyframeTest[tM * aw_N + tN]++;
+					}
 				}
+				time = clock() - start;
+				current_ransac += time;
 			}
 		}
-		
-		delete feature_pool;
 
 		if (keyframe_indices.size() > 1)
 		{
@@ -258,12 +383,15 @@ bool RobustManager::addNode(Frame* frame, bool is_keyframe_candidate/* = false*/
 			ransactrans.push_back(tran);
 #endif
 
-			count++;
+			o_count++;
 		}
 
-		time = clock() - start;
-		total_loop_ransac += time;
-		cout << ", oberservation: " << count << endl;
+		total_kdtree_match += current_kdtree_match;
+		total_loop_ransac += current_ransac;
+
+		std::cout << ", RN: " << count;
+		std::cout << ", MM: " << current_kdtree_match;
+		std::cout << ", oberservation: " << o_count << std::endl;
 
 		start = clock();
 		optimizer->initializeOptimization();

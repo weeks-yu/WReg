@@ -1,6 +1,6 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
-#include "tsdf.h"
+#include "tsdf.cuh"
 
 #include <stdio.h>
 

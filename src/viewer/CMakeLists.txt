@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 include_directories(../../include/algorithm)
 include_directories(../../include/viewer)
 include_directories(../../cudalib)
+include_directories(../../tsdflib)
 include_directories(../../robustoptimizer)
 link_directories(${PROJECT_BINARY_DIR}/lib)
 
@@ -88,5 +89,6 @@ target_link_libraries(WReg
 	${KinectSDK2_LIBRARIES}
 	vtkGUISupportQt
 	cudalib
+	tsdflib
 	algorithm)
 qt5_use_modules(WReg Core Gui Widgets)

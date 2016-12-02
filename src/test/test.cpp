@@ -35,12 +35,19 @@
 #include "OrbRegister.h"
 #include "GeneralizedIcpRegister.h"
 
+#include "CommonFunction.h"
+#include "TsdfModel.h"
+#include "SNPGenerator.h"
+#include "TriangleMesh.h"
+#include "NeHeGL.h"
+
 using namespace std;
 
 typedef boost::shared_ptr<pcl::visualization::PCLVisualizer> ViewerPtr;
 
 map<int, cv::Mat> rgbs, depths;
 map<int, PointCloudPtr> clouds;
+map<int, PointCloudNormalPtr> normals;
 map<int, double> timestamps;
 int frame_count;
 map<int, int> keyframe_id;
@@ -632,15 +639,27 @@ void Registration_Result_Show()
 	ifstream fileInput(ss.str());
 
 	int id_start = -1, id_end = -1, id_interval = 1;
-
+	string line;
 	double timestamp;
 	Eigen::Vector3f t;
 	Eigen::Quaternionf q;
-	input >> timestamp >> t(0) >> t(1) >> t(2) >> q.x() >> q.y() >> q.z() >> q.w();
+	getline(input, line);
+	while (!input.eof() && line[0] == '#')
+	{
+		getline(input, line);
+	}
+	if (input.eof())
+	{
+		return;
+	}
+	ss.clear();
+	ss.str("");
+	ss << line;
+	ss >> timestamp >> t(0) >> t(1) >> t(2) >> q.x() >> q.y() >> q.z() >> q.w();
 
 	int id = 0, k = 0;
-	string line;
-	getline(input, line);
+	
+//	getline(input, line);
 	while (getline(fileInput, line))
 	{
 		if (id_start > -1 && id < id_start)
@@ -679,7 +698,19 @@ void Registration_Result_Show()
 			while (!(fabs(timestamp_this - timestamp) < 1e-4) &&
 				timestamp_this > timestamp && !input.eof())
 			{
-				input >> timestamp >> t(0) >> t(1) >> t(2) >> q.x() >> q.y() >> q.z() >> q.w();
+				getline(input, line);
+				while (!input.eof() && line[0] == '#')
+				{
+					getline(input, line);
+				}
+				if (input.eof())
+				{
+					break;
+				}
+				ss.clear();
+				ss.str("");
+				ss << line;
+				ss >> timestamp >> t(0) >> t(1) >> t(2) >> q.x() >> q.y() >> q.z() >> q.w();
 			}
 		}
 
@@ -1823,6 +1854,34 @@ void GlobalRegistration(string graph_ftype = "surf",
 				<< ' ' << q.x() << ' ' << q.y() << ' ' << q.z() << ' ' << q.w() << endl;
 		}
 		result_out->close();
+
+// 		boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("test"));
+// 		viewer->setBackgroundColor(0, 0, 0);
+// 		viewer->addCoordinateSystem(1.0);
+// 		viewer->initCameraParameters();
+// 
+// 		PointCloudPtr cloud_all(new PointCloudT), tran_cloud(new PointCloudT);
+// 		for (int i = 0; i < frame_count; i++)
+// 		{
+// 			PointCloudPtr tran_cloud(new PointCloudT);
+// 			pcl::transformPointCloud(*clouds[i], *tran_cloud, transformations[i].second);
+// 			*cloud_all += *tran_cloud;
+// 			if (i % 50 == 0)
+// 			{
+// 				cloud_all = DownSamplingByVoxelGrid(cloud_all, 0.01, 0.01, 0.01);
+// 			}
+// 		}
+// 
+// 		cloud_all = DownSamplingByVoxelGrid(cloud_all, 0.01, 0.01, 0.01);
+// 		pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud_all);
+// 		viewer->addPointCloud<pcl::PointXYZRGB>(cloud_all, rgb, "result");
+// 		viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "result");
+// 
+// 		while (!viewer->wasStopped())
+// 		{
+// 			viewer->spinOnce(100);
+// 			//boost::this_thread::sleep (boost::posix_time::microseconds (100000));
+// 		}
 	}
 
 	if (save_log)
@@ -2131,15 +2190,15 @@ void repeat_global_results()
 {
 	const int dcount = 9;
 	std::string directories[dcount], names[dcount], tnames[dcount];
-	directories[0] = "E:/school/data/rgbd_dataset_freiburg1_xyz/";
-	directories[1] = "E:/school/data/rgbd_dataset_freiburg1_desk/";
-	directories[2] = "E:/school/data/rgbd_dataset_freiburg1_desk2/";
-	directories[3] = "E:/school/data/rgbd_dataset_freiburg1_360/";
-	directories[4] = "E:/school/data/rgbd_dataset_freiburg1_room/";
-	directories[5] = "E:/school/data/rgbd_dataset_freiburg1_floor/";
-	directories[6] = "E:/school/data/rgbd_dataset_freiburg1_rpy";
-	directories[7] = "E:/school/data/rgbd_dataset_freiburg1_teddy/";
-	directories[8] = "E:/school/data/rgbd_dataset_freiburg1_plant/";
+	directories[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_xyz/";
+	directories[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk/";
+	directories[2] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk2/";
+	directories[3] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_360/";
+	directories[4] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_room/";
+	directories[5] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/";
+	directories[6] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_rpy";
+	directories[7] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_teddy/";
+	directories[8] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_plant/";
 
 	names[0] = "xyz";
 	names[1] = "desk";
@@ -2153,7 +2212,7 @@ void repeat_global_results()
 
 	for (int i = 0; i < dcount; i++)
 	{
-		tnames[i] = "E:/school/bestresults2/" + names[i] + "/" + names[i] + "_ftof_surf.txt";
+		tnames[i] = "E:/bestresults2/" + names[i] + "/" + names[i] + "_ftof_surf.txt";
 	}
 
 	float dists_pair[dcount] = { 0 };
@@ -2183,14 +2242,14 @@ void repeat_global_results()
 	int ninterval[ncount] = { 15, 30 };
 
 	const int pcount = 3;
-	float percent[pcount] = { 0.5, 0.6, 0.7 };
+	float percent[pcount] = { 0.7, 0.6, 0.5 };
 
 	int st = -1, ed = -1;
 	stringstream ss;
 
 	for (int dd = 0; dd < dcount; dd++)
 	{
-		readData(directories[dd], st, ed, false);
+		readData(directories[dd], st, ed, true);
 
 		int id;
 		string fe, ct;
@@ -2238,7 +2297,7 @@ void repeat_global_results()
 			graph.push_back(frame);
 		}
 
-		for (int rd = 0; rd < 10; rd++)
+		for (int rd = 0; rd < 5; rd++)
 		{
 // 			ss.clear();
 // 			ss.str("");
@@ -2262,25 +2321,25 @@ void repeat_global_results()
 // 
 // 			Config::instance()->set<float>("graph_max_inlier_dist", dists_graph[rd]);
 
-			for (int nd = 0; nd < ncount; nd++)
+			for (int nd = 0; nd < 1; nd++)
 			{
 				Config::instance()->set<int>("max_keyframe_interval", ninterval[nd]);
-				for (int pd = 0; pd < pcount; pd++)
+				for (int pd = 0; pd < 1; pd++)
 				{
 					cout << "\t\tInterval: " << ninterval[nd] << ", Percent" << percent[pd] << endl;
 					Config::instance()->set<float>("keyframe_rational", percent[pd]);
 
 					ss.clear();
 					ss.str("");
-					ss << "E:/school/tempresults2/" /*<< names[dd] << "/"*/
-						<< names[dd] << "_global_surf_" << rd << "_"
+					ss << "E:/tempresults2/" << names[dd] << "/"
+						<< names[dd] << "_global_multiple_" << rd << "_"
 						<< ninterval[nd] << "_" << percent[pd] << ".txt";
 					ofstream out1(ss.str());
 
 					ss.clear();
 					ss.str("");
-					ss << "E:/school/tempresults2/" /*<< names[dd] << "/"*/
-						<< names[dd] << "_global_surf_" << rd << "_"
+					ss << "E:/tempresults2/" << names[dd] << "/"
+						<< names[dd] << "_global_multiple_" << rd << "_"
 						<< ninterval[nd] << "_" << percent[pd] << ".log";
 					ofstream out2(ss.str());
 
@@ -2972,32 +3031,32 @@ void time_analyze()
 	int ninterval[ncount] = { 15, 30 };
 
 	const int pcount = 3;
-	float percent[pcount] = { 0.5, 0.6, 0.7 };
+	float percent[pcount] = { 0.7, 0.6, 0.5 };
 
 	stringstream ss;
 
 	ss.clear();
 	ss.str("");
-	ss << "E:/data/result_time_20161115.csv";
+	ss << "E:/data/result_time_20161120.csv";
 	ofstream outfile(ss.str());
 	outfile << "Time,,,,,,,,,,," << endl;
-	outfile << "Scene,,NInterval,Percent,Frame,Keyframe,Candidata,total,kdtree build,kdtree match,ransac,graph";
+	outfile << "Scene,,NInterval,Percent,Frame,Keyframe,Candidata,total,kdtree build,kdtree match,ransac,graph" << endl;
 	
 	for (int dd = 0; dd < dcount; dd++)
 	{
 		outfile << names[dd];
-		for (int fd = 0; fd < 10; fd++)
+		for (int fd = 0; fd < 5; fd++)
 		{
-			for (int nd = 0; nd < ncount; nd++)
+			for (int nd = 0; nd < 1; nd++)
 			{
-				for (int pd = 0; pd < pcount; pd++)
+				for (int pd = 0; pd < 1; pd++)
 				{
 					outfile << "," << fd << "," << ninterval[nd] << "," << percent[pd] << ",,";
 
 					ss.clear();
 					ss.str("");
-					ss << "E:/school/tempresults2/" << names[dd] << "/"
-						<< names[dd] << "_global_surf_" << fd << "_"
+					ss << "E:/tempresults2/" << names[dd] << "/"
+						<< names[dd] << "_global_multiple_" << fd << "_"
 						<< ninterval[nd] << "_" << percent[pd] << ".log";
 
 					ifstream infile(ss.str());
@@ -3061,8 +3120,8 @@ void icp_test_1()
 {
 	const int dcount = 2;
 	std::string directories[dcount], names[dcount];
-	directories[0] = "E:/school/data/rgbd_dataset_freiburg1_desk/";
-	directories[1] = "E:/school/data/rgbd_dataset_freiburg1_floor/";
+	directories[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk/";
+	directories[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/";
 
 	names[0] = "desk";
 	names[1] = "floor";
@@ -3076,7 +3135,7 @@ void icp_test_1()
 	dists[0] = 0.02;	// desk
 	dists[1] = 0.08;	// floor
 
-	int st = -1, ed = -1;
+	int st = -1, ed =-1;
 	stringstream ss;
 
 	for (int dd = 0; dd < dcount; dd++)
@@ -3123,53 +3182,96 @@ void icp_test_1()
 
 		PairwiseRegister *reg_surf = new SurfRegister(min_matches, inlier_percent, inlier_dist);
 		PairwiseRegister *reg_icpcuda = new IcpcudaRegister(icpcuda, threads, blocks, 20.0f);
+		PairwiseRegister *reg_gicp = new GeneralizedIcpRegister(inlier_dist);
 
 		for (int rd = 0; rd < 5; rd++)
 		{
 			// surf + icpcuda if surf failed
-			for (int i = 0; i < frame_count; i++)
-			{
-				if (i == 0)
-				{
-					graph[i]->relative_tran = Eigen::Matrix4f::Identity();
-				}
-				else
-				{
-					Eigen::Matrix4f tran = Eigen::Matrix4f::Identity();
-					if (reg_surf->getTransformation(graph[i - 1], graph[i], tran))
-					{
-						graph[i]->relative_tran = tran;
-					}
-					else
-					{
-						// surf failed, run icpcuda
-						reg_icpcuda->getTransformation(depths[i - 1].data, depths[i].data, tran);
-						graph[i]->relative_tran = tran;
-					}
-				}
-			}
+// 			for (int i = 0; i < frame_count; i++)
+// 			{
+// 				if (i == 0)
+// 				{
+// 					graph[i]->relative_tran = Eigen::Matrix4f::Identity();
+// 				}
+// 				else
+// 				{
+// 					Eigen::Matrix4f tran = Eigen::Matrix4f::Identity();
+// 					if (reg_surf->getTransformation(graph[i - 1], graph[i], tran))
+// 					{
+// 						graph[i]->relative_tran = tran;
+// 					}
+// 					else
+// 					{
+// 						// surf failed, run icpcuda
+// 						reg_icpcuda->getTransformation(depths[i - 1].data, depths[i].data, tran);
+// 						graph[i]->relative_tran = tran;
+// 					}
+// 				}
+// 			}
+// 
+// 			ss.clear();
+// 			ss.str("");
+// 			ss << "E:/tempresults2/" << names[dd] << "/"
+// 				<< names[dd] << "_surf_failed_icpcuda_" << rd << ".txt";
+// 			ofstream gout(ss.str());
+// 
+// 			Eigen::Matrix4f last_tran = Eigen::Matrix4f::Identity();
+// 			for (int j = 0; j < frame_count; j++)
+// 			{
+// 				graph[j]->tran = last_tran * graph[j]->relative_tran;
+// 
+// 				Eigen::Vector3f t = TranslationFromMatrix4f(graph[j]->tran);
+// 				Eigen::Quaternionf q = QuaternionFromMatrix4f(graph[j]->tran);
+// 
+// 				gout << fixed << setprecision(6) << timestamps[j]
+// 					<< ' ' << t(0) << ' ' << t(1) << ' ' << t(2)
+// 					<< ' ' << q.x() << ' ' << q.y() << ' ' << q.z() << ' ' << q.w() << endl;
+// 
+// 				last_tran = graph[j]->tran;
+// 			}
+// 			gout.close();
 
-			ss.clear();
-			ss.str("");
-			ss << "E:/school/tempresults2/" << names[dd] << "/"
-				<< names[dd] << "_surf_failed_icpcuda_" << rd << ".txt";
-			ofstream gout(ss.str());
+			// surf + gicp
 
-			Eigen::Matrix4f last_tran = Eigen::Matrix4f::Identity();
-			for (int j = 0; j < frame_count; j++)
-			{
-				graph[j]->tran = last_tran * graph[j]->relative_tran;
-
-				Eigen::Vector3f t = TranslationFromMatrix4f(graph[j]->tran);
-				Eigen::Quaternionf q = QuaternionFromMatrix4f(graph[j]->tran);
-
-				gout << fixed << setprecision(6) << timestamps[j]
-					<< ' ' << t(0) << ' ' << t(1) << ' ' << t(2)
-					<< ' ' << q.x() << ' ' << q.y() << ' ' << q.z() << ' ' << q.w() << endl;
-
-				last_tran = graph[j]->tran;
-			}
-			gout.close();
+// 			for (int i = 0; i < frame_count; i++)
+// 			{
+// 				if (i == 0)
+// 				{
+// 					graph[i]->relative_tran = Eigen::Matrix4f::Identity();
+// 				}
+// 				else
+// 				{
+// 					Eigen::Matrix4f tran = Eigen::Matrix4f::Identity();
+// 					reg_surf->getTransformation(graph[i - 1], graph[i], tran);
+// 					PointCloudPtr tran_cloud(new PointCloudT);
+// 					pcl::transformPointCloud(*clouds[i], *tran_cloud, tran);
+// 					Eigen::Matrix4f tran2 = Eigen::Matrix4f::Identity();
+// 					reg_gicp->getTransformation(&clouds[i - 1], &tran_cloud, tran2);
+// 					graph[i]->relative_tran = tran * tran2;
+// 				}
+// 			}
+// 
+// 			ss.clear();
+// 			ss.str("");
+// 			ss << "E:/tempresults2/" << names[dd] << "/"
+// 				<< names[dd] << "_surf_gicp_" << rd << ".txt";
+// 			ofstream gout1(ss.str());
+// 
+// 			last_tran = Eigen::Matrix4f::Identity();
+// 			for (int j = 0; j < frame_count; j++)
+// 			{
+// 				graph[j]->tran = last_tran * graph[j]->relative_tran;
+// 
+// 				Eigen::Vector3f t = TranslationFromMatrix4f(graph[j]->tran);
+// 				Eigen::Quaternionf q = QuaternionFromMatrix4f(graph[j]->tran);
+// 
+// 				gout1 << fixed << setprecision(6) << timestamps[j]
+// 					<< ' ' << t(0) << ' ' << t(1) << ' ' << t(2)
+// 					<< ' ' << q.x() << ' ' << q.y() << ' ' << q.z() << ' ' << q.w() << endl;
+// 
+// 				last_tran = graph[j]->tran;
+// 			}
+// 			gout1.close();
 
 			// surf + icpcuda
 
@@ -3188,6 +3290,28 @@ void icp_test_1()
 					graph[i]->relative_tran = tran * inv_tran;
 				}
 			}
+
+			ss.clear();
+			ss.str("");
+			ss << "E:/tempresults2/" << names[dd] << "/"
+				<< names[dd] << "_surf_icpcuda_" << rd << ".txt";
+			ofstream gout1(ss.str());
+
+			Eigen::Matrix4f last_tran = Eigen::Matrix4f::Identity();
+			for (int j = 0; j < frame_count; j++)
+			{
+				graph[j]->tran = last_tran * graph[j]->relative_tran;
+
+				Eigen::Vector3f t = TranslationFromMatrix4f(graph[j]->tran);
+				Eigen::Quaternionf q = QuaternionFromMatrix4f(graph[j]->tran);
+
+				gout1 << fixed << setprecision(6) << timestamps[j]
+					<< ' ' << t(0) << ' ' << t(1) << ' ' << t(2)
+					<< ' ' << q.x() << ' ' << q.y() << ' ' << q.z() << ' ' << q.w() << endl;
+
+				last_tran = graph[j]->tran;
+			}
+			gout1.close();
 
 // 			boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("test"));
 // 			viewer->setBackgroundColor(0, 0, 0);
@@ -3214,29 +3338,49 @@ void icp_test_1()
 // 				viewer->spinOnce(100);
 // 				//boost::this_thread::sleep (boost::posix_time::microseconds (100000));
 // 			}
-
-			ss.clear();
-			ss.str("");
-			ss << "E:/school/tempresults2/" << names[dd] << "/"
-				<< names[dd] << "_surf_icpcuda_" << rd << ".txt";
-			ofstream gout1(ss.str());
-
-			last_tran = Eigen::Matrix4f::Identity();
-			for (int j = 0; j < frame_count; j++)
-			{
-				graph[j]->tran = last_tran * graph[j]->relative_tran;
-
-				Eigen::Vector3f t = TranslationFromMatrix4f(graph[j]->tran);
-				Eigen::Quaternionf q = QuaternionFromMatrix4f(graph[j]->tran);
-
-				gout1 << fixed << setprecision(6) << timestamps[j]
-					<< ' ' << t(0) << ' ' << t(1) << ' ' << t(2)
-					<< ' ' << q.x() << ' ' << q.y() << ' ' << q.z() << ' ' << q.w() << endl;
-
-				last_tran = graph[j]->tran;
-			}
-			gout1.close();
-			
+	
+			// surf
+// 			for (int i = 0; i < frame_count; i++)
+// 			{
+// 				if (i == 0)
+// 				{
+// 					graph[i]->relative_tran = Eigen::Matrix4f::Identity();
+// 				}
+// 				else
+// 				{
+// 					Eigen::Matrix4f tran = Eigen::Matrix4f::Identity();
+// 					if (reg_surf->getTransformation(graph[i - 1], graph[i], tran))
+// 					{
+// 						graph[i]->relative_tran = tran;
+// 					}
+// 					else
+// 					{
+// 						graph[i]->relative_tran = graph[i - 1]->relative_tran;
+// 					}
+// 				}
+// 			}
+// 
+// 			ss.clear();
+// 			ss.str("");
+// 			ss << "E:/tempresults2/" << names[dd] << "/"
+// 				<< names[dd] << "_surf_only_" << rd << ".txt";
+// 			ofstream gout2(ss.str());
+// 
+// 			last_tran = Eigen::Matrix4f::Identity();
+// 			for (int j = 0; j < frame_count; j++)
+// 			{
+// 				graph[j]->tran = last_tran * graph[j]->relative_tran;
+// 
+// 				Eigen::Vector3f t = TranslationFromMatrix4f(graph[j]->tran);
+// 				Eigen::Quaternionf q = QuaternionFromMatrix4f(graph[j]->tran);
+// 
+// 				gout2 << fixed << setprecision(6) << timestamps[j]
+// 					<< ' ' << t(0) << ' ' << t(1) << ' ' << t(2)
+// 					<< ' ' << q.x() << ' ' << q.y() << ' ' << q.z() << ' ' << q.w() << endl;
+// 
+// 				last_tran = graph[j]->tran;
+// 			}
+// 			gout2.close();
 		}
 		cout << endl;
 	}
@@ -3247,8 +3391,8 @@ void icp_test_2()
 {
 	const int dcount = 2;
 	std::string directories[dcount], names[dcount];
-	directories[0] = "E:/school/data/rgbd_dataset_freiburg1_desk/";
-	directories[1] = "E:/school/data/rgbd_dataset_freiburg1_floor/";
+	directories[0] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_desk/";
+	directories[1] = "E:/lab/pcl/kinect data/rgbd_dataset_freiburg1_floor/";
 
 	names[0] = "desk";
 	names[1] = "floor";
@@ -3259,6 +3403,9 @@ void icp_test_2()
 
 	int st = -1, ed = -1;
 	stringstream ss;
+
+	clock_t start;
+	float time_gicp, time_icpcuda;
 
 	for (int dd = 0; dd < dcount; dd++)
 	{
@@ -3299,9 +3446,10 @@ void icp_test_2()
 		PairwiseRegister *reg_gicp = new GeneralizedIcpRegister(distThresh);
 		PairwiseRegister *reg_icpcuda = new IcpcudaRegister(icpcuda, threads, blocks, 20.0f);
 
-		for (int rd = 0; rd < 5; rd++)
+		for (int rd = 0; rd < 1; rd++)
 		{
 			// gicp test
+			start = clock();
 			for (int i = 0; i < frame_count; i++)
 			{
 				if (i == 0)
@@ -3310,6 +3458,7 @@ void icp_test_2()
 				}
 				else
 				{
+					
 					Eigen::Matrix4f tran = Eigen::Matrix4f::Identity();
 					if (reg_gicp->getTransformation(&clouds[i - 1], &clouds[i], tran))
 					{
@@ -3321,11 +3470,14 @@ void icp_test_2()
 					}
 				}
 			}
+			time_gicp = clock() - start;
+			cout << "gicp total time: " << time_gicp << endl;
+			cout << "gicp time per frame: " << time_gicp / frame_count << endl << endl;
 
 			ss.clear();
 			ss.str("");
-			ss << "E:/school/tempresults2/" << names[dd] << "/"
-				<< names[dd] << "_gicp_" << rd << ".txt";
+			ss << "E:/tempresults2/" << names[dd] << "/"
+				<< names[dd] << "_gicp_only_" << 5 << ".txt";
 			ofstream gout(ss.str());
 
 			Eigen::Matrix4f last_tran = Eigen::Matrix4f::Identity();
@@ -3345,7 +3497,7 @@ void icp_test_2()
 			gout.close();
 
 			// surf + icpcuda
-
+			start = clock();
 			for (int i = 0; i < frame_count; i++)
 			{
 				if (i == 0)
@@ -3359,6 +3511,9 @@ void icp_test_2()
 					graph[i]->relative_tran = tran;
 				}
 			}
+			time_icpcuda = clock() - start;
+			cout << "icpcuda total time: " << time_icpcuda << endl;
+			cout << "icpcuda time per frame: " << time_icpcuda / frame_count << endl << endl;
 
 // 			boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("test"));
 // 			viewer->setBackgroundColor(0, 0, 0);
@@ -3388,8 +3543,8 @@ void icp_test_2()
 
 			ss.clear();
 			ss.str("");
-			ss << "E:/school/tempresults2/" << names[dd] << "/"
-				<< names[dd] << "_icpcuda_" << rd << ".txt";
+			ss << "E:/tempresults2/" << names[dd] << "/"
+				<< names[dd] << "_icpcuda_only_" << 5 << ".txt";
 			ofstream gout1(ss.str());
 
 			last_tran = Eigen::Matrix4f::Identity();
@@ -3414,150 +3569,218 @@ void icp_test_2()
 
 }
 
-// 1 kdtree vs multiple kdtrees
-void lc_test()
-{
-	const int dcount = 2;
-	std::string directories[dcount], names[dcount];
-	directories[0] = "E:/school/data/rgbd_dataset_freiburg1_desk/";
-	directories[1] = "E:/school/data/rgbd_dataset_freiburg1_floor/";
-
-	names[0] = "desk";
-	names[1] = "floor";
-
-	float dists[dcount];
-	dists[0] = 0.02;	// desk
-	dists[1] = 0.08;	// floor
-
-	int st = -1, ed = -1;
-	stringstream ss;
-
-	for (int dd = 0; dd < dcount; dd++)
-	{
-		readData(directories[dd], st, ed, false);
-
-		cout << "\t dists: " << dists[dd];
-		Config::instance()->set<float>("max_inlier_dist", dists[dd]);
-		Config::instance()->set<float>("dist_threshold", dists[dd]);
-
-		for (int i = 0; i < graph.size(); i++)
-		{
-			if (graph[i])
-			{
-				delete graph[i];
-			}
-		}
-		graph.clear();
-
-		for (int i = 0; i < frame_count; i++)
-		{
-			Frame *frame = new Frame(rgbs[i], depths[i], "surf", Eigen::Matrix4f::Identity());
-			frame->f->buildFlannIndex();
-			graph.push_back(frame);
-		}
-
-		int min_matches = Config::instance()->get<int>("min_matches");
-		float inlier_percent = Config::instance()->get<float>("min_inlier_p");
-		float inlier_dist = Config::instance()->get<float>("max_inlier_dist");
-
-		int threads = Config::instance()->get<int>("icpcuda_threads");
-		int blocks = Config::instance()->get<int>("icpcuda_blocks");
-		int width = Config::instance()->get<int>("image_width");
-		int height = Config::instance()->get<int>("image_height");
-		float cx = Config::instance()->get<float>("camera_cx");
-		float cy = Config::instance()->get<float>("camera_cy");
-		float fx = Config::instance()->get<float>("camera_fx");
-		float fy = Config::instance()->get<float>("camera_fy");
-		float depthFactor = Config::instance()->get<float>("depth_factor");
-		float distThresh = Config::instance()->get<float>("dist_threshold");
-		float angleThresh = Config::instance()->get<float>("angle_threshold");
-		ICPOdometry *icpcuda = new ICPOdometry(width, height, cx, cy, fx, fy, depthFactor, distThresh, angleThresh);
-
-		PairwiseRegister *reg_surf = new SurfRegister(min_matches, inlier_percent, inlier_dist);
-		PairwiseRegister *reg_icpcuda = new IcpcudaRegister(icpcuda, threads, blocks, 20.0f);
-
-		for (int i = 0; i < frame_count; i++)
-		{
-			if (i == 0)
-			{
-				graph[i]->relative_tran = Eigen::Matrix4f::Identity();
-			}
-			else
-			{
-				Eigen::Matrix4f tran = Eigen::Matrix4f::Identity();
-				if (reg_surf->getTransformation(graph[i - 1], graph[i], tran))
-				{
-					graph[i]->relative_tran = tran;
-				}
-				else
-				{
-					// surf failed, run icpcuda
-					reg_icpcuda->getTransformation(depths[i - 1].data, depths[i].data, tran);
-					graph[i]->relative_tran = tran;
-				}
-			}
-		}
-
-		int accumulated_frame_count = 0, last_keyframe_id;
-		Eigen::Matrix4f accumulated_transformation = Eigen::Matrix4f::Identity();
-		bool is_last_frame_keyframe = false;
-		float last_rational = 1;
-
-		for (int i = 0; i < frame_count; i++)
-		{
-			bool isKeyframe = false;
-			if (i == 0)
-			{
-				isKeyframe = true;
-			}
-			else
-			{
-				accumulated_frame_count++;
-				accumulated_transformation = accumulated_transformation * trans[i];
-
-				float rrr = reg_surf->getCorrespondencePercent(graph[last_keyframe_id], graph[i], accumulated_transformation);
-				if (is_last_frame_keyframe)
-				{
-					last_rational = rrr;
-				}
-				rrr /= last_rational;
-				if (rrr < Config::instance()->get<float>("keyframe_rational"))
-				{
-					isKeyframe = true;
-				}
-			}
-
-			if (accumulated_frame_count >= Config::instance()->get<int>("max_keyframe_interval"))
-			{
-				isKeyframe = true;
-			}
-
-			graph[i]->relative_tran = accumulated_transformation;
-			if (isKeyframe)
-			{
-				accumulated_frame_count = 0;
-				accumulated_transformation = Eigen::Matrix4f::Identity();
-				last_keyframe_id = i;
-				keyframe_indices.push_back(i);
-				keyframe_id.insert(pair<int, int>(i, keyframe_indices.size() - 1));
-				is_last_frame_keyframe = true;
-			}
-			else
-			{
-				is_last_frame_keyframe = false;
-			}
-		}
-
-		// lc test
-		
-
-		cout << endl;
-	}
-}
-
 // F in candidate selection
 void F_test()
 {
+
+}
+
+void tsdf_test()
+{
+	char ch;
+
+	string filename = "";
+	cout << "filename: ";
+	scanf("%c", &ch);
+	while (filename.length() == 0 || ch != '\n')
+	{
+		if (ch != '\n' && ch != '\"')
+		{
+			filename += ch;
+		}
+		scanf("%c", &ch);
+	}
+	ifstream input(filename);
+
+	string directory = "";
+	cout << "directory: ";
+
+	scanf("%c", &ch);
+	while (directory.length() == 0 || ch != '\n')
+	{
+		if (ch != '\n' && ch != '\"')
+		{
+			directory += ch;
+		}
+		scanf("%c", &ch);
+	}
+
+	stringstream ss;
+	ss << directory << "/read.txt";
+	ifstream fileInput(ss.str());
+
+	int id_start = -1, id_end = 10, id_interval = 1;
+	string line;
+	double timestamp;
+	Eigen::Vector3f t;
+	Eigen::Quaternionf q;
+	getline(input, line);
+	while (!input.eof() && line[0] == '#')
+	{
+		getline(input, line);
+	}
+	if (input.eof())
+	{
+		return;
+	}
+	ss.clear();
+	ss.str("");
+	ss << line;
+	ss >> timestamp >> t(0) >> t(1) >> t(2) >> q.x() >> q.y() >> q.z() >> q.w();
+
+	int id = 0, k = 0;
+	frame_count = 0;
+	//	getline(input, line);
+	while (getline(fileInput, line))
+	{
+		if (id_start > -1 && id < id_start)
+		{
+			id++;
+			continue;
+		}
+
+		if (id_end > -1 && id > id_end)
+			break;
+
+		if ((id - id_start > -1 ? id_start : 0) % id_interval != 0)
+		{
+			id++;
+			continue;
+		}
+
+		int pos = line.find(' ');
+		string rgb_name = line.substr(0, pos);
+		string depth_name = line.substr(pos + 1, line.length() - pos - 1);
+		int pos2 = depth_name.rfind('/');
+		int pos3 = depth_name.rfind('.');
+		string timestamp_string = depth_name.substr(pos2 + 1, pos3 - pos2 - 1);
+		ss.clear();
+		ss.str("");
+		ss << timestamp_string;
+		double timestamp_this;
+		ss >> timestamp_this;
+
+		if (!(fabs(timestamp_this - timestamp) < 1e-4))
+		{
+			if (timestamp_this < timestamp)
+			{
+				continue;
+			}
+			while (!(fabs(timestamp_this - timestamp) < 1e-4) &&
+				timestamp_this > timestamp && !input.eof())
+			{
+				getline(input, line);
+				while (!input.eof() && line[0] == '#')
+				{
+					getline(input, line);
+				}
+				if (input.eof())
+				{
+					break;
+				}
+				ss.clear();
+				ss.str("");
+				ss << line;
+				ss >> timestamp >> t(0) >> t(1) >> t(2) >> q.x() >> q.y() >> q.z() >> q.w();
+			}
+		}
+
+		Eigen::Matrix4f tran = transformationFromQuaternionsAndTranslation(q, t);
+
+		ss.clear();
+		ss.str("");
+		ss << directory << "/" << rgb_name;
+		cv::Mat rgb = cv::imread(ss.str());
+
+		ss.clear();
+		ss.str("");
+		ss << directory << "/" << depth_name;
+		cv::Mat depth = cv::imread(ss.str(), -1);
+
+		rgbs[k] = rgb;
+		depths[k] = depth;
+		trans.push_back(tran);
+		timestamps[k] = timestamp_this;
+
+		id++;
+		k++;
+		frame_count++;
+	}
+	fileInput.close();
+	input.close();
+
+	double devide = 0.01;
+	Rgbd::TsdfModel tsdf(Eigen::Matrix4f::Identity(), 1.2, 1, 4.0, -1.5, -1.0, 0.0, devide, devide * 10, devide / 10, true);
+	int halfwidth = Config::instance()->get<int>("image_width") / 2;
+	int halfheight = Config::instance()->get<int>("image_height") / 2;
+	float fx = Config::instance()->get<float>("camera_fx");
+	float fy = Config::instance()->get<float>("camera_fy");
+
+	Rgbd::SNPGenerator gen(&tsdf, devide);
+/*	Rgbd::GLMesh* mesh = new Rgbd::GLMesh();*/
+
+	PointCloudPtr cloud_all(new PointCloudT);
+
+	for (int i = 0; i < frame_count; i++)
+	{
+		PointCloudPtr cloud;
+		PointCloudNormalPtr normal;
+		ConvertToPointCloudWithNormalCuda(cloud, normal, depths[i], rgbs[i], timestamps[i], i);
+
+// 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cn(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+// 		for (int i = 0; i < cloud->points.size(); i++)
+// 		{
+// 			pcl::PointXYZRGBNormal pt;
+// 			pt.x = cloud->points[i].x;
+// 			pt.y = cloud->points[i].y;
+// 			pt.z = cloud->points[i].z;
+// 			pt.r = cloud->points[i].r;
+// 			pt.g = cloud->points[i].g;
+// 			pt.b = cloud->points[i].b;
+// 			pt.normal_x = normal->points[i].normal_x;
+// 			pt.normal_y = normal->points[i].normal_y;
+// 			pt.normal_z = normal->points[i].normal_z;
+// 			cn->push_back(pt);
+// 		}
+// 		pcl::transformPointCloudWithNormals(*cn, *cn, trans[i]);
+// 		for (int i = 0; i < cn->points.size(); i++)
+// 		{
+// 			pcl::PointXYZRGBNormal &pt = cn->points[i];
+// 			cloud->points[i].x = pt.x;
+// 			cloud->points[i].y = pt.y;
+// 			cloud->points[i].z = pt.z;
+// 			cloud->points[i].r = pt.r;
+// 			cloud->points[i].g = pt.g;
+// 			cloud->points[i].b = pt.b;
+// 			normal->points[i].normal_x = pt.normal_x;
+// 			normal->points[i].normal_y = pt.normal_y;
+// 			normal->points[i].normal_z = pt.normal_z;
+// 		}
+
+// 		cloud = DownSamplingByVoxelGrid(cloud, 0.01, 0.01, 0.01);
+// 		*cloud_all += *cloud;
+		tsdf.dataFusion(cloud, normal, trans[i], halfwidth, halfheight, fx, fy);
+		gen.castNextMeshes(trans[i]);
+	}
+ 	GLWindows(gen.mesh);
+ 	tsdf.freeData();
+
+// 	cloud_all = DownSamplingByVoxelGrid(cloud_all, 0.01, 0.01, 0.01);
+// 
+// 	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("test"));
+// 	viewer->setBackgroundColor(0, 0, 0);
+// 	viewer->addCoordinateSystem(1.0);
+// 	viewer->initCameraParameters();
+// 
+// 	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(cloud_all);
+// 	viewer->addPointCloud<pcl::PointXYZRGB>(cloud_all, rgb, "result");
+// 	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "result");
+// 
+// 	while (!viewer->wasStopped())
+// 	{
+// 		viewer->spinOnce(100);
+// 		//boost::this_thread::sleep (boost::posix_time::microseconds (100000));
+// 	}
 
 }
 
@@ -3565,10 +3788,11 @@ int main()
 {
 //	keyframe_e2();
 //	Registration_Result_Show();
-	repeat_global_results();
+//	repeat_global_results();
 //	time_analyze();
 //	icp_test_1();
 //	icp_test_2();
+	tsdf_test();
 	return 0;
 //	pairwise_results();
 // 	repeat_pairwise_results();

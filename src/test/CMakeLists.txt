@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 include_directories(../../include/algorithm)
 include_directories(../../include/test)
 include_directories(../../cudalib)
+include_directories(../../tsdflib)
 include_directories(../../robustoptimizer)
 link_directories(${PROJECT_BINARY_DIR}/lib)
 
@@ -25,6 +26,10 @@ include_directories(${G2O_INCLUDE_DIR})
 find_package(KinectSDK2 REQUIRED)
 include_directories(${KinectSDK2_INCLUDE_DIRS})
 
+#Find OpenGL
+find_package(OpenGL REQUIRED)
+include_directories(${OPENGL_INCLUDE_DIR})
+
 #Find CUDA
 find_package(CUDA REQUIRED)
 include_directories(${CUDA_INCLUDE_DIRS})
@@ -35,11 +40,8 @@ set(CUDA_ARCH_PTX "" CACHE STRING "Specify 'virtual' PTX arch to build PTX inter
 include(${PROJECT_SOURCE_DIR}/cudalib/CudaComputeTargetFlags.cmake)         
 APPEND_TARGET_ARCH_FLAGS()
 
-set(TEST_HEADERS
-	../../include/test/test.h)
-	
-set(TEST_SOURCES
-	test.cpp)
+file(GLOB TEST_HEADERS ../../include/test/*.h ../../include/test/*.hpp)
+file(GLOB TEST_SOURCES *.cpp *.cc)
 
 add_executable(Test ${TEST_HEADERS} ${TEST_SOURCES})
 
@@ -49,5 +51,7 @@ target_link_libraries(Test
 	${CUDA_LIBRARIES}
 	${G2O_LIBRARIES}
 	${KinectSDK2_LIBRARIES}
+	${OPENGL_LIBRARIES}
 	cudalib
+	tsdflib
 	algorithm)

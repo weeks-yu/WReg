@@ -73,10 +73,10 @@ bool OniReader::create(const char* filename_)
 	switch (videoMode.getPixelFormat())
 	{
 	case ONI_PIXEL_FORMAT_DEPTH_1_MM:
-		intrDepth.zFactor = 1.0f;
+		intrDepth.zFactor = 1000.0f;
 		break;
 	case ONI_PIXEL_FORMAT_DEPTH_100_UM:
-		intrDepth.zFactor = 0.1f;
+		intrDepth.zFactor = 10000.0f;
 		break;
 	}
 
