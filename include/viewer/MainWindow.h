@@ -45,7 +45,7 @@ private slots:
 // 	void onActionShowResultFromFileTriggered();
 	void onActionRegistrationTriggered();
 
-	// benchmark
+	// registration
 	void onRegistrationPushButtonRunClicked(bool checked);
 	void onRegistrationPushButtonDirectoryClicked(bool checked);
 	void onRegistrationPushButtonSaveTrajectoriesClicked(bool checked);
@@ -53,6 +53,7 @@ private slots:
 	void onRegistrationPushButtonSaveLogsClicked(bool checked);
 	void onRegistrationComboBoxSensorTypeCurrentIndexChanged(int index);
 	void onRegistrationPushButtonConnectKinectClicked(bool checked);
+	void onRegistrationRadioButtonModeToggled(bool checked);
 
 	void onBenchmarkOneIterationDone(const cv::Mat &rgb, const cv::Mat &depth, const bool showPointCloud = false);
 	void onBenchmarkRegistrationDone();

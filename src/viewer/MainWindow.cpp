@@ -198,6 +198,7 @@ void MainWindow::ShowRegistration()
 		this,
 		&MainWindow::onRegistrationComboBoxSensorTypeCurrentIndexChanged);
 	connect(uiDockRegistration->pushButtonConnectKinect, &QPushButton::clicked, this, &MainWindow::onRegistrationPushButtonConnectKinectClicked);
+	connect(uiDockRegistration->radioButtonPointCloud, &QRadioButton::toggled, this, &MainWindow::onRegistrationRadioButtonModeToggled);
 
 	// center
 	registrationViewer = new RegistrationViewer(this);
@@ -349,6 +350,14 @@ void MainWindow::onRegistrationPushButtonRunClicked(bool checked)
 	}
 
 	// run benchmark test
+	if (sensorType != SlamThread::SENSOR_KINECT)
+	{
+		if (thread)
+		{
+			delete thread;
+			thread = nullptr;
+		}
+	}
 	if (thread != nullptr)
 	{
 		engine = thread->getEngine();
@@ -400,6 +409,10 @@ void MainWindow::onRegistrationPushButtonRunClicked(bool checked)
 		engine->setGraphParametersFeature(uiDockRegistration->spinBoxGraphMinMatches->text().toInt(),
 			uiDockRegistration->lineEditGraphInlierPercentage->text().toFloat(),
 			uiDockRegistration->lineEditGraphInlierDist->text().toFloat());
+	}
+	else
+	{
+		engine->setGraphManager("");
 	}
 
 	thread->setShouldRegister(true);
@@ -541,6 +554,18 @@ void MainWindow::onRegistrationComboBoxSensorTypeCurrentIndexChanged(int index)
 void MainWindow::onRegistrationPushButtonConnectKinectClicked(bool checked)
 {
 
+}
+
+void MainWindow::onRegistrationRadioButtonModeToggled(bool checked)
+{
+	if (uiDockRegistration->radioButtonPointCloud->isChecked())
+	{
+		registrationViewer->SetViewerMode(RegistrationViewer::USING_PCL_VIEWER);
+	}
+	else if (uiDockRegistration->radioButtonMesh->isChecked())
+	{
+		registrationViewer->SetViewerMode(RegistrationViewer::USING_OPENGL_VIEWER);
+	}
 }
 
 void MainWindow::onBenchmarkOneIterationDone(const cv::Mat &rgb, const cv::Mat &depth, bool showPointCloud)

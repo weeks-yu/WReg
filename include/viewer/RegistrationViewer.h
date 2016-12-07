@@ -12,6 +12,8 @@
 #include <vtkRenderWindow.h>
 
 #include "PointCloud.h"
+#include "TriangleMesh.h"
+#include "OpenGLWindow.h"
 
 namespace Ui {
 	class RegistrationViewer;
@@ -22,13 +24,23 @@ class RegistrationViewer : public QWidget
     Q_OBJECT
 
 public:
+	enum
+	{
+		USING_PCL_VIEWER = 0,
+		USING_OPENGL_VIEWER
+	};
+
+public:
 	explicit RegistrationViewer(QWidget *parent = 0);
 	~RegistrationViewer();
 
 	void ShowRGBImage(QImage *rgb);
 	void ShowDepthImage(QImage *depth);
-	void ShowPointCloud(PointCloudPtr result);
+	void ShowPointCloud(PointCloudPtr cloud_);
+	void ShowMesh(GLMesh *mesh_);
 	PointCloudPtr GetPointCloud();
+
+	void SetViewerMode(int mode);
 
 protected:
 	virtual void resizeEvent(QResizeEvent *event);
@@ -42,7 +54,14 @@ private slots:
 
 protected:
 	pcl::visualization::PCLVisualizer::Ptr viewer;
+	pcl::visualization::Camera camera;
 	PointCloudPtr cloud;
+
+	OpenGLWindow *glwindow;
+	QWidget *glwidget;
+	GLMesh *mesh;
+
+	int mode;
 
 private:
 	Ui::RegistrationViewer *ui;

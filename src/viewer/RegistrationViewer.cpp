@@ -7,6 +7,8 @@ RegistrationViewer::RegistrationViewer(QWidget *parent) :
 	QWidget(parent),
 	ui(new Ui::RegistrationViewer)
 {
+	vtkObject::GlobalWarningDisplayOff();
+
 	ui->setupUi(this);
 	this->setAutoFillBackground(true);
 	QPalette palette;
@@ -18,12 +20,23 @@ RegistrationViewer::RegistrationViewer(QWidget *parent) :
 	viewer->resetCamera();
 	viewer->setCameraPosition(0, 0, -10, 0, 0, 5, 0, 1, 0);
 
+	glwindow = new OpenGLWindow();
+	glwidget = QWidget::createWindowContainer(glwindow, this);
+	ui->groupBoxScene->layout()->addWidget(glwidget);
+	glwidget->setEnabled(false);
+	glwidget->setVisible(false);
+
 	cloud = PointCloudPtr(new PointCloudT);
+	mode = USING_PCL_VIEWER;
 }
 
 RegistrationViewer::~RegistrationViewer()
 {
 	delete ui;
+	if (glwindow)
+	{
+		delete glwindow;
+	}
 }
 
 void RegistrationViewer::ShowRGBImage(QImage *rgb)
@@ -44,18 +57,67 @@ void RegistrationViewer::ShowDepthImage(QImage *depth)
 	ui->labelDepth->setPixmap(getPixmap(currDepth, ui->labelDepth->size()));
 }
 
-void RegistrationViewer::ShowPointCloud(PointCloudPtr result)
+void RegistrationViewer::ShowPointCloud(PointCloudPtr cloud_)
 {
-	*cloud = *result;
+	if (mode != USING_PCL_VIEWER)
+	{
+		return;
+	}
+	*cloud = *cloud_;
 	viewer->removeAllPointClouds();
 	pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb(cloud);
 	viewer->addPointCloud<PointT>(cloud, rgb, "cloud");
 	ui->qvtkWidget->update();
 }
 
+void RegistrationViewer::ShowMesh(GLMesh *mesh_)
+{
+	if (mode != USING_OPENGL_VIEWER)
+	{
+		return;
+	}
+	*mesh = *mesh_;
+}
+
 PointCloudPtr RegistrationViewer::GetPointCloud()
 {
 	return cloud;
+}
+
+void RegistrationViewer::SetViewerMode(int mode)
+{
+	
+	if (mode != this->mode)
+	{
+		if (mode == USING_PCL_VIEWER)
+		{
+			viewer.reset(new pcl::visualization::PCLVisualizer("viewer", false));
+			ui->qvtkWidget->SetRenderWindow(viewer->getRenderWindow());
+			viewer->resetCamera();
+			viewer->setCameraPosition(0, 0, -10, 0, 0, 5, 0, 1, 0);
+			ui->qvtkWidget->setEnabled(true);
+			ui->qvtkWidget->setVisible(true);
+
+			viewer->removeAllPointClouds();
+			pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb(cloud);
+			viewer->addPointCloud<PointT>(cloud, rgb, "cloud");
+			ui->qvtkWidget->update();
+
+			glwidget->setEnabled(false);
+			glwidget->setVisible(false);
+		}
+		else
+		{
+			viewer = NULL;
+			ui->qvtkWidget->setEnabled(false);
+			ui->qvtkWidget->setVisible(false);
+
+			glwidget->setEnabled(true);
+			glwidget->setVisible(true);
+			glwindow->resize(glwidget->size().width(), glwidget->size().height());
+		}
+	}
+	this->mode = mode;
 }
 
 void RegistrationViewer::resizeEvent(QResizeEvent *event)

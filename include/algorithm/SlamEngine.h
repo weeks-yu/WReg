@@ -115,7 +115,4 @@ private:
 
 	// parameters - optimizer
 	bool using_optimizer;
-
-	// parameters - robust optimizer
-	bool using_robust_optimizer;
 };

@@ -14,7 +14,6 @@ SlamEngine::SlamEngine()
 	downsample_rate = Config::instance()->get<float>("downsample_rate");
 
 	using_optimizer = true;
-	using_robust_optimizer = true;
 
 	int min_matches = Config::instance()->get<int>("min_matches");
 	float inlier_percentage = Config::instance()->get<float>("min_inlier_p");
@@ -221,6 +220,11 @@ void SlamEngine::setGraphManager(string type)
 	{
 		graph_manager = new RobustManager(true);
 		using_optimizer = true;
+	}
+	else
+	{
+		graph_manager = NULL;
+		using_optimizer = false;
 	}
 }
 
@@ -570,7 +574,7 @@ PointCloudPtr SlamEngine::GetScene()
 	for (int i = 0; i < frame_id; i++)
 	{
 		PointCloudPtr tc(new PointCloudT);
-		if (using_robust_optimizer)
+		if (graph_manager_type == "robust")
 			pcl::transformPointCloud(*point_clouds[i], *tc, graph_manager->getTransformation(i));
 		else
 			pcl::transformPointCloud(*point_clouds[i], *tc, transformation_matrix[i]);
@@ -608,7 +612,7 @@ vector<pair<double, Eigen::Matrix4f>> SlamEngine::GetTransformations()
 void SlamEngine::SaveLogs(ofstream &outfile)
 {
 #ifdef SAVE_TEST_INFOS
-	if (using_robust_optimizer)
+	if (graph_manager_type == "robust")
 	{
 		RobustManager *robust_manager = static_cast<RobustManager *>(graph_manager);
 		//outfile << "base\ttarget\trmse\tmatches\tinliers\ttransformation" << endl;
@@ -633,7 +637,7 @@ void SlamEngine::ShowStatistics()
 	cout << "Total runtime         : " << (clock() - total_start) / 1000.0 << endl;
 	cout << "Total frames          : " << frame_id << endl;
 	cout << "Number of keyframes   : ";
-	if (using_robust_optimizer)
+	if (graph_manager_type == "robust")
 		cout << ((RobustManager *)graph_manager)->keyframe_for_lc.size() << endl;
 	else
 		cout << 0 << endl;
@@ -641,7 +645,7 @@ void SlamEngine::ShowStatistics()
 	cout << "Min ftof Time          : " << min_ftof_time << "\t\tMax ftof Time: " << max_ftof_time << endl;
 	cout << "Avg ftof Time          : " << total_ftof_time / frame_id << endl;
 	cout << "-------------------------------------------------------------------------------" << endl;
-	if (using_robust_optimizer)
+	if (graph_manager_type == "robust")
 	{
 		cout << "Min Closure Time      : " << fixed << setprecision(3) << ((RobustManager *)graph_manager)->min_lc_detect_time << ",\t\tMax Closure Time: " << ((RobustManager *)graph_manager)->max_lc_detect_time << endl;
 		cout << "Avg Closure Time      : " << ((RobustManager *)graph_manager)->total_lc_detect_time / ((RobustManager *)graph_manager)->clousureCount << endl;

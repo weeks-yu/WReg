@@ -8,7 +8,7 @@ include_directories(../../robustoptimizer)
 link_directories(${PROJECT_BINARY_DIR}/lib)
 
 #Find VTK
-find_package(VTK 7.0 REQUIRED)
+find_package(VTK 7.1 REQUIRED)
 
 #Find PCL
 find_package(PCL 1.8 REQUIRED)
@@ -29,6 +29,10 @@ include_directories(${G2O_INCLUDE_DIR})
 find_package(KinectSDK2 REQUIRED)
 include_directories(${KinectSDK2_INCLUDE_DIRS})
 
+#Find OpenGL
+find_package(OpenGL REQUIRED)
+include_directories(${OPENGL_INCLUDE_DIR})
+
 #Find CUDA
 find_package(CUDA REQUIRED)
 include_directories(${CUDA_INCLUDE_DIRS})
@@ -43,6 +47,7 @@ APPEND_TARGET_ARCH_FLAGS()
 find_package(Qt5Core REQUIRED)
 find_package(Qt5Gui REQUIRED)
 find_package(Qt5Widgets REQUIRED)
+find_package(Qt5OpenGL REQUIRED)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 add_definitions(${Qt5Widgets_DEFINITIONS})
 
@@ -52,26 +57,9 @@ set(CMAKE_AUTOMOC ON)
 # to always look for includes there:
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-set(VIEWER_HEADERS
-	../../include/viewer/MainWindow.h
-	../../include/viewer/PclViewer.h
-	../../include/viewer/RegistrationViewer.h
-	../../include/viewer/Parser.h
-	../../include/viewer/SlamThread.h)
-	
-set(VIEWER_SOURCES
-	main.cpp
-	MainWindow.cpp
-	PclViewer.cpp
-	RegistrationViewer.cpp
-	Parser.cpp
-	SlamThread.cpp)
-	
-set(VIEWER_FORMS
-	ui/MainWindow.ui
-	ui/PclViewer.ui
-	ui/RegistrationViewer.ui
-	ui/DockRegistration.ui)
+file(GLOB VIEWER_HEADERS ../../include/viewer/*.h ../../include/viewer/*.hpp)
+file(GLOB VIEWER_SOURCES *.cpp)	
+file(GLOB VIEWER_FORMS ui/*.ui)
 
 #uic
 qt5_wrap_ui(VIEWER_UIS ${VIEWER_FORMS})
@@ -87,8 +75,9 @@ target_link_libraries(WReg
 	${CUDA_LIBRARIES}
 	${G2O_LIBRARIES}
 	${KinectSDK2_LIBRARIES}
+	${OPENGL_LIBRARIES}
 	vtkGUISupportQt
 	cudalib
 	tsdflib
 	algorithm)
-qt5_use_modules(WReg Core Gui Widgets)
+qt5_use_modules(WReg Core Gui Widgets OpenGL)
