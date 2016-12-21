@@ -55,7 +55,7 @@ private slots:
 	void onRegistrationPushButtonConnectKinectClicked(bool checked);
 	void onRegistrationRadioButtonModeToggled(bool checked);
 
-	void onBenchmarkOneIterationDone(const cv::Mat &rgb, const cv::Mat &depth, const bool showPointCloud = false);
+	void onBenchmarkOneIterationDone(const cv::Mat &rgb, const cv::Mat &depth, const Eigen::Matrix4f &tran);
 	void onBenchmarkRegistrationDone();
 
 protected:
@@ -70,6 +70,7 @@ private:
 	QMdiArea *mdiArea;
 	RegistrationViewer *registrationViewer;
 
+	TsdfModel *tsdf;
 	SlamEngine *engine;
 	SlamThread *thread;
 

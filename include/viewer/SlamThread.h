@@ -3,6 +3,7 @@
 
 #include "SlamEngine.h"
 #include "RGBDReader.h"
+#include "TsdfModel.h"
 #include <QThread>
 #include <QTextStream>
 
@@ -20,13 +21,13 @@ public:
 	SlamThread(SensorType st, const QString &dir, SlamEngine *eng, int *parameters);
 	~SlamThread();
 
-	void setParameters(int *parameters);
+	void setParameters(int *parameters); 
 	void setShouldRegister(bool reg) { shouldRegister = reg; }
 	SlamEngine* getEngine() { return engine; }
 	void setEngine(SlamEngine* eng) { engine = eng; }
 
 signals:
-	void OneIterationDone(const cv::Mat &rgb, const cv::Mat &depth, const bool showPointCloud = false);
+	void OneIterationDone(const cv::Mat &rgb, const cv::Mat &depth, const Eigen::Matrix4f &tran);
 	void RegistrationDone();
 
 protected:
@@ -45,6 +46,7 @@ private:
 	int frameStop;
 
 	SlamEngine *engine;
+	TsdfModel *tsdf;
 
 	RGBDReader *reader;
 };

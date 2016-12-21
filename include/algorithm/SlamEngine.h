@@ -10,6 +10,7 @@
 #include "SurfRegister.h"
 #include "OrbRegister.h"
 #include "IcpcudaRegister.h"
+#include "TriangleMesh.h"
 
 class SlamEngine
 {
@@ -37,11 +38,13 @@ public:
 	void setGraphManager(string type);
 	void setGraphParametersFeature(int min_matches, float inlier_percentage, float inlier_dist);
 
-	void RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, double timestamp);
+	Eigen::Matrix4f RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, double timestamp);
 	void AddGraph(Frame *frame, PointCloudPtr cloud, bool keyframe, double timestamp);
 	void AddGraph(Frame *frame, PointCloudPtr cloud, bool keyframe, bool quad, vector<int> &loop, double timestamp);
 	void AddNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, double timestamp, Eigen::Matrix4f trajectory);
 	PointCloudPtr GetScene();
+	GLMesh * GetMesh();
+
 	int GetFrameID() { return frame_id; }
 	vector<pair<double, Eigen::Matrix4f>> GetTransformations();
 

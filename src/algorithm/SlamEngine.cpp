@@ -243,7 +243,7 @@ void SlamEngine::setGraphParametersFeature(int min_matches, float inlier_percent
 	graph_manager->setParameters(params);
 }
 
-void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, double timestamp)
+Eigen::Matrix4f SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, double timestamp)
 {
 	timestamps.push_back(timestamp);
 	PointCloudPtr cloud_new = ConvertToPointCloudWithoutMissingData(imgDepth, imgRGB, timestamp, frame_id);
@@ -253,6 +253,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 #endif
 
 	PointCloudPtr cloud_downsampled = DownSamplingByVoxelGrid(cloud_new, downsample_rate, downsample_rate, downsample_rate);
+	Eigen::Matrix4f ret_tran = Eigen::Matrix4f::Identity();
 
 	std::cout << "Frame " << frame_id << ": ";
 
@@ -323,6 +324,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 		accumulated_transformation = Eigen::Matrix4f::Identity();
 		last_tran = Eigen::Matrix4f::Identity();
 		last_keyframe_tran = Eigen::Matrix4f::Identity();
+		ret_tran = Eigen::Matrix4f::Identity();
 	}
 	else
 	{
@@ -443,10 +445,12 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 
 				graph_manager->addNode(g_frame, false);
 			}
+			ret_tran = graph_manager->getLastTransformation();
 		}
 		else
 		{
-			transformation_matrix.push_back(last_keyframe_tran * relative_tran);
+			ret_tran = last_keyframe_tran * relative_tran;
+			transformation_matrix.push_back(ret_tran);
 			if (isKeyframe)
 				last_keyframe_tran = last_keyframe_tran * relative_tran;
 		}
@@ -498,6 +502,7 @@ void SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, do
 	}
 	std::cout << endl;
 	frame_id++;
+	return ret_tran;
 }
 
 void SlamEngine::AddGraph(Frame *frame, PointCloudPtr cloud, bool keyframe, double timestamp)

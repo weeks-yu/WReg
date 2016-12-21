@@ -126,12 +126,13 @@ void SlamThread::run()
 			break;
 		}
 
+		Eigen::Matrix4f tran = Eigen::Matrix4f::Identity();
 		if (shouldRegister)
 		{
-			engine->RegisterNext(r, d, k);
+			tran = engine->RegisterNext(r, d, k);
 			k++;
 		}
-		emit OneIterationDone(r, d);
+		emit OneIterationDone(r, d, tran);
 	}
 	
 	reader->stop();

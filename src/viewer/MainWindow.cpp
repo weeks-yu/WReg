@@ -30,6 +30,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	engine = nullptr;
 	thread = nullptr;
+	tsdf = nullptr;
 }
 
 MainWindow::~MainWindow()
@@ -568,7 +569,7 @@ void MainWindow::onRegistrationRadioButtonModeToggled(bool checked)
 	}
 }
 
-void MainWindow::onBenchmarkOneIterationDone(const cv::Mat &rgb, const cv::Mat &depth, bool showPointCloud)
+void MainWindow::onBenchmarkOneIterationDone(const cv::Mat &rgb, const cv::Mat &depth, const Eigen::Matrix4f &tran)
 {
 	cv::Mat tempRgb, tempDepth;
 	QImage *rgbImage, *depthImage;
@@ -588,10 +589,9 @@ void MainWindow::onBenchmarkOneIterationDone(const cv::Mat &rgb, const cv::Mat &
 		QImage::Format_RGB888);
 	registrationViewer->ShowDepthImage(depthImage);
 
-	if (showPointCloud)
-	{
-		registrationViewer->ShowPointCloud(engine->GetScene());
-	}
+	// tsdf fusion
+
+//	registrationViewer->ShowPointCloud(engine->GetScene());
 }
 
 void MainWindow::onBenchmarkRegistrationDone()
