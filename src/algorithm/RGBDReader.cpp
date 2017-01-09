@@ -9,3 +9,13 @@ RGBDReader::~RGBDReader()
 {
 
 }
+
+void RGBDReader::setIntrinsicColor(const Intrinsic &intr)
+{
+	intrColor = intr;
+}
+
+void RGBDReader::setIntrinsicDepth(const Intrinsic &intr)
+{
+	intrDepth = intr;
+}

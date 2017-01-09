@@ -59,7 +59,22 @@ ICPOdometry::ICPOdometry(int width,
 
 ICPOdometry::~ICPOdometry()
 {
+	for (int i = 0; i < NUM_PYRS; ++i)
+	{
+		int pyr_rows = height >> i;
+		int pyr_cols = width >> i;
 
+		depth_tmp[i].release();
+
+		vmaps_g_prev_[i].release();
+		nmaps_g_prev_[i].release();
+
+		vmaps_curr_[i].release();
+		nmaps_curr_[i].release();
+	}
+
+	sumData.release();
+	outData.release();
 }
 
 void ICPOdometry::initICP(unsigned short * depth, const float depthCutoff)

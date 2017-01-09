@@ -1,10 +1,59 @@
 #include "PointCloud.h"
 #include "Config.h"
 #include "CommonFunction.h"
+#include <pcl/features/normal_3d.h>
+#include <pcl/features/integral_image_normal.h>
 
 #ifdef SHOW_Z_INDEX
 float now_max_z, now_min_z;
 #endif
+
+PointCloudPtr ConvertToOrganizedPointCloud(const cv::Mat &depth, const cv::Mat &rgb, double timestamp, int frameID)
+{
+	PointCloudPtr cloud(new PointCloudT);
+	cloud->width = rgb.size().width;
+	cloud->height = rgb.size().height;
+	cloud->is_dense = false;
+	cloud->resize(cloud->height * cloud->width);
+	cloud->header.stamp = timestamp * 10000;
+	cloud->header.seq = frameID;
+
+#ifdef SHOW_Z_INDEX
+	float min_z = 5000.0, max_z = 0.0;
+#endif
+
+	float fx = Config::instance()->get<float>("camera_fx");  // focal length x
+	float fy = Config::instance()->get<float>("camera_fy");  // focal length y
+	float cx = Config::instance()->get<float>("camera_cx");  // optical center x
+	float cy = Config::instance()->get<float>("camera_cy");  // optical center y
+
+	float factor = Config::instance()->get<float>("depth_factor");	// for the 16-bit PNG files
+
+	for (int j = 0; j < cloud->height; j++)
+	{
+		for (int i = 0; i < cloud->width; i++)
+		{
+			PointT& pt = cloud->points[j * cloud->width + i];
+			pt.z = ((double)depth.at<ushort>(j, i)) / factor;
+			pt.x = (i - cx) * pt.z / fx;
+			pt.y = (j - cy) * pt.z / fy;
+			pt.b = rgb.at<cv::Vec3b>(j, i)[0];
+			pt.g = rgb.at<cv::Vec3b>(j, i)[1];
+			pt.r = rgb.at<cv::Vec3b>(j, i)[2];
+
+#ifdef SHOW_Z_INDEX
+			if (pt.z < min_z) min_z = pt.z;
+			if (pt.z > max_z) max_z = pt.z;
+#endif
+		}
+	}
+
+#ifdef SHOW_Z_INDEX
+	now_min_z = min_z;
+	now_max_z = max_z;
+#endif
+	return cloud;
+}
 
 PointCloudPtr ConvertToPointCloudWithoutMissingData(const cv::Mat &depth, const cv::Mat &rgb, double timestamp, int frameID)
 {
@@ -54,18 +103,40 @@ PointCloudPtr ConvertToPointCloudWithoutMissingData(const cv::Mat &depth, const 
 	return cloud;
 }
 
-void ConvertToPointCloudWithNormalCuda(PointCloudPtr &cloud, PointCloudNormalPtr &normal,
+PointCloudNormalPtr ComputeNormal(PointCloudPtr cloud)
+{
+	PointCloudNormalPtr normal(new PointCloudNormalT);
+	pcl::NormalEstimation<PointT, NormalT> ne;
+	ne.setInputCloud(cloud);
+	pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZRGB>());
+	ne.setSearchMethod(tree);
+	ne.setRadiusSearch(0.03);
+	ne.compute(*normal);
+
+	return normal;
+}
+
+PointCloudNormalPtr ComputeOrganizedNormal(PointCloudPtr cloud)
+{
+	PointCloudNormalPtr normal(new PointCloudNormalT);
+	pcl::IntegralImageNormalEstimation<PointT, NormalT> ne;
+	ne.setNormalEstimationMethod(ne.AVERAGE_3D_GRADIENT);
+	ne.setMaxDepthChangeFactor(0.03f);
+	ne.setNormalSmoothingSize(20.0f);
+	ne.setInputCloud(cloud);
+	ne.compute(*normal);
+
+	return normal;
+}
+
+void ConvertToPointCloudWithNormalCuda(PointCloudWithNormalPtr &cloud,
 	const cv::Mat &depth, const cv::Mat &rgb, double timestamp, int frameID)
 {
-	cloud = PointCloudPtr(new PointCloudT);
+	cloud = PointCloudWithNormalPtr(new PointCloudWithNormalT);
 	cloud->width = rgb.size().width;
 	cloud->height = rgb.size().height;
+	cloud->is_dense = false;
 	cloud->resize(cloud->height * cloud->width);
-
-	normal = PointCloudNormalPtr(new PointCloudNormalT);
-	normal->width = rgb.size().width;
-	normal->height = rgb.size().height;
-	normal->resize(cloud->height * cloud->width);
 	
 	float fx = Config::instance()->get<float>("camera_fx");  // focal length x
 	float fy = Config::instance()->get<float>("camera_fy");  // focal length y
@@ -85,7 +156,7 @@ void ConvertToPointCloudWithNormalCuda(PointCloudPtr &cloud, PointCloudNormalPtr
 	{
 		for (int i = 0; i < cloud->width; i++)
 		{
-			PointT& pt = cloud->points[j * cloud->width + i];
+			PointWithNormalT& pt = cloud->points[j * cloud->width + i];
 			pt.z = vmap.at<cv::Vec3f>(j, i)[2];
 			pt.x = vmap.at <cv::Vec3f>(j, i)[0];
 			pt.y = vmap.at <cv::Vec3f>(j, i)[1];
@@ -93,11 +164,9 @@ void ConvertToPointCloudWithNormalCuda(PointCloudPtr &cloud, PointCloudNormalPtr
 			pt.g = rgb.at<cv::Vec3b>(j, i)[1];
 			pt.r = rgb.at<cv::Vec3b>(j, i)[2];
 
-			NormalT& nm = normal->points[j * cloud->width + i];
-			nm.normal_x = nmap.at<cv::Vec3f>(j, i)[0];
-			nm.normal_y = nmap.at<cv::Vec3f>(j, i)[1];
-			nm.normal_z = nmap.at<cv::Vec3f>(j, i)[2];
-			normal->push_back(nm);
+			pt.normal_x = nmap.at<cv::Vec3f>(j, i)[0];
+			pt.normal_y = nmap.at<cv::Vec3f>(j, i)[1];
+			pt.normal_z = nmap.at<cv::Vec3f>(j, i)[2];
 		}
 	}
 	delete pcc;

@@ -17,7 +17,7 @@ public:
 	{
 	};
 
-	virtual void dataFusion(PointCloudPtr cloud, PointCloudNormalPtr normals,
+	virtual void dataFusion(PointCloudWithNormalPtr cloud,
 		Eigen::Matrix4f tran, int nHalfXres, int nHalfYres, double fCoeffX, double fCoeffY) = 0;
 
 	virtual void rayCast(double ix, double iy, double ax, double ay, double devide,

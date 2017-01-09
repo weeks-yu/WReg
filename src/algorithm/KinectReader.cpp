@@ -21,7 +21,7 @@ KinectReader::~KinectReader()
 	SafeRelease(infraredReader);
 }
 
-bool KinectReader::getNextFrame(cv::Mat &rgb, cv::Mat &depth)
+bool KinectReader::getNextFrame(cv::Mat &rgb, cv::Mat &depth, double &timestamp)
 {
 	std::vector<RGBQUAD> colorData;
 	std::vector<UINT16> depthData;

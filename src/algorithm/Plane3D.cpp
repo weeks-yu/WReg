@@ -215,28 +215,25 @@ bool More_Plane3D(const Plane3D& a,const Plane3D& b)
 }
 
 
-Plane3D coff_cloud(pcl::PointCloud<pcl::Normal>::Ptr normals, PointCloud::Ptr cloud)
+Plane3D coff_cloud(pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud)
 {
 	//using coff
 	double Ex = 0,Ey = 0,Ez = 0,Ex2 = 0,Ey2 = 0,Ez2 = 0,Exy = 0,Eyz = 0,Exz = 0;
 	for(int i = 0;i < cloud->size();i++)
 	{
-		if(!ISNAN(normals->at(i).normal_x))
+		if (!ISNAN(cloud->at(i).normal_x))
 		{
-			
-				pcl::PointXYZRGB pp = cloud->at(i);
-				//update
-				Ex += pp.x;
-				Ey += pp.y;
-				Ez += pp.z;
-				Ex2 += pp.x*pp.x;
-				Ey2 += pp.y*pp.y;
-				Ez2 += pp.z*pp.z;
-				Exy += pp.x*pp.y;
-				Eyz += pp.y*pp.z;
-				Exz += pp.x*pp.z;
-
-			
+			pcl::PointXYZRGBNormal pp = cloud->at(i);
+			//update
+			Ex += pp.x;
+			Ey += pp.y;
+			Ez += pp.z;
+			Ex2 += pp.x*pp.x;
+			Ey2 += pp.y*pp.y;
+			Ez2 += pp.z*pp.z;
+			Exy += pp.x*pp.y;
+			Eyz += pp.y*pp.z;
+			Exz += pp.x*pp.z;
 		}
 	}
 	double fem = -Ex2*Ey2*Ez2 + Ex2*Eyz*Eyz + Ez2*Exy*Exy + Ey2*Exz*Exz - 2*Exy*Eyz*Exz;

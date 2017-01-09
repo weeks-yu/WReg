@@ -148,7 +148,7 @@ double p_angle(Plane3D& p, double a, double b, double c, double d);
 double p_angle(Plane3D& p, coffCal& c);
 double p_angle(coffCal& a, coffCal& b);
 
-Plane3D coff_cloud(pcl::PointCloud<pcl::Normal>::Ptr normals, PointCloud::Ptr cloud);
+Plane3D coff_cloud(pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud);
 
 void dbplane_segment(PointCloud::Ptr cloud, PointNormal::Ptr normals,
 		                int minInlier, double sthre, double athre, double dthre,

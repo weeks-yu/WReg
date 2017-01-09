@@ -115,7 +115,7 @@ void TsdfModel::changeLocal(Eigen::Matrix4f ltran,
 	local_tran = ltran;
 }
 
-void TsdfModel::dataFusion(PointCloud::Ptr cloud, PointNormal::Ptr normals, 
+void TsdfModel::dataFusion(pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud, 
 			                Eigen::Matrix4f tran, int nHalfXres, int nHalfYres, double fCoeffX, double fCoeffY)
 {
 	clock_t start, finish, duration;
@@ -123,7 +123,7 @@ void TsdfModel::dataFusion(PointCloud::Ptr cloud, PointNormal::Ptr normals,
 	start = clock(); 
 	if(doRotate)
 	{
-		Plane3D coff = coff_cloud(normals,cloud);
+		Plane3D coff = coff_cloud(cloud);
 		double dis = (coff.a*current_coff.a)+(coff.b*current_coff.b)+(coff.c*current_coff.c);
 		if(current_coff.inliers == 0 || dis < 0.7)
 		{
@@ -156,7 +156,7 @@ void TsdfModel::dataFusion(PointCloud::Ptr cloud, PointNormal::Ptr normals,
 		double max_X,max_Y,max_Z,min_X,min_Y,min_Z;
 		for(int i = 0;i < cloud->size();i++)
 		{
-			pcl::PointXYZRGB pp = cloud->at(i);
+			pcl::PointXYZRGBNormal pp = cloud->at(i);
 			Eigen::Vector4f v;
 			v[0] = pp.x ;
 			v[1] = pp.y;
@@ -197,13 +197,13 @@ void TsdfModel::dataFusion(PointCloud::Ptr cloud, PointNormal::Ptr normals,
 	std::cout<<"change:"<<duration<<std::endl;
 
 	start = clock();
-	Traversal(cloud, normals, tran, nHalfXres, nHalfYres, fCoeffX, fCoeffY);
+	Traversal(cloud, tran, nHalfXres, nHalfYres, fCoeffX, fCoeffY);
 	finish = clock(); 
 	duration = (double)(finish - start) * 1000 / CLOCKS_PER_SEC ; 
 	std::cout<<"fusion:"<<duration<<std::endl;
 }
 
-void TsdfModel::Traversal(PointCloud::Ptr cloud, PointNormal::Ptr normals, 
+void TsdfModel::Traversal(pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud,
 			                Eigen::Matrix4f tran, int nHalfXres, int nHalfYres, double fCoeffX, double fCoeffY)
 {
 	int size = cloud->points.size();
@@ -218,9 +218,9 @@ void TsdfModel::Traversal(PointCloud::Ptr cloud, PointNormal::Ptr normals,
 		ptsx[i] = cloud->points[i].x;
 		ptsy[i] = cloud->points[i].y;
 		ptsz[i] = cloud->points[i].z;
-		norx[i] = normals->points[i].normal_x;
-		nory[i] = normals->points[i].normal_y;
-		norz[i] = normals->points[i].normal_z;
+		norx[i] = cloud->points[i].normal_x;
+		nory[i] = cloud->points[i].normal_y;
+		norz[i] = cloud->points[i].normal_z;
 	}
 	Eigen::Matrix4f mcT = tran.inverse();
 	float* mc = new float[4*4];

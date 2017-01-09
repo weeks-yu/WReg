@@ -16,6 +16,8 @@
 #include <vtkRenderWindow.h>
 
 #include "RegistrationViewer.h"
+#include "MeshModel.h"
+#include "PointCloudModel.h"
 
 typedef pcl::PointXYZRGB PointT;
 typedef pcl::PointCloud<PointT> PointCloudT;
@@ -37,6 +39,8 @@ private:
 // 	void ShowBenchmarkTest(const QString &directory);
 // 	void ShowBenchmarkResult(const QString &filename, int fi, int fst, int fed);
 	void ShowRegistration();
+	void reconstructPointCloud();
+	void reconstructMesh();
 
 private slots:
 	void onActionOpenTriggered();
@@ -55,7 +59,8 @@ private slots:
 	void onRegistrationPushButtonConnectKinectClicked(bool checked);
 	void onRegistrationRadioButtonModeToggled(bool checked);
 
-	void onBenchmarkOneIterationDone(const cv::Mat &rgb, const cv::Mat &depth, const Eigen::Matrix4f &tran);
+	void onInitDone(const Intrinsic &intrColor, const Intrinsic &intrDepth);
+	void onBenchmarkOneIterationDone(int id, const Eigen::Matrix4f &tran);
 	void onBenchmarkRegistrationDone();
 
 protected:
@@ -70,7 +75,9 @@ private:
 	QMdiArea *mdiArea;
 	RegistrationViewer *registrationViewer;
 
-	TsdfModel *tsdf;
+	Intrinsic intr;
+	MeshModel *mm;
+	PointCloudModel *pcm;
 	SlamEngine *engine;
 	SlamThread *thread;
 

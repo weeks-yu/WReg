@@ -10,20 +10,13 @@
 #include "SurfRegister.h"
 #include "OrbRegister.h"
 #include "IcpcudaRegister.h"
-#include "TriangleMesh.h"
+//#include "TriangleMesh.h"
 
 class SlamEngine
 {
 public:
 	SlamEngine();
 	~SlamEngine();
-
-	void setFrameInterval(int frameInterval) { frame_interval = frameInterval; }
-	int getFrameInterval() { return frame_interval; }
-	void setFrameStart(int frameStart) { frame_start = frameStart; }
-	int getFrameStart() { return frame_start; }
-	void setFrameStop(int frameStop) { frame_stop = frameStop; }
-	int getFrameStop() { return frame_stop; }
 
 	void setPairwiseRegister(string type);
 	void setSecondPairwiseRegister(string type);
@@ -42,11 +35,11 @@ public:
 	void AddGraph(Frame *frame, PointCloudPtr cloud, bool keyframe, double timestamp);
 	void AddGraph(Frame *frame, PointCloudPtr cloud, bool keyframe, bool quad, vector<int> &loop, double timestamp);
 	void AddNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, double timestamp, Eigen::Matrix4f trajectory);
-	PointCloudPtr GetScene();
-	GLMesh * GetMesh();
+//	PointCloudPtr GetScene();
+//	GLMesh * GetMesh();
 
-	int GetFrameID() { return frame_id; }
-	vector<pair<double, Eigen::Matrix4f>> GetTransformations();
+	Eigen::Matrix4f GetTransformation(int k);
+	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> GetTransformations();
 
 	void SaveLogs(ofstream &outfile);
 	void ShowStatistics();
@@ -54,11 +47,11 @@ public:
 #ifdef SAVE_TEST_INFOS
 public:
 	vector<int> keyframe_candidates_id;
-	vector<pair<cv::Mat, cv::Mat>> keyframe_candidates;
 	vector<int> keyframes_id;
-	vector<pair<cv::Mat, cv::Mat>> keyframes;
-	vector<string> keyframes_inliers_sig;
-	vector<string> keyframes_exists_sig;
+//	vector<pair<cv::Mat, cv::Mat>> keyframe_candidates;
+// 	vector<pair<cv::Mat, cv::Mat>> keyframes;
+// 	vector<string> keyframes_inliers_sig;
+// 	vector<string> keyframes_exists_sig;
 #endif
 
 public:
@@ -78,18 +71,11 @@ public:
 
 private:
 	int frame_id;
-	int frame_interval;
-	int frame_start;
-	int frame_stop;
 
 	// results
-	Eigen::Matrix4f last_tran;
-	Eigen::Matrix4f last_keyframe_tran;
-	Eigen::Matrix4f accumulated_transformation;
-	int accumulated_frame_count;
 	vector<Eigen::Matrix4f> transformation_matrix;
-	vector<PointCloudPtr> point_clouds;
-	vector<double> timestamps;
+//	vector<double> timestamps;
+//	vector<PointCloudPtr> point_clouds;
 
 	// statistics
 	clock_t total_start;
@@ -98,6 +84,10 @@ private:
 	float total_ftof_time;
 
 	// temporary variables
+	Eigen::Matrix4f last_tran;
+	Eigen::Matrix4f last_keyframe_tran;
+	Eigen::Matrix4f accumulated_transformation;
+	int accumulated_frame_count;
 	vector<PointCloudPtr> cloud_temp;
 	cv::Mat last_depth;
 

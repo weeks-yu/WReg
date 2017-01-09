@@ -3609,7 +3609,7 @@ void tsdf_test()
 	ss << directory << "/read.txt";
 	ifstream fileInput(ss.str());
 
-	int id_start = -1, id_end = 10, id_interval = 1;
+	int id_start = -1, id_end = 2, id_interval = 1;
 	string line;
 	double timestamp;
 	Eigen::Vector3f t;
@@ -3710,13 +3710,13 @@ void tsdf_test()
 	input.close();
 
 	double devide = 0.01;
-	Rgbd::TsdfModel tsdf(Eigen::Matrix4f::Identity(), 1.2, 1, 4.0, -1.5, -1.0, 0.0, devide, devide * 10, devide / 10, true);
+	TsdfModel tsdf(Eigen::Matrix4f::Identity(), 1.2, 1, 4.0, -1.5, -1.0, 0.0, devide, devide * 10, devide / 10, true);
 	int halfwidth = Config::instance()->get<int>("image_width") / 2;
 	int halfheight = Config::instance()->get<int>("image_height") / 2;
 	float fx = Config::instance()->get<float>("camera_fx");
 	float fy = Config::instance()->get<float>("camera_fy");
 
-	Rgbd::SNPGenerator gen(&tsdf, devide);
+	SNPGenerator gen(&tsdf, devide);
 /*	Rgbd::GLMesh* mesh = new Rgbd::GLMesh();*/
 
 	PointCloudPtr cloud_all(new PointCloudT);

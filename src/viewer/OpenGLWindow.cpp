@@ -43,7 +43,10 @@ OpenGLWindow::~OpenGLWindow()
 
 void OpenGLWindow::setMesh(GLMesh *mesh_)
 {
-	*mesh = *mesh_;
+	if (mesh == nullptr)
+		mesh = new GLMesh(*mesh_);
+	else
+		*mesh = *mesh_;
 }
 
 void OpenGLWindow::initializeGL()
@@ -59,12 +62,26 @@ void OpenGLWindow::initializeGL()
 
 	fov = 60.0;
 	aspect = (GLfloat)w / (GLfloat)h;
-	zNear = 1.0;
-	zFar = 20.0;
+	zNear = 0.1;
+	zFar = 200.0;
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	gluPerspective(fov, aspect, zNear, zFar);
 	//glOrtho(-5, 5, -5, 5, -10, 10);
+
+	glEnable(GL_LIGHT0);											// Enable Default Light
+	glEnable(GL_LIGHTING);											// Enable Lighting
+	glEnable(GL_COLOR_MATERIAL);
+
+	GLfloat ambient[] = { 0.2, 0.2, 0.2, 1.0 };
+	GLfloat lightposition[] = { 1.0, 1.0, 1.0, 1.0 };
+	GLfloat white[] = {1.0, 1.0, 1.0, 1.0};
+	glLightfv(GL_LIGHT0, GL_POSITION, lightposition);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, white);
+	glLightfv(GL_LIGHT0, GL_SPECULAR, white);
+	glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambient);
+	
+//	glLightfv(GL_LIGHT0, GL_POSITION, lightposition);
 }
 
 void OpenGLWindow::paintGL()
@@ -75,57 +92,58 @@ void OpenGLWindow::paintGL()
 	glLoadIdentity();
 	gluLookAt(m_camera.x(), m_camera.y(), m_camera.z(), m_center.x(), m_center.y(), m_center.z(), m_up.x(), m_up.y(), m_up.z());
 	glScalef(m_scale.x(), m_scale.y(), m_scale.z());
-	//drawMesh();
 
-	static const GLfloat verts[8][3] = {
-		{ -1, -1, -1 },
-		{ 1, -1, -1 },
-		{ 1, 1, -1 },
-		{ -1, 1, -1 },
-		{ -1, -1, 1 },
-		{ 1, -1, 1 },
-		{ 1, 1, 1 },
-		{ -1, 1, 1}
-	};
+	drawMesh();
 
-	static const GLubyte indices[][4] = {
-		{ 0, 1, 2, 3 },
-		{ 4, 7, 6, 5 },
-		{ 0, 4, 5, 1 },
-		{ 3, 2, 6, 7 },
-		{ 0, 3, 7, 4 },
-		{ 1, 5, 6, 2 }
-	};
-
-// 	static const GLubyte indices[][4] = {
-// 		{ 0, 3, 2, 1 },
-// 		{ 4, 5, 6, 7 },
-// 		{ 0, 1, 5, 4 },
-// 		{ 3, 7, 6, 2 },
-// 		{ 0, 4, 7, 3 },
-// 		{ 1, 2, 6, 5 }
+// 	static const GLfloat verts[8][3] = {
+// 		{ -1, -1, -1 },
+// 		{ 1, -1, -1 },
+// 		{ 1, 1, -1 },
+// 		{ -1, 1, -1 },
+// 		{ -1, -1, 1 },
+// 		{ 1, -1, 1 },
+// 		{ 1, 1, 1 },
+// 		{ -1, 1, 1}
 // 	};
-
-	static const GLfloat colors[][4] = {
-		{ 1, 0, 0, 1 },
-		{ 1, 1, 0, 1 },
-		{ 1, 0, 1, 1 },
-		{ 0, 1, 0, 1 },
-		{ 0, 1, 1, 1 },
-		{ 0, 0, 1, 1 }
-	};
-
-	glPolygonMode(GL_FRONT, GL_FILL);
-	glBegin(GL_QUADS);
-	for (int i = 0; i < 6; i++)
-	{
-		glColor4fv(colors[i]);
-		glVertex3fv(verts[indices[i][0]]);
-		glVertex3fv(verts[indices[i][1]]);
-		glVertex3fv(verts[indices[i][2]]);
-		glVertex3fv(verts[indices[i][3]]);
-	}
-	glEnd();
+// 
+// 	static const GLubyte indices[][4] = {
+// 		{ 0, 1, 2, 3 },
+// 		{ 4, 7, 6, 5 },
+// 		{ 0, 4, 5, 1 },
+// 		{ 3, 2, 6, 7 },
+// 		{ 0, 3, 7, 4 },
+// 		{ 1, 5, 6, 2 }
+// 	};
+// 
+// // 	static const GLubyte indices[][4] = {
+// // 		{ 0, 3, 2, 1 },
+// // 		{ 4, 5, 6, 7 },
+// // 		{ 0, 1, 5, 4 },
+// // 		{ 3, 7, 6, 2 },
+// // 		{ 0, 4, 7, 3 },
+// // 		{ 1, 2, 6, 5 }
+// // 	};
+// 
+// 	static const GLfloat colors[][4] = {
+// 		{ 1, 0, 0, 1 },
+// 		{ 1, 1, 0, 1 },
+// 		{ 1, 0, 1, 1 },
+// 		{ 0, 1, 0, 1 },
+// 		{ 0, 1, 1, 1 },
+// 		{ 0, 0, 1, 1 }
+// 	};
+// 
+// 	glPolygonMode(GL_FRONT, GL_FILL);
+// 	glBegin(GL_QUADS);
+// 	for (int i = 0; i < 6; i++)
+// 	{
+// 		glColor4fv(colors[i]);
+// 		glVertex3fv(verts[indices[i][0]]);
+// 		glVertex3fv(verts[indices[i][1]]);
+// 		glVertex3fv(verts[indices[i][2]]);
+// 		glVertex3fv(verts[indices[i][3]]);
+// 	}
+// 	glEnd();
 
 	glFlush();
 }
@@ -176,9 +194,6 @@ void OpenGLWindow::wheelEvent(QWheelEvent *event)
 
 void OpenGLWindow::drawMesh()
 {
-	/*为光照模型指定材质参数*/
-	int mtr = 8;
-
 	glMaterialfv(GL_FRONT, GL_AMBIENT, Materials[0]);
 	glMaterialfv(GL_FRONT, GL_DIFFUSE, Materials[1]);
 	glMaterialfv(GL_FRONT, GL_SPECULAR, Materials[2]);
@@ -200,11 +215,11 @@ void OpenGLWindow::drawMesh()
 			v[0] = mesh->gl_vertexes.at(m.vertexes[0]);
 			v[1] = mesh->gl_vertexes.at(m.vertexes[1]);
 			v[2] = mesh->gl_vertexes.at(m.vertexes[2]);
-			glNormal3f(v[0].v[3], v[0].v[4], v[0].v[5]);
+			glNormal3f(-v[0].v[3], -v[0].v[4], -v[0].v[5]);
 			glVertex3f(v[0].v[0], v[0].v[1], v[0].v[2]);
-			glNormal3f(v[1].v[3], v[1].v[4], v[1].v[5]);
+			glNormal3f(-v[1].v[3], -v[1].v[4], -v[1].v[5]);
 			glVertex3f(v[1].v[0], v[1].v[1], v[1].v[2]);
-			glNormal3f(v[2].v[3], v[2].v[4], v[2].v[5]);
+			glNormal3f(-v[2].v[3], -v[2].v[4], -v[2].v[5]);
 			glVertex3f(v[2].v[0], v[2].v[1], v[2].v[2]);
 			//glEnd();
 		}

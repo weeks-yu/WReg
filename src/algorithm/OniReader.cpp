@@ -12,7 +12,7 @@ OniReader::~OniReader()
 
 }
 
-bool OniReader::getNextFrame(cv::Mat &rgb, cv::Mat &depth)
+bool OniReader::getNextFrame(cv::Mat &rgb, cv::Mat &depth, double &timestamp)
 {
 	VideoFrameRef oniColor, oniDepth;
 	if (colorStream.readFrame(&oniColor) == STATUS_OK && depthStream.readFrame(&oniDepth) == STATUS_OK)

@@ -15,7 +15,7 @@ public:
 
 // 	virtual bool getNextColorFrame(cv::Mat &rgb);
 // 	virtual bool getNextDepthFrame(cv::Mat &depth);
-	virtual bool getNextFrame(cv::Mat &rgb, cv::Mat &depth);
+	virtual bool getNextFrame(cv::Mat &rgb, cv::Mat &depth, double &timestamp);
 	virtual void registerColorToDepth(const cv::Mat &rgb, const cv::Mat &depth, cv::Mat &rgbRegistered);
 	virtual void registerDepthToColor(const cv::Mat &rgb, const cv::Mat &depth, cv::Mat &depthRegistered);
 

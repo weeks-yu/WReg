@@ -14,7 +14,7 @@ ImageReader::~ImageReader()
 
 }
 
-bool ImageReader::getNextFrame(cv::Mat &rgb, cv::Mat &depth)
+bool ImageReader::getNextFrame(cv::Mat &rgb, cv::Mat &depth, double &timestamp)
 {
 	if (rgbStream.empty() || depthStream.empty())
 	{

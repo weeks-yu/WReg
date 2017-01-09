@@ -1,6 +1,9 @@
 #include "SlamEngine.h"
 #include "PointCloud.h"
 #include "Transformation.h"
+//#include "TsdfModel.h"
+#include "SNPGenerator.h"
+#include <pcl/features/normal_3d.h>
 
 #ifdef SHOW_Z_INDEX
 extern float now_min_z;
@@ -60,6 +63,18 @@ SlamEngine::~SlamEngine()
 	if (icpcuda)
 	{
 		delete icpcuda;
+	}
+	if (pairwise_register)
+	{
+		delete pairwise_register;
+	}
+	if (pairwise_register_2)
+	{
+		delete pairwise_register_2;
+	}
+	if (graph_manager)
+	{
+		delete graph_manager;
 	}
 }
 
@@ -245,14 +260,14 @@ void SlamEngine::setGraphParametersFeature(int min_matches, float inlier_percent
 
 Eigen::Matrix4f SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, double timestamp)
 {
-	timestamps.push_back(timestamp);
-	PointCloudPtr cloud_new = ConvertToPointCloudWithoutMissingData(imgDepth, imgRGB, timestamp, frame_id);
+//	timestamps.push_back(timestamp);
+//	PointCloudPtr cloud_new = ConvertToPointCloudWithoutMissingData(imgDepth, imgRGB, timestamp, frame_id);
 
 #ifdef SHOW_Z_INDEX
 	cout << now_min_z << ' ' << now_max_z << endl;
 #endif
 
-	PointCloudPtr cloud_downsampled = DownSamplingByVoxelGrid(cloud_new, downsample_rate, downsample_rate, downsample_rate);
+//	PointCloudPtr cloud_downsampled = DownSamplingByVoxelGrid(cloud_new, downsample_rate, downsample_rate, downsample_rate);
 	Eigen::Matrix4f ret_tran = Eigen::Matrix4f::Identity();
 
 	std::cout << "Frame " << frame_id << ": ";
@@ -260,7 +275,7 @@ Eigen::Matrix4f SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &i
 	if (frame_id == 0)
 	{
 		total_start = clock();
-		point_clouds.push_back(cloud_downsampled);
+//		point_clouds.push_back(cloud_downsampled);
 
 		if (pairwise_register_type == "icpcuda" || pairwise_register_type_2 == "icpcuda")
 		{
@@ -307,12 +322,12 @@ Eigen::Matrix4f SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &i
 
 #ifdef SAVE_TEST_INFOS
 			keyframe_candidates_id.push_back(frame_id);
-			keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
+//			keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 
 			if (is_last_frame_candidate)
 			{
 				keyframes_id.push_back(frame_id);
-				keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
+//				keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 			}
 #endif
 		}
@@ -328,7 +343,7 @@ Eigen::Matrix4f SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &i
 	}
 	else
 	{
-		PointCloudPtr cloud_for_registration = cloud_new;
+//		PointCloudPtr cloud_for_registration = cloud_new;
 		PointCloudPtr cloud_transformed(new PointCloudT);
 		Eigen::Matrix4f relative_tran = Eigen::Matrix4f::Identity();
 		Eigen::Matrix4f global_tran = Eigen::Matrix4f::Identity();
@@ -337,7 +352,7 @@ Eigen::Matrix4f SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &i
 		bool ransac_failed = false;
 		Frame *f_frame;
 
-		point_clouds.push_back(cloud_downsampled);
+//		point_clouds.push_back(cloud_downsampled);
 
 		if (pairwise_register_type == "icpcuda")
 		{
@@ -428,12 +443,12 @@ Eigen::Matrix4f SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &i
 
 #ifdef SAVE_TEST_INFOS
 				keyframe_candidates_id.push_back(frame_id);
-				keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
+//				keyframe_candidates.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 
 				if (isKeyframe)
 				{
 					keyframes_id.push_back(frame_id);
-					keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
+//					keyframes.push_back(pair<cv::Mat, cv::Mat>(imgRGB, imgDepth));
 				}
 #endif
 			}
@@ -507,8 +522,8 @@ Eigen::Matrix4f SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &i
 
 void SlamEngine::AddGraph(Frame *frame, PointCloudPtr cloud, bool keyframe, double timestamp)
 {
-	timestamps.push_back(timestamp);
-	point_clouds.push_back(cloud);
+//	timestamps.push_back(timestamp);
+//	point_clouds.push_back(cloud);
 	
 	if (frame_id == 0)
 	{
@@ -546,8 +561,8 @@ void SlamEngine::AddGraph(Frame *frame, PointCloudPtr cloud, bool keyframe, doub
 
 void SlamEngine::AddGraph(Frame *frame, PointCloudPtr cloud, bool keyframe, bool quad, vector<int> &loop, double timestamp)
 {
-	timestamps.push_back(timestamp);
-	point_clouds.push_back(cloud);
+//	timestamps.push_back(timestamp);
+//	point_clouds.push_back(cloud);
 	cout << "Frame " << frame_id;
 	if (frame_id == 0)
 	{
@@ -563,53 +578,104 @@ void SlamEngine::AddGraph(Frame *frame, PointCloudPtr cloud, bool keyframe, bool
 
 void SlamEngine::AddNext(const cv::Mat &imgRGB, const cv::Mat &imgDepth, double timestamp, Eigen::Matrix4f trajectory)
 {
-	timestamps.push_back(timestamp);
-	PointCloudPtr cloud_new = ConvertToPointCloudWithoutMissingData(imgDepth, imgRGB, timestamp, frame_id);
-	PointCloudPtr cloud_downsampled = DownSamplingByVoxelGrid(cloud_new, downsample_rate, downsample_rate, downsample_rate);
-
-	point_clouds.push_back(cloud_downsampled);
+//	timestamps.push_back(timestamp);
+//	PointCloudPtr cloud_new = ConvertToPointCloudWithoutMissingData(imgDepth, imgRGB, timestamp, frame_id);
+//	PointCloudPtr cloud_downsampled = DownSamplingByVoxelGrid(cloud_new, downsample_rate, downsample_rate, downsample_rate);
+//
+//	point_clouds.push_back(cloud_downsampled);
 	transformation_matrix.push_back(trajectory);
 	frame_id++;
 }
 
-PointCloudPtr SlamEngine::GetScene()
+// PointCloudPtr SlamEngine::GetScene()
+// {
+// 	PointCloudPtr cloud(new PointCloudT);
+// 	cloud_temp.clear();
+// 	for (int i = 0; i < frame_id; i++)
+// 	{
+// 		PointCloudPtr tc(new PointCloudT);
+// 		if (graph_manager_type == "robust")
+// 			pcl::transformPointCloud(*point_clouds[i], *tc, graph_manager->getTransformation(i));
+// 		else
+// 			pcl::transformPointCloud(*point_clouds[i], *tc, transformation_matrix[i]);
+// 		
+// 		*cloud += *tc;
+// 		if ((i + 1) % 30 == 0 || i == frame_id - 1)
+// 		{
+// 			cloud = DownSamplingByVoxelGrid(cloud, downsample_rate, downsample_rate, downsample_rate);
+// 			cloud_temp.push_back(cloud);
+// 		}
+// 	}
+// 	cloud = PointCloudPtr(new PointCloudT);
+// 	for (int i = 0; i < frame_id / 30 + 1; i++)
+// 	{
+// 		*cloud += *(cloud_temp[i]);
+// 	}
+// 	cloud = DownSamplingByVoxelGrid(cloud, downsample_rate, downsample_rate, downsample_rate);
+// 	return cloud;
+// }
+// 
+// GLMesh * SlamEngine::GetMesh()
+// {
+// 	int count;
+// 	cudaError_t error = cudaGetDeviceCount(&count);
+// 
+// 	double devide = 0.01;
+// 	TsdfModel tsdf(Eigen::Matrix4f::Identity(), 1.5, 1, 5.0, -1.5, -1.0, 0.0, devide, devide * 10, devide / 10, true);
+// 	SNPGenerator gen(&tsdf, devide);
+// 
+// 	float fx = Config::instance()->get<float>("camera_fx");
+// 	float fy = Config::instance()->get<float>("camera_fy");
+// 	int halfwidth = Config::instance()->get<int>("image_width") / 2;
+// 	int halfheight = Config::instance()->get<int>("image_height") / 2;
+// 
+// 	for (int i = 0; i < frame_id; i++)
+// 	{
+// 		PointCloudPtr tc(new PointCloudT);
+// 		Eigen::Matrix4f tran = Eigen::Matrix4f::Identity();
+// 		if (graph_manager_type == "robust")
+// 			tran = graph_manager->getTransformation(i);
+// 		else
+// 			tran = transformation_matrix[i];
+// 		pcl::transformPointCloud(*point_clouds[i], *tc, tran);
+// 
+// 		pcl::PointCloud<pcl::Normal>::Ptr normal(new pcl::PointCloud<pcl::Normal>);
+// 		pcl::NormalEstimation<pcl::PointXYZRGB, pcl::Normal> ne;
+// 		ne.setInputCloud(tc);
+// 		pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZRGB>());
+// 		ne.setSearchMethod(tree);
+// 		ne.setRadiusSearch(0.03);
+// 		ne.compute(*normal);
+// 
+// 		tsdf.dataFusion(tc, normal, tran, halfwidth, halfheight, fx, fy);
+// 		gen.castNextMeshes(tran);
+// 	}
+// 
+// 	GLMesh *mesh = new GLMesh(*gen.mesh);
+// 	return mesh;
+// }
+
+Eigen::Matrix4f SlamEngine::GetTransformation(int k)
 {
-	PointCloudPtr cloud(new PointCloudT);
-	cloud_temp.clear();
-	for (int i = 0; i < frame_id; i++)
+	if (k >= 0 && k < frame_id)
 	{
-		PointCloudPtr tc(new PointCloudT);
-		if (graph_manager_type == "robust")
-			pcl::transformPointCloud(*point_clouds[i], *tc, graph_manager->getTransformation(i));
+		if (using_optimizer)
+			return graph_manager->getTransformation(k);
 		else
-			pcl::transformPointCloud(*point_clouds[i], *tc, transformation_matrix[i]);
-		
-		*cloud += *tc;
-		if ((i + 1) % 30 == 0 || i == frame_id - 1)
-		{
-			cloud = DownSamplingByVoxelGrid(cloud, downsample_rate, downsample_rate, downsample_rate);
-			cloud_temp.push_back(cloud);
-		}
+			return transformation_matrix[k];
 	}
-	cloud = PointCloudPtr(new PointCloudT);
-	for (int i = 0; i < frame_id / 30 + 1; i++)
-	{
-		*cloud += *(cloud_temp[i]);
-	}
-	cloud = DownSamplingByVoxelGrid(cloud, downsample_rate, downsample_rate, downsample_rate);
-	return cloud;
 }
 
-vector<pair<double, Eigen::Matrix4f>> SlamEngine::GetTransformations()
+vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> SlamEngine::GetTransformations()
 {
-	vector<pair<double, Eigen::Matrix4f>> ret;
+	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> ret;
 
 	for (int i = 0; i < frame_id; i++)
 	{
 		if (using_optimizer)
-			ret.push_back(pair<double, Eigen::Matrix4f>(timestamps[i], graph_manager->getTransformation(i)));
+			ret.push_back(graph_manager->getTransformation(i));
 		else
-			ret.push_back(pair<double, Eigen::Matrix4f>(timestamps[i], transformation_matrix[i]));
+			ret.push_back(transformation_matrix[i]);
 	}
 	return ret;
 }

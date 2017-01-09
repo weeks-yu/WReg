@@ -34,7 +34,7 @@ public:
 
 // 	virtual bool getNextColorFrame(cv::Mat &rgb) = 0;
 // 	virtual bool getNextDepthFrame(cv::Mat &depth) = 0;
-	virtual bool getNextFrame(cv::Mat &rgb, cv::Mat &depth) = 0;
+	virtual bool getNextFrame(cv::Mat &rgb, cv::Mat &depth, double &timestamp) = 0;
 	virtual void registerColorToDepth(const cv::Mat &rgb, const cv::Mat &depth, cv::Mat &rgbRegistered) = 0;
 	virtual void registerDepthToColor(const cv::Mat &rgb, const cv::Mat &depth, cv::Mat &depthRegistered) = 0;
 /*	virtual unsigned short getMaxDepth();*/
@@ -42,6 +42,9 @@ public:
 	virtual bool create(const char* mode = NULL) = 0;
 	virtual void start() = 0;
 	virtual void stop() = 0;
+
+	virtual void setIntrinsicColor(const Intrinsic &intr);
+	virtual void setIntrinsicDepth(const Intrinsic &intr);
 
 public:
 	Intrinsic intrDepth;

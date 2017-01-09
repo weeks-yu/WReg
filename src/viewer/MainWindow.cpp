@@ -6,6 +6,7 @@
 #include "PclViewer.h"
 #include "Parser.h"
 #include "Transformation.h"
+#include "RGBDDatas.h"
 
 #include <QFileDialog>
 #include <QMessageBox>
@@ -15,6 +16,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include "RgbdDatas.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -30,7 +32,8 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	engine = nullptr;
 	thread = nullptr;
-	tsdf = nullptr;
+	mm = nullptr;
+	pcm = nullptr;
 }
 
 MainWindow::~MainWindow()
@@ -210,6 +213,45 @@ void MainWindow::ShowRegistration()
 	subWindow->showMaximized();
 }
 
+void MainWindow::reconstructPointCloud()
+{
+	if (pcm)
+	{
+		delete pcm;
+	}
+	cout << "Reconstructing Point Clouds" << endl;
+	pcm = new PointCloudModel(0.01);
+	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> trans = engine->GetTransformations();
+	
+	for (int i = 0; i < trans.size(); i++)
+	{
+		PointCloudPtr cloud = RGBDDatas::getCloud(i);
+		pcl::transformPointCloud(*cloud, *cloud, trans[i]);
+		pcm->dataFusion(cloud);
+	}
+}
+
+void MainWindow::reconstructMesh()
+{
+	if (mm)
+	{
+		delete mm;
+	}
+	cout << "Reconstructing Meshes" << endl;
+	cout << intr.rx << " " << intr.ry << " " << intr.fx << " " << intr.fy << endl;
+	mm = new MeshModel(Eigen::Matrix4f::Identity(), -1.2, -1.2, 0.0, 1.2, 1.2, 5.0, 0.01,
+		intr.rx, intr.ry, intr.fx, intr.fy);
+	vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> trans = engine->GetTransformations();
+	for (int i = 0; i < trans.size(); i++)
+	{
+		cout << i << endl;
+		PointCloudWithNormalPtr cloud;
+		cloud = RGBDDatas::getOrganizedCloudWithNormal_cuda(i);
+		pcl::transformPointCloudWithNormals(*cloud, *cloud, trans[i]);
+		mm->dataFusion(cloud, trans[i]);
+	}
+}
+
 // slots
 void MainWindow::onActionOpenTriggered()
 {
@@ -373,7 +415,10 @@ void MainWindow::onRegistrationPushButtonRunClicked(bool checked)
 	{
 		engine = new SlamEngine();
 		thread = new SlamThread(sensorType, uiDockRegistration->lineEditDirectory->text(), engine, p);
-		qRegisterMetaType<cv::Mat>("cv::Mat");
+//		qRegisterMetaType<cv::Mat>("cv::Mat");
+		qRegisterMetaType<Intrinsic>("Intrinsic");
+		qRegisterMetaType<Eigen::Matrix4f>("Eigen::Matrix4f");
+		connect(thread, &SlamThread::InitDone, this, &MainWindow::onInitDone);
 		connect(thread, &SlamThread::OneIterationDone, this, &MainWindow::onBenchmarkOneIterationDone);
 		connect(thread, &SlamThread::RegistrationDone, this, &MainWindow::onBenchmarkRegistrationDone);
 	}
@@ -454,19 +499,19 @@ void MainWindow::onRegistrationPushButtonSaveTrajectoriesClicked(bool checked)
 		if (!engine)
 			return;
 
-		int fi = engine->getFrameInterval();
-		int fst = engine->getFrameStart();
-		int fed = engine->getFrameStop();
-		vector<pair<double, Eigen::Matrix4f>> trans = engine->GetTransformations();
+// 		int fi = engine->getFrameInterval();
+// 		int fst = engine->getFrameStart();
+// 		int fed = engine->getFrameStop();
+		vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> trans = engine->GetTransformations();
 		ofstream outfile(filename.toStdString());
-		outfile << uiDockRegistration->lineEditDirectory->text().toStdString() << endl;
-		outfile << fi << ' ' << fst << ' ' << fed << endl;
+// 		outfile << uiDockRegistration->lineEditDirectory->text().toStdString() << endl;
+// 		outfile << fi << ' ' << fst << ' ' << fed << endl;
 		for (int i = 0; i < trans.size(); i++)
 		{
-			Eigen::Vector3f t = TranslationFromMatrix4f(trans[i].second);
-			Eigen::Quaternionf q = QuaternionFromMatrix4f(trans[i].second);
+			Eigen::Vector3f t = TranslationFromMatrix4f(trans[i]);
+			Eigen::Quaternionf q = QuaternionFromMatrix4f(trans[i]);
 
-			outfile << fixed << setprecision(6) << trans[i].first
+			outfile << fixed << setprecision(6) << RGBDDatas::getTimestamp(i)
 				<< ' ' << t(0) << ' ' << t(1) << ' ' << t(2)
 				<< ' ' << q.x() << ' ' << q.y() << ' ' << q.z() << ' ' << q.w() << endl;
 		}
@@ -490,21 +535,20 @@ void MainWindow::onRegistrationPushButtonSaveKeyframesClicked(bool checked)
 			return;
 
 #ifdef SAVE_TEST_INFOS
-		cout << engine->keyframe_candidates.size() << endl;
-		for (int i = 0; i < engine->keyframe_candidates.size(); i++)
+		cout << engine->keyframe_candidates_id.size() << endl;
+		for (int i = 0; i < engine->keyframe_candidates_id.size(); i++)
 		{
 			QString fn = fi.absoluteFilePath() + "/keyframe_candidate_" + QString::number(engine->keyframe_candidates_id[i]) + "_rgb.png";
-			cv::imwrite(fn.toStdString(), engine->keyframe_candidates[i].first);
+			RGBDFrame f = RGBDDatas::getFrame(engine->keyframe_candidates_id[i]);
+			cv::imwrite(fn.toStdString(), f.color);
 		}
 
-		cout << engine->keyframes.size() << endl;
-		for (int i = 0; i < engine->keyframes.size(); i++)
+		cout << engine->keyframes_id.size() << endl;
+		for (int i = 0; i < engine->keyframes_id.size(); i++)
 		{
-			QString inliers_sig = QString::fromStdString(engine->keyframes_inliers_sig[i]);
-			QString exists_sig = QString::fromStdString(engine->keyframes_exists_sig[i]);
-			QString fn = fi.absoluteFilePath() + "/keyframe_" + QString::number(engine->keyframes_id[i]) + "_rgb_" +
-				inliers_sig + "_" + exists_sig + ".png";
-			cv::imwrite(fn.toStdString(), engine->keyframes[i].first);
+			QString fn = fi.absoluteFilePath() + "/keyframe_" + QString::number(engine->keyframes_id[i]) + "_rgb.png";
+			RGBDFrame f = RGBDDatas::getFrame(engine->keyframes_id[i]);
+			cv::imwrite(fn.toStdString(), f.color);
 		}
 #endif
 
@@ -569,19 +613,25 @@ void MainWindow::onRegistrationRadioButtonModeToggled(bool checked)
 	}
 }
 
-void MainWindow::onBenchmarkOneIterationDone(const cv::Mat &rgb, const cv::Mat &depth, const Eigen::Matrix4f &tran)
+void MainWindow::onInitDone(const Intrinsic &intrColor, const Intrinsic &intrDepth)
+{
+	intr = intrDepth;
+}
+
+void MainWindow::onBenchmarkOneIterationDone(int id, const Eigen::Matrix4f &tran)
 {
 	cv::Mat tempRgb, tempDepth;
+	RGBDDatas::getFrame(id, tempRgb, tempDepth);
 	QImage *rgbImage, *depthImage;
-	cv::cvtColor(rgb, tempRgb, CV_BGR2RGB);
+	cv::cvtColor(tempRgb, tempRgb, CV_BGR2RGB);
 	rgbImage = new QImage((const unsigned char*)(tempRgb.data),
 		tempRgb.cols, tempRgb.rows,
 		tempRgb.cols * tempRgb.channels(),
 		QImage::Format_RGB888);
 	registrationViewer->ShowRGBImage(rgbImage);
 
-	depth *= 255.0 / 65535.0;
-	depth.convertTo(tempDepth, CV_8U);
+	tempDepth *= 255.0 / 65535.0;
+	tempDepth.convertTo(tempDepth, CV_8U);
 	cv::cvtColor(tempDepth, tempDepth, CV_GRAY2RGB);
 	depthImage = new QImage((const unsigned char*)(tempDepth.data),
 		tempDepth.cols, tempDepth.rows,
@@ -589,14 +639,17 @@ void MainWindow::onBenchmarkOneIterationDone(const cv::Mat &rgb, const cv::Mat &
 		QImage::Format_RGB888);
 	registrationViewer->ShowDepthImage(depthImage);
 
-	// tsdf fusion
-
 //	registrationViewer->ShowPointCloud(engine->GetScene());
 }
 
 void MainWindow::onBenchmarkRegistrationDone()
 {
-	registrationViewer->ShowPointCloud(engine->GetScene());
+	reconstructPointCloud();
+	registrationViewer->ShowPointCloud(pcm->getModel());
+	
+	reconstructMesh();
+	registrationViewer->ShowMesh(mm->getModel());
+	
 	uiDockRegistration->pushButtonRun->setDisabled(false);
 	uiDockRegistration->pushButtonSaveTrajectories->setDisabled(false);
 }

@@ -41,10 +41,10 @@ public:
     void changeLocal(Eigen::Matrix4f ltran, 
 			            double maxx,double maxy, double maxz,double minx,double miny,double minz);
 
-	virtual void dataFusion(PointCloud::Ptr cloud, PointNormal::Ptr normals, 
+	virtual void dataFusion(pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud,
 			        Eigen::Matrix4f tran, int nHalfXres, int nHalfYres, double fCoeffX, double fCoeffY);
 
-	void Traversal(PointCloud::Ptr cloud, PointNormal::Ptr normals, 
+	void Traversal(pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud,
 			        Eigen::Matrix4f tran, int nHalfXres, int nHalfYres, double fCoeffX, double fCoeffY);
 
 	virtual void rayCast(double ix, double iy, double ax, double ay, double devide,

@@ -369,7 +369,7 @@ BOOL RegisterWindowClass (Application* application)						// Register A Window Cl
 }
 
 // Program Entry (WinMain)
-int GLWindows(Rgbd::GLMesh* mesh)
+int GLWindows(GLMesh* mesh)
 {
 	Application			application;									// Application Structure
 	GL_Window			window;											// Window Structure

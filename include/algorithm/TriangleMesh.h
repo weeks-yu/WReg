@@ -55,21 +55,30 @@ public:
 	void operator=(const GLMesh &other)
 	{
 		gl_vertexes.clear();
-		for (std::vector<GLVertex>::const_iterator it = other.gl_vertexes.begin(); it != other.gl_vertexes.end(); it++)
+		if (other.gl_vertexes.size() > 0)
 		{
-			gl_vertexes.push_back(*it);
+			for (std::vector<GLVertex>::const_iterator it = other.gl_vertexes.begin(); it != other.gl_vertexes.end(); it++)
+			{
+				gl_vertexes.push_back(*it);
+			}
 		}
-
+	
 		gl_meshes.clear();
-		for (std::map<std::tuple<int, int, int>, GLTriangle>::const_iterator it = other.gl_meshes.begin(); it != other.gl_meshes.end(); it++)
+		if (other.gl_meshes.size() > 0)
 		{
-			gl_meshes.insert(*it);
+			for (std::map<std::tuple<int, int, int>, GLTriangle>::const_iterator it = other.gl_meshes.begin(); it != other.gl_meshes.end(); it++)
+			{
+				gl_meshes.insert(*it);
+			}
 		}
 
 		gl_edges.clear();
-		for (std::map<std::pair<int, int>, int>::const_iterator it = other.gl_edges.begin(); it != other.gl_edges.end(); it++)
+		if (other.gl_edges.size() > 0)
 		{
-			gl_edges.insert(*it);
+			for (std::map<std::pair<int, int>, int>::const_iterator it = other.gl_edges.begin(); it != other.gl_edges.end(); it++)
+			{
+				gl_edges.insert(*it);
+			}
 		}
 	}
 

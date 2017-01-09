@@ -41,6 +41,7 @@ public:
 	PointCloudPtr GetPointCloud();
 
 	void SetViewerMode(int mode);
+	int GetViewerMode();
 
 protected:
 	virtual void resizeEvent(QResizeEvent *event);

@@ -302,7 +302,7 @@ void Torus(float MinorRadius, float MajorRadius)					// Draw A Torus With Normal
 	glEnd();														// Done Torus
 }
 
-void Draw (Rgbd::GLMesh* mesh)
+void Draw (GLMesh* mesh)
 {
 	//GLfloat lightposition[] = {1.0, 1.0, 1.0, 1.0 };
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);				// Clear Screen And Depth Buffer
@@ -332,10 +332,10 @@ void Draw (Rgbd::GLMesh* mesh)
 	
 	if(mesh->gl_meshes.size() > 0){
 		glBegin(GL_TRIANGLES);
-		for(std::map<std::tuple<int,int,int>,Rgbd::GLTriangle>::iterator it = mesh->gl_meshes.begin();it != mesh->gl_meshes.end();it++){
+		for(std::map<std::tuple<int,int,int>,GLTriangle>::iterator it = mesh->gl_meshes.begin();it != mesh->gl_meshes.end();it++){
 			//glBegin(GL_LINE_LOOP);
-			Rgbd::GLTriangle m = it->second;
-			Rgbd::GLVertex v[3];
+			GLTriangle m = it->second;
+			GLVertex v[3];
 			v[0] = mesh->gl_vertexes.at(m.vertexes[0]);
 			v[1] = mesh->gl_vertexes.at(m.vertexes[1]);
 			v[2] = mesh->gl_vertexes.at(m.vertexes[2]);

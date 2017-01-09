@@ -27,7 +27,8 @@ public:
 	void setEngine(SlamEngine* eng) { engine = eng; }
 
 signals:
-	void OneIterationDone(const cv::Mat &rgb, const cv::Mat &depth, const Eigen::Matrix4f &tran);
+	void InitDone(const Intrinsic &intrColor, const Intrinsic &intrDepth);
+	void OneIterationDone(int id, const Eigen::Matrix4f &tran);
 	void RegistrationDone();
 
 protected:

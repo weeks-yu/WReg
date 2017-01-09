@@ -11,16 +11,13 @@ public:
 	ImageReader();
 	virtual ~ImageReader();
 
-	virtual bool getNextFrame(cv::Mat &rgb, cv::Mat &depth);
+	virtual bool getNextFrame(cv::Mat &rgb, cv::Mat &depth, double &timestamp);
 	virtual void registerColorToDepth(const cv::Mat &rgb, const cv::Mat &depth, cv::Mat &rgbRegistered);
 	virtual void registerDepthToColor(const cv::Mat &rgb, const cv::Mat &depth, cv::Mat &depthRegistered);
 
 	virtual bool create(const char* filename = NULL);
 	virtual void start();
 	virtual void stop();
-
-	void setIntrinsic(int rx, int ry, float fx, float fy, float cx, float cy);
-	void setIntrinsic(Intrinsic intr_);
 
 private:
 	std::string filename;

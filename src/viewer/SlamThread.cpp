@@ -8,6 +8,7 @@
 #include "ImageReader.h"
 #include "OniReader.h"
 #include "KinectReader.h"
+#include "RgbdDatas.h"
 
 SlamThread::SlamThread(SensorType st, const QString &dir, SlamEngine *eng, int *parameters)
 	// for SENSOR_IMAGE and SENSOR_ONI:
@@ -23,6 +24,7 @@ SlamThread::SlamThread(SensorType st, const QString &dir, SlamEngine *eng, int *
 	frameStop = -1;
 
 	sensorType = st;
+	Intrinsic intr;
 	switch (sensorType)
 	{
 	case SENSOR_IMAGE:
@@ -31,6 +33,14 @@ SlamThread::SlamThread(SensorType st, const QString &dir, SlamEngine *eng, int *
 		frameStop = parameters[2];
 
 		reader = new ImageReader();
+		intr.rx = Config::instance()->get<int>("image_width");
+		intr.ry = Config::instance()->get<int>("image_height");
+		intr.cx = Config::instance()->get<float>("camera_cx");
+		intr.cy = Config::instance()->get<float>("camera_cy");
+		intr.fx = Config::instance()->get<float>("camera_fx");
+		intr.fy = Config::instance()->get<float>("camera_fy");
+		intr.zFactor = Config::instance()->get<float>("depth_factor");
+		reader->setIntrinsicDepth(intr);
 		reader->create(dir.toStdString().c_str());
 		reader->start();
 		break;
@@ -54,9 +64,9 @@ SlamThread::SlamThread(SensorType st, const QString &dir, SlamEngine *eng, int *
 		break;
 	}
 
-	engine->setFrameInterval(frameInterval);
-	engine->setFrameStart(frameStart);
-	engine->setFrameStop(frameStop);
+// 	engine->setFrameInterval(frameInterval);
+// 	engine->setFrameStart(frameStart);
+// 	engine->setFrameStop(frameStop);
 }
 
 SlamThread::~SlamThread()
@@ -88,11 +98,15 @@ void SlamThread::setParameters(int *parameters)
 
 void SlamThread::run()
 {
+	emit InitDone(reader->intrColor, reader->intrDepth);
+
 	int k = 0;
+	int id = 0;
 	while (!shouldStop)
 	{
 		cv::Mat r, d;
-		if (!reader->getNextFrame(r, d))
+		double ts;
+		if (!reader->getNextFrame(r, d, ts))
 		{
 			break;
 		}
@@ -126,13 +140,15 @@ void SlamThread::run()
 			break;
 		}
 
+		RGBDDatas::push(r, d, ts);
 		Eigen::Matrix4f tran = Eigen::Matrix4f::Identity();
 		if (shouldRegister)
 		{
-			tran = engine->RegisterNext(r, d, k);
+			tran = engine->RegisterNext(r, d, ts);
 			k++;
 		}
-		emit OneIterationDone(r, d, tran);
+		emit OneIterationDone(id, tran);
+		id++;
 	}
 	
 	reader->stop();

@@ -28,6 +28,7 @@ RegistrationViewer::RegistrationViewer(QWidget *parent) :
 
 	cloud = PointCloudPtr(new PointCloudT);
 	mode = USING_PCL_VIEWER;
+	mesh = nullptr;
 }
 
 RegistrationViewer::~RegistrationViewer()
@@ -36,6 +37,10 @@ RegistrationViewer::~RegistrationViewer()
 	if (glwindow)
 	{
 		delete glwindow;
+	}
+	if (mesh)
+	{
+		delete mesh;
 	}
 }
 
@@ -59,10 +64,6 @@ void RegistrationViewer::ShowDepthImage(QImage *depth)
 
 void RegistrationViewer::ShowPointCloud(PointCloudPtr cloud_)
 {
-	if (mode != USING_PCL_VIEWER)
-	{
-		return;
-	}
 	*cloud = *cloud_;
 	viewer->removeAllPointClouds();
 	pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb(cloud);
@@ -72,11 +73,12 @@ void RegistrationViewer::ShowPointCloud(PointCloudPtr cloud_)
 
 void RegistrationViewer::ShowMesh(GLMesh *mesh_)
 {
-	if (mode != USING_OPENGL_VIEWER)
+	if (mesh)
 	{
-		return;
+		delete mesh;
 	}
-	*mesh = *mesh_;
+	mesh = new GLMesh(*mesh_);
+	glwindow->setMesh(mesh);
 }
 
 PointCloudPtr RegistrationViewer::GetPointCloud()
@@ -118,6 +120,11 @@ void RegistrationViewer::SetViewerMode(int mode)
 		}
 	}
 	this->mode = mode;
+}
+
+int RegistrationViewer::GetViewerMode()
+{
+	return mode;
 }
 
 void RegistrationViewer::resizeEvent(QResizeEvent *event)
