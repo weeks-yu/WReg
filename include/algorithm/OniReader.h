@@ -26,4 +26,9 @@ private:
 	VideoStream depthStream;
 	VideoStream colorStream;
 	PlaybackControl *control;
+
+	int rgbNow;
+	int rgbCount;
+	int depthNow;
+	int depthCount;
 };

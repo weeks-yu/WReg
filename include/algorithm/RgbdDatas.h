@@ -2,6 +2,7 @@
 
 #include <opencv2/opencv.hpp>
 #include "PointCloud.h"
+#include "RGBDReader.h"
 
 struct RGBDFrame
 {
@@ -39,4 +40,5 @@ public:
 public:
 
 	static std::vector<RGBDFrame> frames;
+	static Intrinsic intr;
 };

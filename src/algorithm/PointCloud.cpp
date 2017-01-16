@@ -5,10 +5,12 @@
 #include <pcl/features/integral_image_normal.h>
 
 #ifdef SHOW_Z_INDEX
-float now_max_z, now_min_z;
+extern float now_max_z, now_min_z;
 #endif
 
-PointCloudPtr ConvertToOrganizedPointCloud(const cv::Mat &depth, const cv::Mat &rgb, double timestamp, int frameID)
+PointCloudPtr ConvertToOrganizedPointCloud(const Intrinsic &intr,
+	const cv::Mat &depth, const cv::Mat &rgb,
+	double timestamp, int frameID)
 {
 	PointCloudPtr cloud(new PointCloudT);
 	cloud->width = rgb.size().width;
@@ -22,12 +24,12 @@ PointCloudPtr ConvertToOrganizedPointCloud(const cv::Mat &depth, const cv::Mat &
 	float min_z = 5000.0, max_z = 0.0;
 #endif
 
-	float fx = Config::instance()->get<float>("camera_fx");  // focal length x
-	float fy = Config::instance()->get<float>("camera_fy");  // focal length y
-	float cx = Config::instance()->get<float>("camera_cx");  // optical center x
-	float cy = Config::instance()->get<float>("camera_cy");  // optical center y
+	float fx = intr.fx;  // focal length x
+	float fy = intr.fy;  // focal length y
+	float cx = intr.cx;  // optical center x
+	float cy = intr.cy;  // optical center y
 
-	float factor = Config::instance()->get<float>("depth_factor");	// for the 16-bit PNG files
+	float factor = intr.zFactor;
 
 	for (int j = 0; j < cloud->height; j++)
 	{
@@ -55,7 +57,9 @@ PointCloudPtr ConvertToOrganizedPointCloud(const cv::Mat &depth, const cv::Mat &
 	return cloud;
 }
 
-PointCloudPtr ConvertToPointCloudWithoutMissingData(const cv::Mat &depth, const cv::Mat &rgb, double timestamp, int frameID)
+PointCloudPtr ConvertToPointCloudWithoutMissingData(const Intrinsic &intr,
+	const cv::Mat &depth, const cv::Mat &rgb,
+	double timestamp, int frameID)
 {
 	PointCloudPtr cloud(new PointCloudT);
 	cloud->header.stamp = timestamp * 10000;
@@ -65,12 +69,12 @@ PointCloudPtr ConvertToPointCloudWithoutMissingData(const cv::Mat &depth, const 
 	float min_z = 5000.0, max_z = 0.0;
 #endif
 
-	float fx = Config::instance()->get<float>("camera_fx");  // focal length x
-	float fy = Config::instance()->get<float>("camera_fy");  // focal length y
-	float cx = Config::instance()->get<float>("camera_cx");  // optical center x
-	float cy = Config::instance()->get<float>("camera_cy");  // optical center y
+	float fx = intr.fx;  // focal length x
+	float fy = intr.fy;  // focal length y
+	float cx = intr.cx;  // optical center x
+	float cy = intr.cy;  // optical center y
 
-	float factor = Config::instance()->get<float>("depth_factor");	// for the 16-bit PNG files
+	float factor = intr.zFactor;
 
 	for (int j = 0; j < rgb.size().height; j++)
 	{
@@ -129,8 +133,9 @@ PointCloudNormalPtr ComputeOrganizedNormal(PointCloudPtr cloud)
 	return normal;
 }
 
-void ConvertToPointCloudWithNormalCuda(PointCloudWithNormalPtr &cloud,
-	const cv::Mat &depth, const cv::Mat &rgb, double timestamp, int frameID)
+void ConvertToPointCloudWithNormalCuda(	PointCloudWithNormalPtr &cloud,	const Intrinsic &intr,
+	const cv::Mat &depth, const cv::Mat &rgb,
+	double timestamp, int frameID)
 {
 	cloud = PointCloudWithNormalPtr(new PointCloudWithNormalT);
 	cloud->width = rgb.size().width;
@@ -138,12 +143,12 @@ void ConvertToPointCloudWithNormalCuda(PointCloudWithNormalPtr &cloud,
 	cloud->is_dense = false;
 	cloud->resize(cloud->height * cloud->width);
 	
-	float fx = Config::instance()->get<float>("camera_fx");  // focal length x
-	float fy = Config::instance()->get<float>("camera_fy");  // focal length y
-	float cx = Config::instance()->get<float>("camera_cx");  // optical center x
-	float cy = Config::instance()->get<float>("camera_cy");  // optical center y
+	float fx = intr.fx;  // focal length x
+	float fy = intr.fy;  // focal length y
+	float cx = intr.cx;  // optical center x
+	float cy = intr.cy;  // optical center y
 
-	float factor = Config::instance()->get<float>("depth_factor");	// for the 16-bit PNG files
+	float factor = intr.zFactor;
 
 	PointCloudCuda *pcc = new PointCloudCuda(rgb.size().width, rgb.size().height,
 		cx, cy, fx, fy, factor);

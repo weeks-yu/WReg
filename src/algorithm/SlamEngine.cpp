@@ -263,10 +263,6 @@ Eigen::Matrix4f SlamEngine::RegisterNext(const cv::Mat &imgRGB, const cv::Mat &i
 //	timestamps.push_back(timestamp);
 //	PointCloudPtr cloud_new = ConvertToPointCloudWithoutMissingData(imgDepth, imgRGB, timestamp, frame_id);
 
-#ifdef SHOW_Z_INDEX
-	cout << now_min_z << ' ' << now_max_z << endl;
-#endif
-
 //	PointCloudPtr cloud_downsampled = DownSamplingByVoxelGrid(cloud_new, downsample_rate, downsample_rate, downsample_rate);
 	Eigen::Matrix4f ret_tran = Eigen::Matrix4f::Identity();
 

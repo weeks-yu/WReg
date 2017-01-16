@@ -15,8 +15,11 @@ OniReader::~OniReader()
 bool OniReader::getNextFrame(cv::Mat &rgb, cv::Mat &depth, double &timestamp)
 {
 	VideoFrameRef oniColor, oniDepth;
-	if (colorStream.readFrame(&oniColor) == STATUS_OK && depthStream.readFrame(&oniDepth) == STATUS_OK)
+	if (rgbNow < rgbCount && depthNow < depthCount &&
+		colorStream.readFrame(&oniColor) == STATUS_OK && depthStream.readFrame(&oniDepth) == STATUS_OK)
 	{
+		rgbNow++;
+		depthNow++;
 		cv::Mat r(oniColor.getHeight(), oniColor.getWidth(), CV_8UC3, (void *)oniColor.getData());
 		cv::cvtColor(r, rgb, CV_RGB2BGR);
 
@@ -83,6 +86,8 @@ bool OniReader::create(const char* filename_)
 	// playback control
 	control = oniDevice.getPlaybackControl();
 	control->setSpeed(-1);
+	rgbCount = control->getNumberOfFrames(colorStream);
+	depthCount = control->getNumberOfFrames(depthStream);
 
 	return true;
 }
@@ -97,10 +102,14 @@ void OniReader::start()
 	result = colorStream.start();
 	if (result != STATUS_OK) return;
 
+	rgbNow = 0;
+	depthNow = 0;
+
 	return;
 }
 
 void OniReader::stop()
 {
-	
+	depthStream.stop();
+	colorStream.stop();
 }

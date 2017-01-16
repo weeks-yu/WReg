@@ -14,8 +14,8 @@ public:
 	typedef enum
 	{
 		SENSOR_IMAGE = 0,
-		SENSOR_KINECT,
-		SENSOR_ONI
+		SENSOR_ONI,
+		SENSOR_KINECT
 	} SensorType;
 public:
 	SlamThread(SensorType st, const QString &dir, SlamEngine *eng, int *parameters);

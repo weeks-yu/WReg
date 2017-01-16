@@ -98,6 +98,7 @@ void SlamThread::setParameters(int *parameters)
 
 void SlamThread::run()
 {
+	RGBDDatas::frames.clear();
 	emit InitDone(reader->intrColor, reader->intrDepth);
 
 	int k = 0;

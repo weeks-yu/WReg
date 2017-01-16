@@ -1,7 +1,7 @@
 #pragma once
 
 #define SAVE_TEST_INFOS
-//#define SHOW_Z_INDEX
+#define SHOW_Z_INDEX
 
 #include <map>
 #include <string>

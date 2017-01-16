@@ -75,7 +75,7 @@ private:
 	QMdiArea *mdiArea;
 	RegistrationViewer *registrationViewer;
 
-	Intrinsic intr;
+//	Intrinsic intr;
 	MeshModel *mm;
 	PointCloudModel *pcm;
 	SlamEngine *engine;

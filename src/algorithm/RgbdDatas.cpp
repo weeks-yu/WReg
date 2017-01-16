@@ -1,6 +1,7 @@
 #include "RGBDDatas.h"
 
 std::vector<RGBDFrame> RGBDDatas::frames;
+Intrinsic RGBDDatas::intr;
 
 RGBDFrame::RGBDFrame(cv::Mat color, cv::Mat depth, double timestamp)
 {
@@ -51,7 +52,7 @@ PointCloudPtr RGBDDatas::getCloud(int k)
 	if (k >= 0 && k < RGBDDatas::frames.size())
 	{
 		RGBDFrame f = RGBDDatas::frames[k];
-		PointCloudPtr cloud = ConvertToPointCloudWithoutMissingData(f.depth, f.color, f.timestamp, k);
+		PointCloudPtr cloud = ConvertToPointCloudWithoutMissingData(intr, f.depth, f.color, f.timestamp, k);
 		return cloud;
 	}
 	return PointCloudPtr(new PointCloudT());
@@ -62,7 +63,7 @@ PointCloudPtr RGBDDatas::getOrganizedCloud(int k)
 	if (k >= 0 && k < RGBDDatas::frames.size())
 	{
 		RGBDFrame f = RGBDDatas::frames[k];
-		PointCloudPtr cloud = ConvertToOrganizedPointCloud(f.depth, f.color, f.timestamp, k);
+		PointCloudPtr cloud = ConvertToOrganizedPointCloud(intr, f.depth, f.color, f.timestamp, k);
 		return cloud;
 	}
 	return PointCloudPtr(new PointCloudT());
@@ -73,7 +74,7 @@ void RGBDDatas::getCloudWithNormal(int k, PointCloudPtr &cloud, PointCloudNormal
 	if (k >= 0 && k < RGBDDatas::frames.size())
 	{
 		RGBDFrame f = RGBDDatas::frames[k];
-		cloud = ConvertToPointCloudWithoutMissingData(f.depth, f.color, f.timestamp, k);
+		cloud = ConvertToPointCloudWithoutMissingData(intr, f.depth, f.color, f.timestamp, k);
 		normal = ComputeNormal(cloud);
 	}
 }
@@ -83,7 +84,7 @@ void RGBDDatas::getOrganizedCloudWithNormal(int k, PointCloudPtr &cloud, PointCl
 	if (k >= 0 && k < RGBDDatas::frames.size())
 	{
 		RGBDFrame f = RGBDDatas::frames[k];
-		cloud = ConvertToOrganizedPointCloud(f.depth, f.color, f.timestamp, k);
+		cloud = ConvertToOrganizedPointCloud(intr, f.depth, f.color, f.timestamp, k);
 		normal = ComputeOrganizedNormal(cloud);
 	}
 }
@@ -94,7 +95,7 @@ PointCloudWithNormalPtr RGBDDatas::getOrganizedCloudWithNormal_cuda(int k)
 	if (k >= 0 && k < RGBDDatas::frames.size())
 	{
 		RGBDFrame f = RGBDDatas::frames[k];
-		ConvertToPointCloudWithNormalCuda(cloud, f.depth, f.color, f.timestamp, k);
+		ConvertToPointCloudWithNormalCuda(cloud, intr, f.depth, f.color, f.timestamp, k);
 		return cloud;
 	}
 	return PointCloudWithNormalPtr(new PointCloudWithNormalT);

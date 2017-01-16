@@ -18,6 +18,10 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include "RgbdDatas.h"
 
+#ifdef SHOW_Z_INDEX
+float now_max_z, now_min_z;
+#endif
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -226,6 +230,9 @@ void MainWindow::reconstructPointCloud()
 	for (int i = 0; i < trans.size(); i++)
 	{
 		PointCloudPtr cloud = RGBDDatas::getCloud(i);
+#ifdef SHOW_Z_INDEX
+		cout << now_min_z << ' ' << now_max_z << endl;
+#endif
 		pcl::transformPointCloud(*cloud, *cloud, trans[i]);
 		pcm->dataFusion(cloud);
 	}
@@ -238,6 +245,7 @@ void MainWindow::reconstructMesh()
 		delete mm;
 	}
 	cout << "Reconstructing Meshes" << endl;
+	Intrinsic intr = RGBDDatas::intr;
 	cout << intr.rx << " " << intr.ry << " " << intr.fx << " " << intr.fy << endl;
 	mm = new MeshModel(Eigen::Matrix4f::Identity(), -1.2, -1.2, 0.0, 1.2, 1.2, 5.0, 0.01,
 		intr.rx, intr.ry, intr.fx, intr.fy);
@@ -472,22 +480,40 @@ void MainWindow::onRegistrationPushButtonRunClicked(bool checked)
 
 void MainWindow::onRegistrationPushButtonDirectoryClicked(bool checked)
 {
-	QString directory = QFileDialog::getExistingDirectory(this, tr("Open Benchmark Directory"), "");
-	if (!directory.isNull())
+	SlamThread::SensorType sensorType = static_cast<SlamThread::SensorType>(uiDockRegistration->comboBoxSensorType->currentIndex());
+	if (sensorType == SlamThread::SENSOR_IMAGE)
 	{
-		QFileInfo fi(directory);
-		if (!fi.isDir())
+		QString directory = QFileDialog::getExistingDirectory(this, tr("Open Benchmark Directory"), "");
+		if (!directory.isNull())
 		{
-			QMessageBox::warning(this, tr("Invalid directory"), tr("Please check whether the directory is valid."));
-			return;
+			QFileInfo fi(directory);
+			if (!fi.isDir())
+			{
+				QMessageBox::warning(this, tr("Invalid directory"), tr("Please check whether the directory is valid."));
+				return;
+			}
+			QFileInfo fi2(fi.absoluteFilePath() + "/read.txt");
+			if (!fi2.isFile())
+			{
+				QMessageBox::warning(this, tr("Read.txt not found"), tr("Please check whether \"read.txt\" exists or not"));
+				return;
+			}
+			uiDockRegistration->lineEditDirectory->setText(directory);
 		}
-		QFileInfo fi2(fi.absoluteFilePath() + "/read.txt");
-		if (!fi2.isFile())
+	}
+	else if (sensorType == SlamThread::SENSOR_ONI)
+	{
+		QString filename = QFileDialog::getOpenFileName(this, tr("Open Oni File"), "", tr("oni files(*.oni)"));
+		if (!filename.isNull())
 		{
-			QMessageBox::warning(this, tr("Read.txt not found"), tr("Please check whether \"read.txt\" exists or not"));
-			return;
+			QFileInfo fi(filename);
+			if (!fi.isFile())
+			{
+				QMessageBox::warning(this, tr("Invalid file"), tr("Please check whether the file exists."));
+				return;
+			}
+			uiDockRegistration->lineEditDirectory->setText(filename);
 		}
-		uiDockRegistration->lineEditDirectory->setText(directory);
 	}
 }
 
@@ -615,7 +641,7 @@ void MainWindow::onRegistrationRadioButtonModeToggled(bool checked)
 
 void MainWindow::onInitDone(const Intrinsic &intrColor, const Intrinsic &intrDepth)
 {
-	intr = intrDepth;
+	RGBDDatas::intr = intrDepth;
 }
 
 void MainWindow::onBenchmarkOneIterationDone(int id, const Eigen::Matrix4f &tran)
